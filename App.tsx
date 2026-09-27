@@ -1,28 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import { StatusBar } from 'expo-status-bar';
-import { createProof, Proof, verifyProof } from './src/doichain';
+import { createProof, getQuota, Proof, Quota, verifyProof } from './src/doichain';
 
 type Selected = { uri: string; hash: string; capturedAt?: string };
 
 export default function App() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [key, setKey] = useState('');
-  const [autoSend, setAutoSend] = useState(false);
+  const [autoSend, setAutoSend] = useState(true);
+  const [quota, setQuota] = useState<Quota | null>(null);
   const [result, setResult] = useState<Proof | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    getQuota().then(setQuota).catch(() => setQuota(null));
+  }, []);
+
+  async function refreshQuota() {
+    try { setQuota(await getQuota(key)); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Kontingent konnte nicht geladen werden.'); }
+  }
+
   async function submit(hash: string, capturedAt?: string) {
     setBusy(true);
-    setMessage('Hash wird an die Doichain-API gesendet …');
+    setMessage('Hash wird über den Doichain-MCP-Server gesendet …');
     try {
       // The note is public on chain; it is a device clock reading, not a trusted timestamp.
       const proof = await createProof(hash, key, capturedAt ? `Aufnahme laut Gerät: ${capturedAt}` : undefined);
       setResult(proof);
+      getQuota(key).then(setQuota).catch(() => setQuota(null));
       setMessage('Einreichung angenommen. Prüfe später den Status auf der Kette.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Einreichung fehlgeschlagen.');
@@ -55,9 +66,9 @@ export default function App() {
       const capturedAt = source === 'camera' ? new Date().toISOString() : undefined;
       setSelected({ uri: asset.uri, hash, capturedAt });
       setResult(null);
-      setMessage('Foto bereit. Nur der Hash wird übertragen.');
+      setMessage('Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
       setBusy(false);
-      if (autoSend && key.trim()) await submit(hash, capturedAt);
+      if (autoSend) await submit(hash, capturedAt);
     } catch (error) {
       setBusy(false);
       setMessage(error instanceof Error ? error.message : 'Foto konnte nicht verarbeitet werden.');
@@ -70,7 +81,7 @@ export default function App() {
     try {
       const proof = await verifyProof(selected.hash);
       setResult(proof);
-      setMessage(proof.exists ? 'Nachweis auf der Doichain gefunden.' : proof.pending ? 'Nachweis ist noch ausstehend.' : 'Noch kein bestätigter Nachweis gefunden.');
+      setMessage(proof.status === 'confirmed' || proof.status === 'expired' ? 'Nachweis auf der Doichain gefunden.' : proof.status === 'pending' ? 'Nachweis ist noch ausstehend.' : 'Noch kein bestätigter Nachweis gefunden.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Prüfung fehlgeschlagen.');
     } finally {
@@ -84,7 +95,7 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.brand}>DOI / PROOF</Text>
         <Text style={styles.title}>Dein Foto. Dein Nachweis.</Text>
-        <Text style={styles.lead}>DoiProof berechnet den SHA-256-Hash auf deinem Gerät und verankert ihn über die Doichain-API.</Text>
+        <Text style={styles.lead}>DoiProof berechnet den SHA-256-Hash auf deinem Gerät und verankert ihn kostenlos über den Doichain-MCP-Server.</Text>
         <View style={styles.row}>
           <Pressable accessibilityRole="button" style={styles.button} onPress={() => choose('camera')} disabled={busy}><Text style={styles.buttonText}>Foto aufnehmen</Text></Pressable>
           <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => choose('library')} disabled={busy}><Text style={styles.secondaryText}>Foto wählen</Text></Pressable>
@@ -96,12 +107,15 @@ export default function App() {
           {selected.capturedAt && <Text style={styles.muted}>Gerätezeit bei Aufnahme: {selected.capturedAt}</Text>}
         </View>}
         <View style={styles.card}>
-          <Text style={styles.label}>PoE- oder Write-API-Schlüssel</Text>
-          <TextInput value={key} onChangeText={setKey} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="Schlüssel für diese Sitzung" style={styles.input} accessibilityLabel="Doichain API-Schlüssel" />
-          <Text style={styles.muted}>Bleibt nur während dieser App-Sitzung im Speicher. Der Schlüssel wird direkt an doi-api.sendlabs.de gesendet.</Text>
+          <Text style={styles.label}>Tageskontingent</Text>
+          <Text>{quota ? quota.unlimited ? 'Mit eigenem Schlüssel: unbegrenzt' : `${quota.remaining_for_this_ip ?? '?'} von ${quota.limit_per_ip_per_day ?? 10} für diese IP übrig · ${quota.remaining_all_users ?? '?'} insgesamt übrig (UTC-Tag)` : 'Kontingent noch nicht geladen'}</Text>
+          <Pressable accessibilityRole="button" onPress={refreshQuota}><Text style={styles.secondaryText}>Kontingent aktualisieren</Text></Pressable>
+          <Text style={styles.label}>Eigener PoE- oder Write-Schlüssel (optional)</Text>
+          <TextInput value={key} onChangeText={setKey} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="Ohne Schlüssel: kostenloses Kontingent" style={styles.input} accessibilityLabel="Doichain API-Schlüssel" />
+          <Text style={styles.muted}>Ohne Schlüssel: bis zu 10 Nachweise je IP und UTC-Tag, insgesamt höchstens 200 pro Tag. Ein eigener Schlüssel bleibt nur in dieser App-Sitzung im Speicher und wird an den MCP-Server gesendet.</Text>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Nach Aufnahme sofort senden</Text><Switch value={autoSend} onValueChange={setAutoSend} /></View>
           {selected && <View style={styles.row}>
-            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy || !key.trim()} onPress={() => submit(selected.hash, selected.capturedAt)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
+            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected.hash, selected.capturedAt)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondary} disabled={busy} onPress={check}><Text style={styles.secondaryText}>Status prüfen</Text></Pressable>
           </View>}
         </View>
@@ -109,9 +123,9 @@ export default function App() {
         {!!message && <Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
         {result && <View style={styles.card}>
           <Text style={styles.label}>Antwort der Doichain-API</Text>
-          <Text>Status: {result.status ?? 'offen'} · Bestätigt: {result.exists ? 'ja' : 'nein'} · Ausstehend: {result.pending ? 'ja' : 'nein'}</Text>
+          <Text>Status: {result.status ?? 'offen'} · Bestätigt: {result.status === 'confirmed' || result.status === 'expired' ? 'ja' : 'nein'}</Text>
           {result.txid && <Text selectable style={styles.hash}>TX: {result.txid}</Text>}
-          {result.block_time_iso && <Text>Blockzeit: {result.block_time_iso}</Text>}
+          {result.block_time_utc && <Text>Blockzeit (UTC): {result.block_time_utc}</Text>}
         </View>}
         <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Ein Hash belegt nur, dass dieselben Dateibytes verankert wurden; Aufnahmezeit, Urheberschaft und Echtheit des Motivs beweist er nicht. Die optionale Gerätezeit ist öffentlich und nicht verifiziert.</Text>
       </ScrollView>
