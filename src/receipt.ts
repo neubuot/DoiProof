@@ -42,6 +42,13 @@ ${row('GPS-Genauigkeit (m)', location?.accuracy ?? undefined)}
 <p class="note">Dieser Beleg dokumentiert die Antwort der Doichain-API. Der Beweispaket-Hash bindet den Hash der Originaldatei und den Hash des kanonischen Metadaten-Manifests. Er beweist nicht automatisch Urheberschaft, Echtheit des Motivs oder die Richtigkeit geräteseitig gemeldeter Werte. Das Foto selbst ist nicht Bestandteil dieses PDF-Belegs.</p>
 </body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
-  if (!await Sharing.isAvailableAsync()) throw new Error('Teilen ist auf diesem Gerät nicht verfügbar.');
-  await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'DoiProof-Beleg teilen', UTI: 'com.adobe.pdf' });
+  if (await Sharing.isAvailableAsync()) {
+    try {
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'DoiProof-Beleg teilen', UTI: 'com.adobe.pdf' });
+      return;
+    } catch {
+      // Some Android share targets reject temporary PDF URIs. Fall back to the system print dialog.
+    }
+  }
+  await Print.printAsync({ uri });
 }

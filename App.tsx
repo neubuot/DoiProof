@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
@@ -38,6 +38,7 @@ export default function App() {
   const [refreshingHistory, setRefreshingHistory] = useState(false);
   const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
   const [includeSensitiveInPdf, setIncludeSensitiveInPdf] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const storeRecord = useCallback((record: ProofRecord) => {
     setHistory(current => {
@@ -176,12 +177,15 @@ export default function App() {
   }
 
   async function exportReceipt(record: ProofRecord) {
+    if (exportingId) return;
     try {
-      setMessage('PDF-Beleg wird erstellt …');
+      setExportingId(record.id);
       await shareReceipt(record, includeSensitiveInPdf);
-      setMessage('PDF-Beleg wurde erstellt.');
+      Alert.alert('PDF-Beleg', 'Der PDF-Beleg wurde erstellt.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'PDF-Beleg konnte nicht erstellt werden.');
+      Alert.alert('PDF-Beleg konnte nicht erstellt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
+    } finally {
+      setExportingId(null);
     }
   }
 
@@ -270,7 +274,7 @@ export default function App() {
           {record.txid && <Text selectable numberOfLines={2} style={styles.hash}>TX: {record.txid}</Text>}
           {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
           <View style={styles.row}>
-            <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>PDF-Beleg</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, exportingId === record.id && styles.disabled]} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>{exportingId === record.id ? 'PDF wird erstellt …' : 'PDF-Beleg'}</Text></Pressable>
             {record.manifest && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
           </View>
         </View>)}
