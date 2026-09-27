@@ -13,6 +13,9 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 - Kostenloses Tageskontingent mit `get_anchoring_quota` anzeigen: bis zu 10 Nachweise je IP-Adresse und UTC-Tag sowie insgesamt höchstens 200 täglich.
 - Optional einen eigenen PoE- oder Write-Schlüssel ausschließlich für die aktuelle App-Sitzung verwenden.
 - Bei Kameraaufnahmen optional sofort senden.
+- Nachweise dauerhaft und ausschließlich lokal auf dem Gerät speichern.
+- Ausstehende Nachweise beim App-Start, bei Rückkehr in die App und während der Nutzung automatisch aktualisieren.
+- Einen nachvollziehbaren PDF-Beleg erstellen und über den Systemdialog teilen.
 
 ## Datenschutz
 
@@ -53,6 +56,7 @@ npx expo start --tunnel
 | `npm run android` | Android-Start anfordern |
 | `npm run ios` | iOS-Start anfordern |
 | `npm run check` | TypeScript ohne Build prüfen |
+| `npm test` | Automatisierte Modelltests ausführen |
 | `npm ci` | Abhängigkeiten reproduzierbar aus dem Lockfile installieren |
 
 ## Projektstruktur
@@ -60,6 +64,9 @@ npx expo start --tunnel
 ```text
 App.tsx                 Oberfläche, Bildauswahl und lokales Hashing
 src/doichain.ts         Typisierter Doichain-MCP-Client
+src/history.ts          Lokale Speicherung des Nachweisverlaufs
+src/proofRecord.ts      Datenmodell und Statuslogik
+src/receipt.ts          Erzeugung und Teilen des PDF-Belegs
 app.json                Expo-Konfiguration und Berechtigungstexte
 docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
 CONTRIBUTING.md         Entwicklungs- und Git-Workflow
@@ -84,10 +91,9 @@ Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECUR
 
 ## Nächste Schritte
 
-- Nachweisverlauf lokal speichern.
-- Ausstehende Bestätigungen periodisch prüfen.
-- Exportierbaren Nachweisbeleg erstellen.
-- Automatisierte Unit-, Integrations- und UI-Tests ergänzen.
+- Integrationstests für den MCP-Client ergänzen.
+- UI-Tests für Kamera, Verlauf und Export ergänzen.
+- Optionales Löschen und Exportieren des gesamten lokalen Verlaufs ergänzen.
 - Android- und iOS-Release-Builds mit EAS Build einrichten.
 
 ## Lizenz

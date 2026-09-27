@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, AppState, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import { StatusBar } from 'expo-status-bar';
 import { createProof, getQuota, Proof, Quota, verifyProof } from './src/doichain';
+import { isPending, loadHistory, ProofRecord, proofToRecord, saveHistory } from './src/history';
+import { shareReceipt } from './src/receipt';
 
-type Selected = { uri: string; hash: string; capturedAt?: string };
+type Selected = { uri: string; hash: string; source: ProofRecord['source']; capturedAt?: string };
+
+function statusLabel(status: string): string {
+  if (status === 'confirmed' || status === 'expired') return 'Bestätigt';
+  if (status === 'pending') return 'Ausstehend';
+  return status || 'Offen';
+}
 
 export default function App() {
   const [selected, setSelected] = useState<Selected | null>(null);
@@ -14,27 +22,65 @@ export default function App() {
   const [autoSend, setAutoSend] = useState(true);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [result, setResult] = useState<Proof | null>(null);
+  const [history, setHistory] = useState<ProofRecord[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [refreshingHistory, setRefreshingHistory] = useState(false);
+
+  const storeRecord = useCallback((record: ProofRecord) => {
+    setHistory(current => {
+      const next = [record, ...current.filter(item => item.id !== record.id && item.sha256 !== record.sha256)]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      void saveHistory(next);
+      return next;
+    });
+  }, []);
+
+  const refreshPending = useCallback(async (showMessage = false) => {
+    const current = await loadHistory();
+    const pending = current.filter(isPending);
+    if (!pending.length) { setHistory(current); return; }
+    setRefreshingHistory(true);
+    const updated = await Promise.all(current.map(async record => {
+      if (!isPending(record)) return record;
+      try {
+        const proof = await verifyProof(record.sha256);
+        return proofToRecord(record.sha256, record.source, proof, record.capturedAt, record);
+      } catch {
+        return record;
+      }
+    }));
+    setHistory(updated);
+    await saveHistory(updated);
+    setRefreshingHistory(false);
+    if (showMessage) setMessage('Nachweisverlauf wurde aktualisiert.');
+  }, []);
 
   useEffect(() => {
     getQuota().then(setQuota).catch(() => setQuota(null));
-  }, []);
+    loadHistory().then(setHistory).then(() => refreshPending()).catch(() => setHistory([]));
+    const timer = setInterval(() => { void refreshPending(); }, 60_000);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void refreshPending();
+    });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [refreshPending]);
 
   async function refreshQuota() {
     try { setQuota(await getQuota(key)); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Kontingent konnte nicht geladen werden.'); }
   }
 
-  async function submit(hash: string, capturedAt?: string) {
+  async function submit(hash: string, source: ProofRecord['source'], capturedAt?: string) {
     setBusy(true);
     setMessage('Hash wird über den Doichain-MCP-Server gesendet …');
     try {
-      // The note is public on chain; it is a device clock reading, not a trusted timestamp.
       const proof = await createProof(hash, key, capturedAt ? `Aufnahme laut Gerät: ${capturedAt}` : undefined);
       setResult(proof);
+      const existing = history.find(item => item.sha256 === hash);
+      storeRecord(proofToRecord(hash, source, proof, capturedAt, existing));
       getQuota(key).then(setQuota).catch(() => setQuota(null));
-      setMessage('Einreichung angenommen. Prüfe später den Status auf der Kette.');
+      setMessage('Einreichung angenommen und im Nachweisverlauf gespeichert.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Einreichung fehlgeschlagen.');
     } finally {
@@ -42,7 +88,7 @@ export default function App() {
     }
   }
 
-  async function choose(source: 'camera' | 'library') {
+  async function choose(source: ProofRecord['source']) {
     if (busy) return;
     setMessage('');
     try {
@@ -64,28 +110,40 @@ export default function App() {
       const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
       const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
       const capturedAt = source === 'camera' ? new Date().toISOString() : undefined;
-      setSelected({ uri: asset.uri, hash, capturedAt });
+      setSelected({ uri: asset.uri, hash, source, capturedAt });
       setResult(null);
       setMessage('Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
       setBusy(false);
-      if (autoSend) await submit(hash, capturedAt);
+      if (autoSend) await submit(hash, source, capturedAt);
     } catch (error) {
       setBusy(false);
       setMessage(error instanceof Error ? error.message : 'Foto konnte nicht verarbeitet werden.');
     }
   }
 
-  async function check() {
+  async function checkSelected() {
     if (!selected || busy) return;
     setBusy(true);
     try {
       const proof = await verifyProof(selected.hash);
       setResult(proof);
+      const existing = history.find(item => item.sha256 === selected.hash);
+      storeRecord(proofToRecord(selected.hash, selected.source, proof, selected.capturedAt, existing));
       setMessage(proof.status === 'confirmed' || proof.status === 'expired' ? 'Nachweis auf der Doichain gefunden.' : proof.status === 'pending' ? 'Nachweis ist noch ausstehend.' : 'Noch kein bestätigter Nachweis gefunden.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Prüfung fehlgeschlagen.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function exportReceipt(record: ProofRecord) {
+    try {
+      setMessage('PDF-Beleg wird erstellt …');
+      await shareReceipt(record);
+      setMessage('PDF-Beleg wurde erstellt.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'PDF-Beleg konnte nicht erstellt werden.');
     }
   }
 
@@ -115,8 +173,8 @@ export default function App() {
           <Text style={styles.muted}>Ohne Schlüssel: bis zu 10 Nachweise je IP und UTC-Tag, insgesamt höchstens 200 pro Tag. Ein eigener Schlüssel bleibt nur in dieser App-Sitzung im Speicher und wird an den MCP-Server gesendet.</Text>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Nach Aufnahme sofort senden</Text><Switch value={autoSend} onValueChange={setAutoSend} /></View>
           {selected && <View style={styles.row}>
-            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected.hash, selected.capturedAt)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
-            <Pressable accessibilityRole="button" style={styles.secondary} disabled={busy} onPress={check}><Text style={styles.secondaryText}>Status prüfen</Text></Pressable>
+            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected.hash, selected.source, selected.capturedAt)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.secondary} disabled={busy} onPress={checkSelected}><Text style={styles.secondaryText}>Status prüfen</Text></Pressable>
           </View>}
         </View>
         {busy && <ActivityIndicator color="#156a65" />}
@@ -127,6 +185,24 @@ export default function App() {
           {result.txid && <Text selectable style={styles.hash}>TX: {result.txid}</Text>}
           {result.block_time_utc && <Text>Blockzeit (UTC): {result.block_time_utc}</Text>}
         </View>}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Nachweisverlauf</Text>
+          <Pressable accessibilityRole="button" disabled={refreshingHistory} onPress={() => refreshPending(true)}><Text style={styles.secondaryText}>{refreshingHistory ? 'Prüfe …' : 'Offene prüfen'}</Text></Pressable>
+        </View>
+        {!history.length && <Text style={styles.muted}>Noch keine Nachweise auf diesem Gerät gespeichert.</Text>}
+        {history.map(record => <View key={record.id} style={styles.card}>
+          <View style={styles.historyTop}>
+            <Text style={styles.label}>{record.source === 'camera' ? 'Kameraaufnahme' : 'Ausgewähltes Foto'}</Text>
+            <Text style={[styles.badge, isPending(record) ? styles.pending : styles.confirmed]}>{statusLabel(record.status)}</Text>
+          </View>
+          <Text style={styles.muted}>Eingereicht: {new Date(record.createdAt).toLocaleString()}</Text>
+          <Text selectable numberOfLines={3} style={styles.hash}>{record.sha256}</Text>
+          {record.txid && <Text selectable numberOfLines={2} style={styles.hash}>TX: {record.txid}</Text>}
+          {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
+          <View style={styles.row}>
+            <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>PDF-Beleg</Text></Pressable>
+          </View>
+        </View>)}
         <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Ein Hash belegt nur, dass dieselben Dateibytes verankert wurden; Aufnahmezeit, Urheberschaft und Echtheit des Motivs beweist er nicht. Die optionale Gerätezeit ist öffentlich und nicht verifiziert.</Text>
       </ScrollView>
     </SafeAreaView>
@@ -150,4 +226,9 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   switchLabel: { color: '#172c2b', fontWeight: '600', flex: 1 },
   message: { color: '#204a47', fontWeight: '600' }, footer: { color: '#62716e', fontSize: 12, lineHeight: 18 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  sectionTitle: { fontSize: 24, fontWeight: '800', color: '#172c2b' },
+  historyTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  badge: { overflow: 'hidden', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12, fontWeight: '700' },
+  pending: { backgroundColor: '#fff0c2', color: '#725400' }, confirmed: { backgroundColor: '#dcefe9', color: '#145c4f' },
 });
