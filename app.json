@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "DoiProof",
+    "slug": "doiproof",
+    "scheme": "doiproof",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "supportsTablet": true },
+    "android": { "permissions": ["CAMERA"] },
+    "plugins": [
+      ["expo-image-picker", {
+        "cameraPermission": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen.",
+        "photosPermission": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu prüfen."
+      }]
+    ]
+  }
+}
