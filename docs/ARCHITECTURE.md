@@ -12,11 +12,17 @@ DoiProof erstellt für eine ausgewählte Fotodatei einen kryptografischen SHA-25
 4. Die App ruft über Streamable HTTP das MCP-Werkzeug `anchor_proof` auf.
 5. Der MCP-Server verankert den Hash und liefert zunächst gegebenenfalls `pending`.
 6. `check_proof` fragt den späteren Kettenstatus ab.
+7. Die App speichert Metadaten des Nachweises als JSON im privaten Dokumentverzeichnis der App.
+8. Ausstehende Einträge werden beim Start, beim Wechsel in den Vordergrund und im Minutentakt aktualisiert.
+9. Für einzelne Einträge kann lokal ein PDF-Beleg erstellt und über den Systemdialog geteilt werden.
 
 ## Komponenten
 
 - `App.tsx`: Oberfläche, Bildauswahl, lokales Hashing und Zustandsanzeige.
 - `src/doichain.ts`: typisierter MCP-Client, Eingabevalidierung und Fehlerbehandlung.
+- `src/history.ts`: lokale, app-private JSON-Speicherung.
+- `src/proofRecord.ts`: Datenmodell, Aktualisierung und Statuslogik.
+- `src/receipt.ts`: lokale PDF-Erzeugung und Systemfreigabe.
 - `app.json`: Expo-Metadaten und Berechtigungstexte.
 - `package.json`: reproduzierbare Befehle und Abhängigkeiten.
 
@@ -30,7 +36,6 @@ DoiProof erstellt für eine ausgewählte Fotodatei einen kryptografischen SHA-25
 
 ## Aktuelle Einschränkungen
 
-- Kein lokaler Nachweisverlauf.
-- Kein automatisches Wiederholen der Statusprüfung.
-- Kein exportierbarer Beleg.
-- Noch keine automatisierten UI- oder Integrationstests.
+- Der Verlauf ist lokal an die App-Installation gebunden und wird nicht synchronisiert.
+- PDF-Belege enthalten bewusst nicht das Ursprungsfoto.
+- Noch keine automatisierten UI- oder MCP-Integrationstests.
