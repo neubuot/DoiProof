@@ -7,8 +7,18 @@ import { StatusBar } from 'expo-status-bar';
 import { createProof, getQuota, Proof, Quota, verifyProof } from './src/doichain';
 import { isPending, loadHistory, ProofRecord, proofToRecord, saveHistory } from './src/history';
 import { shareReceipt } from './src/receipt';
+import { createEvidence, LOCATION_SETTINGS, MetadataSettings, PRIVATE_SETTINGS } from './src/evidence';
+import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
 
-type Selected = { uri: string; hash: string; source: ProofRecord['source']; capturedAt?: string };
+type Selected = {
+  uri: string;
+  hash: string;
+  photoHash: string;
+  manifestHash: string;
+  manifest: NonNullable<ProofRecord['manifest']>;
+  source: ProofRecord['source'];
+  capturedAt?: string;
+};
 
 function statusLabel(status: string): string {
   if (status === 'confirmed' || status === 'expired') return 'Bestätigt';
@@ -26,6 +36,8 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshingHistory, setRefreshingHistory] = useState(false);
+  const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
+  const [includeSensitiveInPdf, setIncludeSensitiveInPdf] = useState(false);
 
   const storeRecord = useCallback((record: ProofRecord) => {
     setHistory(current => {
@@ -71,14 +83,23 @@ export default function App() {
     catch (error) { setMessage(error instanceof Error ? error.message : 'Kontingent konnte nicht geladen werden.'); }
   }
 
-  async function submit(hash: string, source: ProofRecord['source'], capturedAt?: string) {
+  async function submit(item: Selected) {
     setBusy(true);
     setMessage('Hash wird über den Doichain-MCP-Server gesendet …');
     try {
-      const proof = await createProof(hash, key, capturedAt ? `Aufnahme laut Gerät: ${capturedAt}` : undefined);
+      const proof = await createProof(item.hash, key, item.capturedAt ? `DoiProof v1; Gerät: ${item.capturedAt}` : 'DoiProof evidence v1');
       setResult(proof);
-      const existing = history.find(item => item.sha256 === hash);
-      storeRecord(proofToRecord(hash, source, proof, capturedAt, existing));
+      const existing = history.find(record => record.sha256 === item.hash);
+      const base = proofToRecord(item.hash, item.source, proof, item.capturedAt, existing);
+      const localPhotoUri = existing?.localPhotoUri ?? await preserveEvidencePhoto(base.id, item.uri);
+      storeRecord({
+        ...base,
+        photoSha256: item.photoHash,
+        manifestSha256: item.manifestHash,
+        evidenceProfile: item.manifest.profile,
+        manifest: item.manifest,
+        localPhotoUri,
+      });
       getQuota(key).then(setQuota).catch(() => setQuota(null));
       setMessage('Einreichung angenommen und im Nachweisverlauf gespeichert.');
     } catch (error) {
@@ -108,13 +129,30 @@ export default function App() {
       const asset = picked.assets[0];
       const bytes = await new File(asset.uri).bytes();
       const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
-      const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      const photoHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
       const capturedAt = source === 'camera' ? new Date().toISOString() : undefined;
-      setSelected({ uri: asset.uri, hash, source, capturedAt });
+      setMessage(metadata.includeLocation ? 'GPS-Position und Beweispaket werden ermittelt …' : 'Beweispaket wird erstellt …');
+      const evidence = await createEvidence(photoHash, source, capturedAt, {
+        width: asset.width,
+        height: asset.height,
+        fileSize: asset.fileSize,
+        mimeType: asset.mimeType,
+        fileName: asset.fileName ?? undefined,
+      }, metadata);
+      const item: Selected = {
+        uri: asset.uri,
+        hash: evidence.evidenceSha256,
+        photoHash,
+        manifestHash: evidence.manifestSha256,
+        manifest: evidence.manifest,
+        source,
+        capturedAt,
+      };
+      setSelected(item);
       setResult(null);
       setMessage('Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
       setBusy(false);
-      if (autoSend) await submit(hash, source, capturedAt);
+      if (autoSend) await submit(item);
     } catch (error) {
       setBusy(false);
       setMessage(error instanceof Error ? error.message : 'Foto konnte nicht verarbeitet werden.');
@@ -140,10 +178,20 @@ export default function App() {
   async function exportReceipt(record: ProofRecord) {
     try {
       setMessage('PDF-Beleg wird erstellt …');
-      await shareReceipt(record);
+      await shareReceipt(record, includeSensitiveInPdf);
       setMessage('PDF-Beleg wurde erstellt.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'PDF-Beleg konnte nicht erstellt werden.');
+    }
+  }
+
+  async function exportBundle(record: ProofRecord) {
+    try {
+      setMessage('Vollständiges Beweispaket wird erstellt …');
+      await shareEvidenceBundle(record);
+      setMessage('Beweispaket wurde erstellt. Es enthält sensible Originaldaten.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Beweispaket konnte nicht erstellt werden.');
     }
   }
 
@@ -154,13 +202,31 @@ export default function App() {
         <Text style={styles.brand}>DOI / PROOF</Text>
         <Text style={styles.title}>Dein Foto. Dein Nachweis.</Text>
         <Text style={styles.lead}>DoiProof berechnet den SHA-256-Hash auf deinem Gerät und verankert ihn kostenlos über den Doichain-MCP-Server.</Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>Metadatenprofil</Text>
+          <View style={styles.row}>
+            <Pressable style={metadata.profile === 'private' ? styles.button : styles.secondary} onPress={() => setMetadata(PRIVATE_SETTINGS)}><Text style={metadata.profile === 'private' ? styles.buttonText : styles.secondaryText}>Privat</Text></Pressable>
+            <Pressable style={metadata.profile === 'location' ? styles.button : styles.secondary} onPress={() => setMetadata(LOCATION_SETTINGS)}><Text style={metadata.profile === 'location' ? styles.buttonText : styles.secondaryText}>Standortnachweis</Text></Pressable>
+            <Pressable style={metadata.profile === 'custom' ? styles.button : styles.secondary} onPress={() => setMetadata({ ...metadata, profile: 'custom' })}><Text style={metadata.profile === 'custom' ? styles.buttonText : styles.secondaryText}>Individuell</Text></Pressable>
+          </View>
+          {metadata.profile === 'custom' && <>
+            <View style={styles.switchRow}><Text style={styles.switchLabel}>GPS, Höhe und Genauigkeit</Text><Switch value={metadata.includeLocation} onValueChange={value => setMetadata(current => ({ ...current, includeLocation: value }))} /></View>
+            <View style={styles.switchRow}><Text style={styles.switchLabel}>Bildformat und Abmessungen</Text><Switch value={metadata.includeImageDetails} onValueChange={value => setMetadata(current => ({ ...current, includeImageDetails: value }))} /></View>
+            <View style={styles.switchRow}><Text style={styles.switchLabel}>Betriebssystem und App-Version</Text><Switch value={metadata.includeDevice} onValueChange={value => setMetadata(current => ({ ...current, includeDevice: value }))} /></View>
+          </>}
+          <Text style={styles.muted}>{metadata.includeLocation ? 'Der genaue Standort wird lokal im Beweispaket gespeichert und durch dessen Hash gebunden. Auf der Blockchain stehen weiterhin nur Hash und kurze Notiz.' : 'Keine Standortdaten. Auf der Blockchain stehen nur Beweispaket-Hash und kurze Notiz.'}</Text>
+        </View>
         <View style={styles.row}>
           <Pressable accessibilityRole="button" style={styles.button} onPress={() => choose('camera')} disabled={busy}><Text style={styles.buttonText}>Foto aufnehmen</Text></Pressable>
           <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => choose('library')} disabled={busy}><Text style={styles.secondaryText}>Foto wählen</Text></Pressable>
         </View>
         {selected && <View style={styles.card}>
           <Image source={{ uri: selected.uri }} style={styles.preview} resizeMode="contain" />
-          <Text style={styles.label}>SHA-256 des ausgewählten Fotodatei-Inhalts</Text>
+          <Text style={styles.label}>SHA-256 des Originalfotos</Text>
+          <Text selectable style={styles.hash}>{selected.photoHash}</Text>
+          <Text style={styles.label}>SHA-256 des Metadaten-Manifests</Text>
+          <Text selectable style={styles.hash}>{selected.manifestHash}</Text>
+          <Text style={styles.label}>Auf Doichain verankerter Beweispaket-Hash</Text>
           <Text selectable style={styles.hash}>{selected.hash}</Text>
           {selected.capturedAt && <Text style={styles.muted}>Gerätezeit bei Aufnahme: {selected.capturedAt}</Text>}
         </View>}
@@ -173,7 +239,7 @@ export default function App() {
           <Text style={styles.muted}>Ohne Schlüssel: bis zu 10 Nachweise je IP und UTC-Tag, insgesamt höchstens 200 pro Tag. Ein eigener Schlüssel bleibt nur in dieser App-Sitzung im Speicher und wird an den MCP-Server gesendet.</Text>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Nach Aufnahme sofort senden</Text><Switch value={autoSend} onValueChange={setAutoSend} /></View>
           {selected && <View style={styles.row}>
-            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected.hash, selected.source, selected.capturedAt)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
+            <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondary} disabled={busy} onPress={checkSelected}><Text style={styles.secondaryText}>Status prüfen</Text></Pressable>
           </View>}
         </View>
@@ -189,6 +255,10 @@ export default function App() {
           <Text style={styles.sectionTitle}>Nachweisverlauf</Text>
           <Pressable accessibilityRole="button" disabled={refreshingHistory} onPress={() => refreshPending(true)}><Text style={styles.secondaryText}>{refreshingHistory ? 'Prüfe …' : 'Offene prüfen'}</Text></Pressable>
         </View>
+        <View style={styles.card}>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>Sensible Metadaten im PDF zeigen</Text><Switch value={includeSensitiveInPdf} onValueChange={setIncludeSensitiveInPdf} /></View>
+          <Text style={styles.muted}>Das vollständige ZIP-Beweispaket enthält immer Originalfoto und Manifest. Teile es nur bewusst mit vertrauenswürdigen Empfängern.</Text>
+        </View>
         {!history.length && <Text style={styles.muted}>Noch keine Nachweise auf diesem Gerät gespeichert.</Text>}
         {history.map(record => <View key={record.id} style={styles.card}>
           <View style={styles.historyTop}>
@@ -201,6 +271,7 @@ export default function App() {
           {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
           <View style={styles.row}>
             <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>PDF-Beleg</Text></Pressable>
+            {record.manifest && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
           </View>
         </View>)}
         <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Ein Hash belegt nur, dass dieselben Dateibytes verankert wurden; Aufnahmezeit, Urheberschaft und Echtheit des Motivs beweist er nicht. Die optionale Gerätezeit ist öffentlich und nicht verifiziert.</Text>
