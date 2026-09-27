@@ -1,33 +1,95 @@
 # DoiProof
 
-Android- und iOS-App (Expo/React Native) für Proof of Existence auf der Doichain.
+DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie berechnet den SHA-256-Hash einer Fotodatei lokal auf dem Gerät und verankert den Hash als Proof of Existence auf der Doichain.
+
+> **MVP-Status:** Die Kernfunktion wurde auf einem realen Android-Gerät erfolgreich getestet. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
 
 ## Funktionen
 
-- Foto aufnehmen oder vorhandenes Bild wählen; SHA-256 der gewählten Dateibytes lokal berechnen.
-- Standardmäßig ohne Schlüssel per [Doichain-MCP-Server](https://doi-api.sendlabs.de/mcp) mit `anchor_proof` verankern und per `check_proof` prüfen. Nach Kameraaufnahme sofort senden, sofern der Schalter aktiv ist.
-- Mit `get_anchoring_quota` das kostenlose Tageskontingent anzeigen: bis zu 10 Nachweise je IP-Adresse und UTC-Tag und insgesamt höchstens 200 täglich. Mehrere Geräte hinter demselben Anschluss teilen das IP-Kontingent; bei VPN oder Proxy ebenso. Rücksetzung um 00:00 UTC.
-- Optional einen eigenen PoE- oder Write-Schlüssel pro Sitzung für unbegrenztes Kontingent eintragen.
-- Nur Hash und bei Kameraaufnahmen eine als solche gekennzeichnete Gerätezeit als öffentliche Notiz senden. Keine Bilddatei, GPS-Daten oder EXIF-Daten hochladen.
+- Foto aufnehmen oder vorhandenes Bild auswählen.
+- SHA-256 der ausgewählten Dateibytes lokal berechnen.
+- Standardmäßig ohne Schlüssel über den [Doichain-MCP-Server](https://doi-api.sendlabs.de/mcp) mit `anchor_proof` verankern.
+- Kettenstatus mit `check_proof` prüfen.
+- Kostenloses Tageskontingent mit `get_anchoring_quota` anzeigen: bis zu 10 Nachweise je IP-Adresse und UTC-Tag sowie insgesamt höchstens 200 täglich.
+- Optional einen eigenen PoE- oder Write-Schlüssel ausschließlich für die aktuelle App-Sitzung verwenden.
+- Bei Kameraaufnahmen optional sofort senden.
 
-## Entwicklung
+## Datenschutz
 
-Node.js installieren, dann im Projektverzeichnis:
+Die Bilddatei wird nicht hochgeladen. Übertragen werden nur:
+
+- der SHA-256-Hash;
+- optional eine ausdrücklich als Geräteangabe gekennzeichnete Aufnahmezeit.
+
+GPS- und EXIF-Daten werden nicht angefordert. Ein Hash beweist, dass dieselben Dateibytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Weitere Einzelheiten stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Schnellstart
+
+Voraussetzungen:
+
+- aktuelle Node.js-LTS-Version;
+- npm;
+- Expo Go auf dem Testgerät.
 
 ```sh
-npm install
+git clone https://github.com/neubuot/DoiProof.git
+cd DoiProof
+npm ci
+npm run check
 npm start
 ```
 
-Die QR-Adresse in Expo Go auf Android oder iOS öffnen. Für iOS-Builds ohne Mac kann später EAS Build eingesetzt werden. `npm run check` prüft die TypeScript-Typen.
+Den anschließend angezeigten QR-Code mit Expo Go öffnen. Falls Mobilgerät und Notebook nicht zuverlässig direkt miteinander kommunizieren können:
+
+```sh
+npx expo start --tunnel
+```
+
+## Befehle
+
+| Befehl | Zweck |
+|---|---|
+| `npm start` | Expo-Entwicklungsserver starten |
+| `npm run android` | Android-Start anfordern |
+| `npm run ios` | iOS-Start anfordern |
+| `npm run check` | TypeScript ohne Build prüfen |
+| `npm ci` | Abhängigkeiten reproduzierbar aus dem Lockfile installieren |
+
+## Projektstruktur
+
+```text
+App.tsx                 Oberfläche, Bildauswahl und lokales Hashing
+src/doichain.ts         Typisierter Doichain-MCP-Client
+app.json                Expo-Konfiguration und Berechtigungstexte
+docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
+CONTRIBUTING.md         Entwicklungs- und Git-Workflow
+SECURITY.md             Richtlinie für Sicherheitsmeldungen
+```
 
 ## MCP und REST
 
-Der MCP-Server unter `https://doi-api.sendlabs.de/mcp` ist ein zustandsloser Streamable-HTTP-Dienst. DoiProof ruft seine Werkzeuge mit JSON-RPC auf; der Server nutzt intern die [Doichain-REST-API](https://doi-api.sendlabs.de/docs) und seinen öffentlichen PoE-Schlüssel. Die REST-API unter `POST /v1/poe` benötigt dagegen einen Schlüssel. Für die kostenlose Nutzung direkt vom Handy ist MCP der passende Weg; der Server rechnet das Kontingent der vom Handy sichtbaren IP zu. Der Rückgabestatus kann anfangs `pending` sein; die Bestätigung erfolgt erst mit einem Block.
+Der MCP-Server unter `https://doi-api.sendlabs.de/mcp` ist ein zustandsloser Streamable-HTTP-Dienst. DoiProof ruft seine Werkzeuge per JSON-RPC auf. Der Server nutzt intern die [Doichain-REST-API](https://doi-api.sendlabs.de/docs) und seinen öffentlichen PoE-Schlüssel.
 
-**Keinen Admin-Schlüssel in die App eintragen.** Ein optionaler PoE- oder Write-Schlüssel bleibt nur für die aktuelle App-Sitzung im Speicher. Für einen späteren kommerziellen Betrieb mit individuellen Konten gehört die Schlüsselverwaltung in einen eigenen Backend-Dienst. Das MVP speichert weder Schlüssel noch Nachweise dauerhaft. Das Foto bleibt in der durch das Betriebssystem/Expo erzeugten lokalen Datei und wird nicht automatisch im Fotoalbum gesichert. Die Gerätezeit in der öffentlichen Notiz ist manipulierbar. Der Hash bezieht sich auf die von ImagePicker gelieferte Datei; Bearbeitung oder Neu-Kodierung verändert ihn.
+Die direkte REST-Route `POST /v1/poe` benötigt dagegen einen Schlüssel. Für die kostenlose Nutzung vom Mobilgerät ist MCP vorgesehen; das Kontingent wird der vom Server sichtbaren IP-Adresse zugerechnet. Geräte hinter demselben Anschluss sowie Geräte über denselben VPN oder Proxy teilen dieses Kontingent. Die Rücksetzung erfolgt um 00:00 UTC.
+
+## Sicherheit
+
+**Keinen Admin-Schlüssel in die App eintragen.** Ein optionaler PoE- oder Write-Schlüssel bleibt nur im flüchtigen App-Zustand. Für einen kommerziellen Betrieb mit Benutzerkonten muss die Schlüsselverwaltung in einen abgesicherten Backend-Dienst verlagert werden.
+
+Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECURITY.md](SECURITY.md) behandeln.
+
+## Entwicklung und Beiträge
+
+Änderungen werden auf Feature-Branches entwickelt, durch einen Pull Request geprüft und nach erfolgreicher CI bevorzugt per Squash Merge in `main` übernommen. Details und Checkliste: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Nächste Schritte
 
-- Nachweisverlauf lokal speichern, Bestätigungen periodisch prüfen und Beleg exportieren.
-- Geräte-Tests auf Android/iOS mit realen Fotos durchführen; keine Live-Verankerung wurde bei der Entwicklung ausgelöst.
+- Nachweisverlauf lokal speichern.
+- Ausstehende Bestätigungen periodisch prüfen.
+- Exportierbaren Nachweisbeleg erstellen.
+- Automatisierte Unit-, Integrations- und UI-Tests ergänzen.
+- Android- und iOS-Release-Builds mit EAS Build einrichten.
+
+## Lizenz
+
+Für dieses Repository wurde noch keine Open-Source-Lizenz festgelegt. Bis eine Lizenzdatei ergänzt wird, bleiben alle Rechte beim Rechteinhaber.
