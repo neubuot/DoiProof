@@ -1,8 +1,8 @@
 # DoiProof
 
-DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie berechnet den SHA-256-Hash einer Fotodatei lokal auf dem Gerät und verankert den Hash als Proof of Existence auf der Doichain.
+DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie erstellt lokal ein kryptografisch gebundenes Beweispaket aus Originalfoto und optionalen Metadaten und verankert ausschließlich dessen SHA-256-Hash als Proof of Existence auf der Doichain.
 
-> **MVP-Status:** Die Kernfunktion wurde auf einem realen Android-Gerät erfolgreich getestet. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
+> **Version 0.3:** Die Kernfunktion wurde auf einem realen Android-Gerät erfolgreich getestet. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
 
 ## Funktionen
 
@@ -16,6 +16,9 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 - Nachweise dauerhaft und ausschließlich lokal auf dem Gerät speichern.
 - Ausstehende Nachweise beim App-Start, bei Rückkehr in die App und während der Nutzung automatisch aktualisieren.
 - Einen nachvollziehbaren PDF-Beleg erstellen und über den Systemdialog teilen.
+- Zwischen den Profilen „Privat“, „Standortnachweis“ und „Individuell“ wählen.
+- Optional GPS-Position, Höhe, Genauigkeit, Richtung, Geschwindigkeit, Bilddaten und Geräteangaben kryptografisch an den Nachweis binden.
+- Ein vollständiges ZIP-Beweispaket mit Originalfoto, kanonischem Manifest, Verifikationsdaten und Prüfanleitung exportieren.
 
 ## Datenschutz
 
@@ -24,7 +27,7 @@ Die Bilddatei wird nicht hochgeladen. Übertragen werden nur:
 - der SHA-256-Hash;
 - optional eine ausdrücklich als Geräteangabe gekennzeichnete Aufnahmezeit.
 
-GPS- und EXIF-Daten werden nicht angefordert. Ein Hash beweist, dass dieselben Dateibytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Weitere Einzelheiten stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Im Profil „Privat“ werden keine GPS-Daten angefordert. Standort- und weitere Metadaten werden nur nach sichtbarer Auswahl und erforderlicher Betriebssystemfreigabe erfasst. Ein Hash beweist, dass dieselben Dateibytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Weitere Einzelheiten stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Schnellstart
 
@@ -64,6 +67,8 @@ npx expo start --tunnel
 ```text
 App.tsx                 Oberfläche, Bildauswahl und lokales Hashing
 src/doichain.ts         Typisierter Doichain-MCP-Client
+src/evidence.ts         Kanonisches Manifest und Beweispaket-Hash
+src/bundle.ts           Lokale Originalsicherung und ZIP-Export
 src/history.ts          Lokale Speicherung des Nachweisverlaufs
 src/proofRecord.ts      Datenmodell und Statuslogik
 src/receipt.ts          Erzeugung und Teilen des PDF-Belegs
@@ -72,6 +77,14 @@ docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
 CONTRIBUTING.md         Entwicklungs- und Git-Workflow
 SECURITY.md             Richtlinie für Sicherheitsmeldungen
 ```
+
+## Beweispaket und Offenlegung
+
+DoiProof berechnet getrennt den SHA-256 des Originalfotos und des kanonischen Metadaten-Manifests. Der auf Doichain verankerte Beweispaket-Hash bindet beide Werte über eine versionierte, domänenspezifische Zeichenfolge. Dadurch bleiben ältere Nachweise unterscheidbar und neue Pakete reproduzierbar prüfbar.
+
+Rohdaten einschließlich GPS und Originalfoto bleiben im privaten App-Verzeichnis. Auf die Blockchain gelangen nur der Beweispaket-Hash und eine kurze Kennzeichnung. Der PDF-Export kann sensible Standortdaten ausblenden; das vollständige ZIP enthält bewusst Original und Manifest und sollte nur an vertrauenswürdige Empfänger weitergegeben werden.
+
+Satelliten-Einzeldaten sind über die gemeinsame Android-/iOS-Schnittstelle nicht zuverlässig verfügbar und gehören deshalb noch nicht zum portablen Schema.
 
 ## MCP und REST
 
@@ -94,6 +107,8 @@ Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECUR
 - Integrationstests für den MCP-Client ergänzen.
 - UI-Tests für Kamera, Verlauf und Export ergänzen.
 - Optionales Löschen und Exportieren des gesamten lokalen Verlaufs ergänzen.
+- Serverseitig signierte Empfangsbestätigungen und Geräte-Attestierung prüfen.
+- Plattformabhängige GNSS-/Satellitendetails als optionale Erweiterung evaluieren.
 - Android- und iOS-Release-Builds mit EAS Build einrichten.
 
 ## Lizenz

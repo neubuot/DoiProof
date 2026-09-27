@@ -7,11 +7,14 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": { "supportsTablet": true },
-    "android": { "permissions": ["CAMERA"] },
+    "android": { "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"] },
     "plugins": [
       ["expo-image-picker", {
         "cameraPermission": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen.",
         "photosPermission": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu prüfen."
+      }],
+      ["expo-location", {
+        "locationWhenInUsePermission": "DoiProof verwendet den Standort nur bei aktivem Standortnachweis, um ihn lokal an das Beweispaket zu binden."
       }]
     ]
   }

@@ -12,6 +12,44 @@ export type ProofRecord = {
   confirmations?: number;
   verifyUrl?: string;
   lastCheckedAt: string;
+  photoSha256?: string;
+  manifestSha256?: string;
+  evidenceProfile?: EvidenceProfile;
+  manifest?: EvidenceManifest;
+  localPhotoUri?: string;
+};
+
+export type EvidenceProfile = 'private' | 'location' | 'custom';
+
+export type EvidenceManifest = {
+  schema: 'org.doichain.doiproof.evidence/v1';
+  createdAt: string;
+  profile: EvidenceProfile;
+  photo: {
+    sha256: string;
+    width?: number;
+    height?: number;
+    fileSize?: number;
+    mimeType?: string;
+    fileName?: string;
+  };
+  capture?: { deviceTime?: string; source: 'camera' | 'library' };
+  location?: {
+    latitude: number;
+    longitude: number;
+    altitude?: number | null;
+    accuracy?: number | null;
+    altitudeAccuracy?: number | null;
+    heading?: number | null;
+    speed?: number | null;
+    measuredAt: string;
+    mocked?: boolean;
+  };
+  device?: {
+    platform: string;
+    osVersion?: string | number;
+    appVersion: string;
+  };
 };
 
 export function isProofRecord(value: unknown): value is ProofRecord {
@@ -32,6 +70,7 @@ export function proofToRecord(
   now = new Date().toISOString(),
 ): ProofRecord {
   return {
+    ...existing,
     id: existing?.id ?? `${now}-${sha256.slice(0, 12)}`,
     sha256,
     source: existing?.source ?? source,
