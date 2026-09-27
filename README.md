@@ -92,4 +92,4 @@ Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECUR
 
 ## Lizenz
 
-Für dieses Repository wurde noch keine Open-Source-Lizenz festgelegt. Bis eine Lizenzdatei ergänzt wird, bleiben alle Rechte beim Rechteinhaber.
+DoiProof ist unter der [MIT-Lizenz](LICENSE) veröffentlicht. Copyright © 2026 Ottmar Neuburger.
