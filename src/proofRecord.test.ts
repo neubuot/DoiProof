@@ -27,3 +27,16 @@ test('updates an existing record without losing its identity', () => {
 test('rejects malformed persisted records', () => {
   assert.equal(isProofRecord({ id: 'x', sha256: 'short', createdAt: now, status: 'pending' }), false);
 });
+
+test('keeps evidence metadata during a status refresh', () => {
+  const existing = {
+    ...proofToRecord(hash, 'camera', { sha256: hash, status: 'pending' }, now, undefined, now),
+    photoSha256: 'b'.repeat(64),
+    manifestSha256: 'c'.repeat(64),
+    evidenceProfile: 'location' as const,
+  };
+  const updated = proofToRecord(hash, 'camera', { sha256: hash, status: 'confirmed' }, now, existing, now);
+  assert.equal(updated.photoSha256, existing.photoSha256);
+  assert.equal(updated.manifestSha256, existing.manifestSha256);
+  assert.equal(updated.evidenceProfile, 'location');
+});
