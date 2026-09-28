@@ -16,7 +16,7 @@
         <div class="brand-type"><strong>DoiProof</strong><small>PRÜFER</small></div>
       </div>
       <div class="rail-intro">
-        <p class="eyebrow rail-eyebrow">BEWEISPAKET · V0.5</p>
+        <p class="eyebrow rail-eyebrow">BEWEISPAKET · V0.6</p>
         <h2>Gewissheit beginnt beim Original.</h2>
         <p>Prüfe ein exportiertes ZIP direkt auf deinem Rechner. Jeder Schritt bleibt nachvollziehbar.</p>
       </div>
@@ -35,7 +35,7 @@
     <main class="main">
       <header class="topbar">
         <span class="topline"><span class="tiny-dot"></span> LOKALES PRÜFPROGRAMM</span>
-        <span class="top-version">WINDOWS · VERSION 0.5.0</span>
+        <span class="top-version">WINDOWS · VERSION 0.6.0</span>
       </header>
       <div class="content">
         <section class="hero" aria-labelledby="page-title">
@@ -89,6 +89,32 @@
             <div class="hash-meta"><span id="format-version"></span><span id="verified-time"></span></div>
           </div>
           <div class="chain-details" id="chain-details" hidden></div>
+          <section class="evidence-section" aria-labelledby="evidence-title">
+            <div class="evidence-intro">
+              <div><p class="eyebrow">ORIGINAL & BEGLEITDATEN</p><h2 id="evidence-title">Was im Paket steckt.</h2>
+                <p>Das Foto und alle Angaben aus dem Manifest werden erst auf deinen Wunsch angezeigt. Die Angaben zur Aufnahme stammen vom Gerät und werden durch die Prüfung nicht als wahr bestätigt.</p></div>
+              <button type="button" class="button button-outline" id="reveal-button">Details anzeigen ↗</button>
+            </div>
+            <div id="evidence-content" hidden>
+              <div class="evidence-grid">
+                <div class="evidence-card"><div class="evidence-card-title"><span>01 / ORIGINALFOTO</span><span id="photo-size"></span></div>
+                  <button type="button" class="photo-button" id="photo-button" disabled aria-label="Foto vergrößern"><img id="photo-preview" alt="Originalfoto aus dem geprüften ZIP" hidden><span id="photo-placeholder"></span></button>
+                  <p class="evidence-footnote" id="photo-caption"></p></div>
+                <div class="evidence-card"><div class="evidence-card-title"><span>02 / STANDORT</span><span>OPTIONAL</span></div>
+                  <div id="location-empty" class="location-empty" hidden>Im Manifest wurden keine Geodaten gespeichert.</div>
+                  <div id="location-content" hidden><strong id="coordinates" class="coordinates"></strong><p class="location-hint">Koordinaten sind Selbstauskünfte des Geräts; eine Kartenmarkierung attestiert keinen Aufnahmeort.</p>
+                    <button type="button" class="button button-outline map-load" id="map-button">Karte laden ↗</button>
+                    <p class="map-notice">Erst beim Laden der Karte werden Kartenkacheln für diesen Standort von OpenStreetMap abgerufen. Der Dienst kann daraus ungefähr den Standort und deine IP-Adresse erkennen.</p>
+                    <div id="map" class="map" hidden><div class="map-grid" id="map-grid"></div><span class="map-pin" aria-label="Koordinate aus dem Manifest"></span><span class="map-attribution">© OpenStreetMap contributors</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="metadata-card"><div class="metadata-head"><div><p class="eyebrow">03 / VOLLSTÄNDIGES MANIFEST</p><h3>Alle erfassten Angaben</h3></div><span id="metadata-count"></span></div>
+                <div id="metadata-list" class="metadata-list"></div>
+                <details class="raw-manifest"><summary>Originales Manifest als JSON anzeigen</summary><pre id="manifest-json"></pre></details>
+              </div>
+            </div>
+          </section>
           <div class="result-bottom">
             <p>Diese Prüfung bestätigt keine Aufnahmezeit, Urheberschaft oder Echtheit des Bildmotivs. Die Doichain-Abfrage nutzt denselben MCP-Dienst wie die mobile App.</p>
             <button type="button" class="button button-save" id="save-button">Bericht sichern <span aria-hidden="true">↓</span></button>
@@ -99,5 +125,6 @@
       <footer class="footer"><span>DOIPROOF <i>·</i> PRÜFEN STATT VERTRAUEN</span><span>OFFENES PRÜFVERFAHREN · SHA-256</span></footer>
     </main>
   </div>
+  <dialog id="photo-dialog" class="photo-dialog" aria-label="Originalfoto vergrößert"><button type="button" id="photo-close" aria-label="Schließen">Schließen ×</button><img id="photo-large" alt="Originalfoto aus dem geprüften ZIP"></dialog>
 </body>
 </html>
