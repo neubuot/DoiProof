@@ -7,10 +7,19 @@ const ui = {
   chainDetails: $('chain-details'), hash: $('evidence-hash'),
   version: $('format-version'), time: $('verified-time'), save: $('save-button'),
   copy: $('copy-button'), alert: $('alert'),
+  reveal: $('reveal-button'), evidence: $('evidence-content'), photo: $('photo-preview'),
+  photoButton: $('photo-button'), photoPlaceholder: $('photo-placeholder'),
+  photoCaption: $('photo-caption'), photoSize: $('photo-size'), photoDialog: $('photo-dialog'),
+  photoLarge: $('photo-large'), photoClose: $('photo-close'),
+  locationEmpty: $('location-empty'), locationContent: $('location-content'),
+  coordinates: $('coordinates'), mapButton: $('map-button'), map: $('map'), mapGrid: $('map-grid'),
+  metadata: $('metadata-list'), metadataCount: $('metadata-count'), manifestJson: $('manifest-json'),
+  verificationJson: $('verification-json'),
 };
 let file = null;
 let result = null;
 let busy = false;
+let details = null;
 
 function say(message, kind = 'error') {
   ui.alert.textContent = message;
@@ -24,6 +33,15 @@ function step(id, state) {
 }
 function resetResult() {
   result = null;
+  details = null;
+  ui.photoDialog.close?.();
+  ui.photo.src = '';
+  ui.photoLarge.src = '';
+  ui.mapGrid.replaceChildren();
+  ui.map.hidden = true;
+  ui.evidence.hidden = true;
+  ui.reveal.disabled = false;
+  ui.reveal.textContent = 'Details anzeigen ↗';
   ui.result.hidden = true;
   step('step-local', '');
   step('step-chain', '');
@@ -35,6 +53,7 @@ function setBusy(value) {
   ui.verify.disabled = value || !file;
   ui.online.disabled = value;
   ui.save.disabled = value;
+  ui.reveal.disabled = value;
   ui.verifyLabel.textContent = value ? 'Prüfung läuft …' : 'Paket prüfen';
 }
 async function choose(path) {
@@ -129,6 +148,105 @@ function showResult(report) {
   step('step-report', 'active');
   ui.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+const labels = {
+  schema: 'Format', createdAt: 'Manifest erstellt (Gerätezeit)', profile: 'Metadatenprofil',
+  preCapture: 'Vorabblöcke', bitcoin: 'Bitcoin', doichain: 'Doichain', chain: 'Kette',
+  hash: 'Block-Hash', height: 'Blockhöhe', headerTimeUtc: 'Blockzeit (UTC)',
+  observedAtDeviceUtc: 'Abfragezeit (Gerät)', app: 'App', version: 'Version',
+  sourceCommit: 'Quellcode-Commit', identification: 'Identifikation', photo: 'Foto',
+  sha256: 'SHA-256', width: 'Breite (px)', heightPx: 'Höhe (px)', fileSize: 'Dateigröße (Byte)',
+  mimeType: 'MIME-Typ', fileName: 'Dateiname', capture: 'Aufnahme', deviceTime: 'Aufnahmezeit (Gerät)',
+  source: 'Quelle', location: 'Standort', latitude: 'Breitengrad', longitude: 'Längengrad',
+  altitude: 'Höhe (m)', accuracy: 'Horizontale Genauigkeit (m)',
+  altitudeAccuracy: 'Vertikale Genauigkeit (m)', heading: 'Richtung (°)', speed: 'Geschwindigkeit (m/s)',
+  measuredAt: 'Standortmessung (UTC)', mocked: 'Als simuliert markiert', device: 'Gerät',
+  platform: 'Betriebssystem', osVersion: 'OS-Version', appVersion: 'App-Version',
+};
+function flatten(value, path = [], output = []) {
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (entries.length) for (const [key, child] of entries) flatten(child, [...path, key], output);
+    else output.push([path, Array.isArray(value) ? '[]' : '{}']);
+  } else output.push([path, value === null ? 'Nicht erfasst' : typeof value === 'boolean' ? value ? 'Ja' : 'Nein' : String(value)]);
+  return output;
+}
+function showDetails(data) {
+  details = data;
+  ui.evidence.hidden = false;
+  ui.reveal.textContent = 'Details eingeblendet ✓';
+  ui.reveal.disabled = true;
+  ui.photoSize.textContent = (data.photoBytes / (1024 * 1024)).toFixed(2) + ' MiB';
+  ui.photoCaption.textContent = data.photoFile + ' · SHA-256 im Paket geprüft. Anklicken zum Vergrößern.';
+  ui.photo.src = data.photoPreview || '';
+  ui.photo.hidden = !data.photoPreview;
+  ui.photoButton.disabled = !data.photoPreview;
+  ui.photoPlaceholder.textContent = data.previewReason || '';
+  ui.photoPlaceholder.hidden = !!data.photoPreview;
+  if (!data.photoPreview) ui.photoCaption.textContent = data.photoFile + ' · ' + data.previewReason;
+  const loc = data.manifest.location;
+  const hasCoords = Number.isFinite(loc?.latitude) && Number.isFinite(loc?.longitude)
+    && Math.abs(loc.latitude) <= 90 && Math.abs(loc.longitude) <= 180;
+  ui.locationEmpty.hidden = hasCoords;
+  ui.locationContent.hidden = !hasCoords;
+  if (hasCoords) ui.coordinates.textContent = `${loc.latitude.toFixed(6)}°, ${loc.longitude.toFixed(6)}°`;
+  const rows = [...flatten(data.manifest, ['Manifest']), ...flatten(data.verification, ['Exportstatus'])];
+  ui.metadata.replaceChildren();
+  for (const [path, value] of rows) {
+    const row = document.createElement('div'); row.className = 'metadata-item';
+    const title = document.createElement('strong'); title.textContent = path.map(key => labels[key] || key).join(' · ');
+    const key = document.createElement('small'); key.textContent = path.join('.');
+    const body = document.createElement('span'); body.textContent = value;
+    row.append(title, key, body); ui.metadata.append(row);
+  }
+  ui.metadataCount.textContent = rows.length + ' Angaben';
+  ui.manifestJson.textContent = JSON.stringify(data.manifest, null, 2);
+  ui.verificationJson.textContent = JSON.stringify(data.verification, null, 2);
+  ui.evidence.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+ui.reveal.addEventListener('click', async () => {
+  if (!result || !file || busy || details) return;
+  const selected = result.local.evidenceSha256;
+  ui.reveal.disabled = true;
+  ui.reveal.textContent = 'Details werden geprüft …';
+  try {
+    const data = await window.doiproof.showDetails(file.path, selected);
+    if (result?.local.evidenceSha256 === selected) showDetails(data);
+  } catch (error) { say('Details konnten nicht geladen werden: ' + error.message); }
+  finally { if (!details) { ui.reveal.disabled = false; ui.reveal.textContent = 'Details anzeigen ↗'; } }
+});
+ui.photoButton.addEventListener('click', () => {
+  if (!details?.photoPreview) return;
+  ui.photoLarge.src = details.photoPreview;
+  ui.photoDialog.showModal();
+});
+ui.photoClose.addEventListener('click', () => ui.photoDialog.close());
+ui.photoDialog.addEventListener('click', event => { if (event.target === ui.photoDialog) ui.photoDialog.close(); });
+ui.mapButton.addEventListener('click', async () => {
+  const loc = details?.manifest.location;
+  if (!loc || !Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) return;
+  ui.mapButton.disabled = true;
+  ui.mapButton.textContent = 'Karte wird geladen …';
+  try {
+    const grid = await window.doiproof.mapTiles(loc.latitude, loc.longitude);
+    if (details?.manifest.location !== loc) return;
+    ui.mapGrid.replaceChildren();
+    ui.map.hidden = false;
+    ui.mapGrid.style.left = (ui.map.clientWidth / 2 - grid.centerX) + 'px';
+    ui.mapGrid.style.top = (ui.map.clientHeight / 2 - grid.centerY) + 'px';
+    for (const tile of grid.tiles) {
+      const image = document.createElement('img');
+      image.src = tile.data; image.alt = '';
+      image.style.left = tile.col * 256 + 'px';
+      image.style.top = tile.row * 256 + 'px';
+      ui.mapGrid.append(image);
+    }
+    ui.mapButton.textContent = 'Karte geladen ✓';
+  } catch (error) {
+    say('Karte nicht verfügbar: ' + error.message + '. Die Koordinaten bleiben oben sichtbar.');
+    ui.mapButton.disabled = false; ui.mapButton.textContent = 'Karte erneut laden ↗';
+  }
+});
 ui.verify.addEventListener('click', async () => {
   if (!file || busy) return;
   clearMessage();

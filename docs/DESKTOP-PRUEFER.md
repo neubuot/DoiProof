@@ -1,10 +1,10 @@
 # DoiProof Prüfer für Windows
 
-**Version 0.5.0, 28. September 2026.** Die portable Windows-EXE ergänzt die mobile App. Sie verwendet denselben Prüfkern wie `npm run verify`; der veröffentlichte Build wird in GitHub Actions auf Windows erstellt.
+**Version 0.6.0, 29. September 2026.** Die portable Windows-EXE ergänzt die mobile App. Sie verwendet denselben Prüfkern wie `npm run verify`; der veröffentlichte Build wird in GitHub Actions auf Windows erstellt.
 
 ## Herunterladen
 
-Im privaten Repository [Releases](https://github.com/neubuot/DoiProof/releases) öffnen und `DoiProof-Pruefer-0.5.0-Windows.exe` herunterladen. Es ist keine Installation nötig. Die veröffentlichte `SHA256SUMS.txt` enthält den Hash der EXE. In PowerShell lässt er sich mit `Get-FileHash "C:\Pfad\DoiProof-Pruefer-0.5.0-Windows.exe" -Algorithm SHA256` vergleichen.
+Im privaten Repository [Releases](https://github.com/neubuot/DoiProof/releases) öffnen und `DoiProof-Pruefer-0.6.0-Windows.exe` herunterladen. Es ist keine Installation nötig. Die veröffentlichte `SHA256SUMS.txt` enthält den Hash der EXE. In PowerShell lässt er sich mit `Get-FileHash "C:\Pfad\DoiProof-Pruefer-0.6.0-Windows.exe" -Algorithm SHA256` vergleichen.
 
 **Der Build ist noch nicht signiert.** Windows SmartScreen kann deshalb eine Warnung zeigen. Beziehe die Datei nur aus dem privaten DoiProof-Release und vergleiche den Hash. Die signierte Release-Infrastruktur ist noch nicht eingerichtet. GitHub-Version und Prüfer-Version sind am Release-Tag erkennbar.
 
@@ -15,6 +15,9 @@ Im privaten Repository [Releases](https://github.com/neubuot/DoiProof/releases) 
 3. Für Kettenabfragen „Kettenstatus zusätzlich abfragen“ einschalten und erneut „Paket prüfen“ anklicken. Der Beweispaket-Hash geht an den Doichain-MCP-Dienst; Vorabblock-Hashes werden bei Blockstream bzw. Doichain abgefragt. Foto, GPS und Manifest bleiben auf dem Rechner.
 4. Die getrennten Ergebnisse lesen. `STIMMT ÜBEREIN` bedeutet, dass die Dienstantwort zum Paket passt; `NICHT ERREICHBAR` oder `AUSSTEHEND` lassen die Onlineprüfung unvollständig. `WIDERSPRUCH` erfordert weitere Prüfung.
 5. „Bericht sichern“ auswählen. Markdown ist für Menschen lesbar, JSON maschinenlesbar. ZIP und Bericht zusammen langfristig und unverändert aufbewahren.
+6. „Details anzeigen“ öffnet nach erneuter Hashprüfung das Originalfoto und das vollständige Manifest und den Exportstatus. Das Foto kann vergrößert werden. Geodaten erscheinen nur, wenn sie im Manifest vorhanden sind. „Karte laden“ fragt anschließend gezielt OpenStreetMap-Kacheln für die Region ab; dabei können der ungefähre Standort und die IP-Adresse beim Kartendienst bekannt werden. Ohne den Kartenklick werden keine Kartenkacheln geladen. Eine fehlende Karte beeinträchtigt die ZIP-Prüfung nicht.
+
+Die Detailansicht zeigt nur die im ZIP enthaltenen Angaben; der Exportstatus ist eine Selbstauskunft und keine aktuelle Kettenbestätigung. Nicht im Manifest erfasste Sensordaten oder Bild-EXIF-Daten werden nicht zusätzlich ausgelesen.
 
 Die Berichte enthalten Pfad, Prüfuhrzeit, Hashwerte, Dienststatus und ggf. Block-/Transaktionsdaten, aber kein Foto und keine Rohkoordinaten. Sie sind nicht digital signiert. Eine später erneut durchgeführte Onlineabfrage kann anders ausfallen, z. B. bei Netzfehlern. Der alte Bericht bleibt ein Schnappschuss seiner Prüfzeit.
 
@@ -22,7 +25,7 @@ Die Berichte enthalten Pfad, Prüfuhrzeit, Hashwerte, Dienststatus und ggf. Bloc
 
 Die lokale Prüfung bestätigt **interne Byteintegrität**, nicht Motiv, Aufnahmezeit, Eigentum, Urheberschaft oder die Identität der ausführenden Handy-App. Die Onlineabfrage ist app-unabhängig, aber bei DOI **nicht dienstunabhängig**: Sie verwendet denselben MCP-Dienst wie die Handy-App. Für streitige Fälle eigene oder anders ausgewählte Nodes und die Verwahrung des Original-ZIPs dokumentieren. Ein fehlgeschlagener Netzabruf ist kein Hash-Widerspruch.
 
-Die Desktop-App lädt keine Webseiten und öffnet keine externen Links. Der Renderer läuft isoliert ohne Node.js-Zugriff; Dateizugriff und Prüfungen erfolgen im Hauptprozess. Netzwerk wird nur nach sichtbarer Auswahl genutzt. ZIPs sind auf 200 MiB, Bilder auf 150 MiB und JSON-Dateien auf je 1 MiB begrenzt.
+Die Desktop-App lädt keine Webseiten und öffnet keine externen Links. Der Renderer läuft isoliert ohne Node.js-Zugriff; Dateizugriff und Prüfungen erfolgen im Hauptprozess. Netzwerk wird nur nach sichtbarer Auswahl genutzt. Bei der Kartenansicht werden neun OpenStreetMap-Kacheln geladen und lokal mindestens sieben Tage zwischengespeichert; © OpenStreetMap contributors. ZIPs sind auf 200 MiB, Bilder auf 150 MiB, die Bildvorschau auf 25 MiB und JSON-Dateien auf je 1 MiB begrenzt. Andere Bildformate bleiben im Beweispaket prüfbar, auch wenn die Vorschau sie nicht anzeigt.
 
 ## Quellcode und Build
 
