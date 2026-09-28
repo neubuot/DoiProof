@@ -178,7 +178,7 @@ export async function verifyBundle(path, withOnline = false) {
     online: withOnline ? await online(local) : null };
 }
 
-function reportText(report) {
+export function reportText(report) {
   const rows = [
     '# DoiProof-Prüfbericht', '', `Erstellt (UTC): ${report.generatedAtUtc}`,
     `ZIP: ${report.file}`, '',

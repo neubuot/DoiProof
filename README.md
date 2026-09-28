@@ -13,6 +13,7 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 | [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Alle Einstellungen, Status, Export und Fehlerfälle |
 | [Technische Architektur](docs/ARCHITECTURE.md) | Datenmodell, Implementierung und Sicherheitsgrenzen |
 | [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Prüfbefehl, Bericht und Onlineprüfung ohne DoiProof-App |
+| [Windows-Prüfer mit Oberfläche](docs/DESKTOP-PRUEFER.md) | Portable EXE herunterladen und Beweispakete per Dialog prüfen |
 
 Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
 
@@ -44,6 +45,8 @@ Die Bilddatei wird nicht hochgeladen. Übertragen werden nur:
 Im Profil „Privat“ werden keine GPS-Daten angefordert. Standort- und weitere Metadaten werden nur nach sichtbarer Auswahl und erforderlicher Betriebssystemfreigabe erfasst. Ein Hash beweist, dass dieselben Dateibytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Weitere Einzelheiten stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Schnellstart
+
+Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Der erste Build trägt die eigene Prüfer-Version 0.5.0; die Handy-App bleibt bei Version 0.4.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
 
 Voraussetzungen:
 

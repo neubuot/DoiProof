@@ -3,5 +3,8 @@ node_modules/
 dist/
 web-build/
 *.log
+desktop/verify.mjs
+desktop/dist/
+desktop/preview.png
 .env*
 !.env.example

@@ -2,6 +2,8 @@
 
 **Stand: 28. September 2026, Paketformat v1/v2.** Der Prüfer ist ein Node.js-Programm im Repository, läuft außerhalb der mobilen App und verändert das ZIP nicht. Er prüft Dateibytes und Hashbindungen standardmäßig **ohne Netzwerk**. Ein bestätigter Ketteneintrag wird nur mit `--online` abgefragt; die Onlinequelle ist nicht automatisch ein unabhängiger Full Node.
 
+Für Windows gibt es auch eine [portable Desktop-Oberfläche](DESKTOP-PRUEFER.md) mit derselben Prüflogik, Dateiauswahl und Berichtsexport.
+
 ## Vorbereitung und Aufruf
 
 Node.js (aktuelle LTS-Version), npm und einen lokalen Git-Klon des privaten Repositories bereitstellen:
