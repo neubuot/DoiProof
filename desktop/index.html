@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>DoiProof Prüfer</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./renderer.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="brand-type"><strong>DoiProof</strong><small>PRÜFER</small></div>
+      </div>
+      <div class="rail-intro">
+        <p class="eyebrow rail-eyebrow">BEWEISPAKET · V0.5</p>
+        <h2>Gewissheit beginnt beim Original.</h2>
+        <p>Prüfe ein exportiertes ZIP direkt auf deinem Rechner. Jeder Schritt bleibt nachvollziehbar.</p>
+      </div>
+      <nav aria-label="Prüfablauf" class="steps">
+        <div class="step active" id="step-file"><span class="step-nr">01</span><div><strong>Paket wählen</strong><small>Original-ZIP öffnen</small></div></div>
+        <div class="step" id="step-local"><span class="step-nr">02</span><div><strong>Bytes prüfen</strong><small>Foto · Manifest · Hash</small></div></div>
+        <div class="step" id="step-chain"><span class="step-nr">03</span><div><strong>Kette abfragen</strong><small>Freiwillig · online</small></div></div>
+        <div class="step" id="step-report"><span class="step-nr">04</span><div><strong>Bericht sichern</strong><small>Markdown oder JSON</small></div></div>
+      </nav>
+      <div class="rail-bottom">
+        <span class="rail-diamond" aria-hidden="true">◇</span>
+        <p><strong>Deine Datei bleibt hier.</strong><br>Bei der Onlineprüfung werden nur Hashwerte an die Blockdienste gesendet.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <span class="topline"><span class="tiny-dot"></span> LOKALES PRÜFPROGRAMM</span>
+        <span class="top-version">WINDOWS · VERSION 0.5.0</span>
+      </header>
+      <div class="content">
+        <section class="hero" aria-labelledby="page-title">
+          <div class="hero-copy">
+            <p class="eyebrow">UNABHÄNGIG VON DER HANDY-APP</p>
+            <h1 id="page-title">Beweispaket<br><em>prüfen.</em></h1>
+            <p>Foto, Manifest und Kettenreferenzen in einer verständlichen Prüfung. Starte mit dem ZIP aus DoiProof.</p>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="art-ring ring-three"></div>
+            <div class="art-center"><span>⌁</span></div>
+            <div class="art-pin pin-top"></div><div class="art-pin pin-bottom"></div>
+          </div>
+        </section>
+
+        <section class="drop-card" id="drop-zone" aria-labelledby="drop-title">
+          <div class="zip-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none"><path d="M18 6h21l9 9v39a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4Z" stroke="currentColor" stroke-width="2"/><path d="M39 6v10h9M26 8v21m0 6v7m-4-31h8m-8 7h8m-8 7h8" stroke="currentColor" stroke-width="2"/><rect x="20" y="42" width="12" height="10" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+          </div>
+          <div class="drop-copy">
+            <h2 id="drop-title">ZIP-Beweispaket auswählen</h2>
+            <p id="file-hint">Datei hierher ziehen oder über den Dialog auswählen.</p>
+            <p class="file-path" id="file-path" hidden></p>
+          </div>
+          <button type="button" class="button button-outline" id="select-button">Datei wählen <span aria-hidden="true">↗</span></button>
+        </section>
+
+        <section class="option-card" aria-label="Prüfoptionen">
+          <div class="option-icon" aria-hidden="true">◎</div>
+          <div class="option-copy"><h3>Kettenstatus zusätzlich abfragen</h3><p>Doichain und Vorabblöcke online kontrollieren. Ohne diese Option bleibt die Prüfung vollständig offline.</p></div>
+          <label class="toggle"><input id="online-toggle" type="checkbox"><span class="toggle-track"></span><span class="sr-only">Onlineprüfung einschalten</span></label>
+        </section>
+
+        <div class="action-row">
+          <button type="button" class="button button-primary" id="verify-button" disabled><span class="button-symbol" aria-hidden="true">✦</span> <span id="verify-label">Paket prüfen</span> <span aria-hidden="true">→</span></button>
+          <p>Offline werden weder Foto noch Metadaten versendet.</p>
+        </div>
+
+        <section class="result" id="result" hidden aria-labelledby="result-title">
+          <div class="result-head">
+            <div><p class="eyebrow">PRÜFERGEBNIS</p><h2 id="result-title">Die Prüfung ist abgeschlossen.</h2></div>
+            <span class="result-pill" id="result-pill"></span>
+          </div>
+          <div class="result-grid">
+            <div class="result-card"><span class="result-icon">✓</span><p class="result-kicker">01 / DATEI & HASH</p><h3>Byteintegrität bestätigt</h3><p>Bildbytes, kanonisches Manifest und Paket-Hash stimmen zusammen.</p></div>
+            <div class="result-card chain-card"><span class="result-icon chain-icon">◎</span><p class="result-kicker">02 / KETTE</p><h3 id="chain-title">Nicht abgefragt</h3><p id="chain-description">Die lokale Prüfung benötigt keinen Netzwerkzugang.</p></div>
+          </div>
+          <div class="hash-panel">
+            <div class="hash-top"><span>BEWEISPAKET SHA-256</span><button type="button" class="text-button" id="copy-button">Hash kopieren ↗</button></div>
+            <code id="evidence-hash"></code>
+            <div class="hash-meta"><span id="format-version"></span><span id="verified-time"></span></div>
+          </div>
+          <div class="chain-details" id="chain-details" hidden></div>
+          <div class="result-bottom">
+            <p>Diese Prüfung bestätigt keine Aufnahmezeit, Urheberschaft oder Echtheit des Bildmotivs. Die Doichain-Abfrage nutzt denselben MCP-Dienst wie die mobile App.</p>
+            <button type="button" class="button button-save" id="save-button">Bericht sichern <span aria-hidden="true">↓</span></button>
+          </div>
+        </section>
+        <div class="alert" id="alert" role="status" aria-live="polite" hidden></div>
+      </div>
+      <footer class="footer"><span>DOIPROOF <i>·</i> PRÜFEN STATT VERTRAUEN</span><span>OFFENES PRÜFVERFAHREN · SHA-256</span></footer>
+    </main>
+  </div>
+</body>
+</html>

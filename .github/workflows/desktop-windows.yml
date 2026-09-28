@@ -1,0 +1,74 @@
+name: Windows desktop verifier
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'scripts/verify.mjs'
+      - '.github/workflows/desktop-windows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'scripts/verify.mjs'
+      - '.github/workflows/desktop-windows.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      - name: Test verification core
+        run: |
+          npm ci
+          npm test
+          npm run check
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Test desktop integration
+        working-directory: desktop
+        run: npm test
+      - name: Smoke test desktop window
+        working-directory: desktop
+        run: npm run smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DoiProof-Pruefer-Preview
+          path: desktop/preview.png
+          if-no-files-found: error
+      - name: Build portable Windows executable
+        working-directory: desktop
+        run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Create SHA-256 manifest
+        shell: pwsh
+        run: |
+          $artifact = Get-Item "desktop/dist/DoiProof-Pruefer-0.5.0-Windows.exe"
+          $hash = (Get-FileHash $artifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($artifact.Name)" | Set-Content "desktop/dist/SHA256SUMS.txt" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DoiProof-Pruefer-Windows
+          path: |
+            desktop/dist/DoiProof-Pruefer-0.5.0-Windows.exe
+            desktop/dist/SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Publish versioned GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.5.0 "desktop/dist/DoiProof-Pruefer-0.5.0-Windows.exe" "desktop/dist/SHA256SUMS.txt" --target "$env:GITHUB_SHA" --title "DoiProof Prüfer 0.5.0 (Windows)" --notes-file "desktop/RELEASE_NOTES.md"
