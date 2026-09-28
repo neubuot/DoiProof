@@ -40,3 +40,16 @@ test('keeps evidence metadata during a status refresh', () => {
   assert.equal(updated.manifestSha256, existing.manifestSha256);
   assert.equal(updated.evidenceProfile, 'location');
 });
+
+test('preserves block height and v2 manifest while confirming a proof', () => {
+  const previous = {
+    ...proofToRecord(hash, 'camera', { sha256: hash, status: 'pending' }, now, undefined, now),
+    manifest: { schema: 'org.doichain.doiproof.evidence/v2' as const, createdAt: now,
+      profile: 'private' as const, photo: { sha256: 'b'.repeat(64) } },
+  };
+  const record = proofToRecord(hash, 'camera', {
+    sha256: hash, status: 'confirmed', block_height: 432010,
+  }, now, previous);
+  assert.equal(record.blockHeight, 432010);
+  assert.equal(record.manifest, previous.manifest);
+});

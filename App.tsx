@@ -4,11 +4,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import { StatusBar } from 'expo-status-bar';
-import { createProof, getQuota, Proof, Quota, verifyProof } from './src/doichain';
+import { createProof, getQuota, Proof, Quota, verifyProof, withConfirmedBlock } from './src/doichain';
 import { isPending, loadHistory, ProofRecord, proofToRecord, saveHistory } from './src/history';
 import { shareReceipt } from './src/receipt';
 import { createEvidence, LOCATION_SETTINGS, MetadataSettings, PRIVATE_SETTINGS } from './src/evidence';
 import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
+import { getPreCaptureAnchors } from './src/chainAnchors';
 
 type Selected = {
   uri: string;
@@ -30,6 +31,7 @@ export default function App() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [key, setKey] = useState('');
   const [autoSend, setAutoSend] = useState(true);
+  const [usePreCaptureAnchors, setUsePreCaptureAnchors] = useState(true);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [result, setResult] = useState<Proof | null>(null);
   const [history, setHistory] = useState<ProofRecord[]>([]);
@@ -57,7 +59,7 @@ export default function App() {
     const updated = await Promise.all(current.map(async record => {
       if (!isPending(record)) return record;
       try {
-        const proof = await verifyProof(record.sha256);
+        const proof = await withConfirmedBlock(await verifyProof(record.sha256));
         return proofToRecord(record.sha256, record.source, proof, record.capturedAt, record);
       } catch {
         return record;
@@ -88,7 +90,8 @@ export default function App() {
     setBusy(true);
     setMessage('Hash wird über den Doichain-MCP-Server gesendet …');
     try {
-      const proof = await createProof(item.hash, key, item.capturedAt ? `DoiProof v1; Gerät: ${item.capturedAt}` : 'DoiProof evidence v1');
+      const proof = await withConfirmedBlock(await createProof(item.hash, key,
+        item.capturedAt ? `DoiProof v2; Gerät: ${item.capturedAt}` : 'DoiProof evidence v2'));
       setResult(proof);
       const existing = history.find(record => record.sha256 === item.hash);
       const base = proofToRecord(item.hash, item.source, proof, item.capturedAt, existing);
@@ -118,13 +121,20 @@ export default function App() {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) { setMessage('Kamerazugriff wurde nicht erlaubt.'); return; }
       }
+      // Fetch immediately before opening the camera, never after the image has been selected.
+      let preCapture;
+      if (source === 'camera' && usePreCaptureAnchors) {
+        setBusy(true);
+        setMessage('Aktuelle BTC- und Doichain-Blöcke werden vor der Aufnahme geladen …');
+        preCapture = await getPreCaptureAnchors();
+      }
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'], allowsEditing: false, quality: 1, exif: false,
       };
       const picked = source === 'camera'
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
-      if (picked.canceled || !picked.assets?.[0]) return;
+      if (picked.canceled || !picked.assets?.[0]) { setBusy(false); setMessage('Aufnahme abgebrochen.'); return; }
       setBusy(true);
       setMessage('SHA-256 wird auf dem Gerät berechnet …');
       const asset = picked.assets[0];
@@ -139,7 +149,7 @@ export default function App() {
         fileSize: asset.fileSize,
         mimeType: asset.mimeType,
         fileName: asset.fileName ?? undefined,
-      }, metadata);
+      }, metadata, preCapture);
       const item: Selected = {
         uri: asset.uri,
         hash: evidence.evidenceSha256,
@@ -151,7 +161,9 @@ export default function App() {
       };
       setSelected(item);
       setResult(null);
-      setMessage('Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
+      setMessage(preCapture
+        ? 'Foto bereit. Die beiden Vorab-Blöcke sind im lokalen Beweispaket gebunden.'
+        : 'Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
       setBusy(false);
       if (autoSend) await submit(item);
     } catch (error) {
@@ -164,7 +176,7 @@ export default function App() {
     if (!selected || busy) return;
     setBusy(true);
     try {
-      const proof = await verifyProof(selected.hash);
+      const proof = await withConfirmedBlock(await verifyProof(selected.hash));
       setResult(proof);
       const existing = history.find(item => item.sha256 === selected.hash);
       storeRecord(proofToRecord(selected.hash, selected.source, proof, selected.capturedAt, existing));
@@ -224,6 +236,10 @@ export default function App() {
           <Pressable accessibilityRole="button" style={styles.button} onPress={() => choose('camera')} disabled={busy}><Text style={styles.buttonText}>Foto aufnehmen</Text></Pressable>
           <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => choose('library')} disabled={busy}><Text style={styles.secondaryText}>Foto wählen</Text></Pressable>
         </View>
+        <View style={styles.card}>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>BTC- und Doichain-Block vor Kameraaufnahme</Text><Switch value={usePreCaptureAnchors} onValueChange={setUsePreCaptureAnchors} disabled={busy} /></View>
+          <Text style={styles.muted}>Standardmäßig aktiv. Bei Netzwerkfehlern startet die Kamera erst, wenn du es erneut versuchst oder diese Option ausschaltest. Gilt nicht für bereits gespeicherte Fotos.</Text>
+        </View>
         {selected && <View style={styles.card}>
           <Image source={{ uri: selected.uri }} style={styles.preview} resizeMode="contain" />
           <Text style={styles.label}>SHA-256 des Originalfotos</Text>
@@ -233,6 +249,12 @@ export default function App() {
           <Text style={styles.label}>Auf Doichain verankerter Beweispaket-Hash</Text>
           <Text selectable style={styles.hash}>{selected.hash}</Text>
           {selected.capturedAt && <Text style={styles.muted}>Gerätezeit bei Aufnahme: {selected.capturedAt}</Text>}
+          {selected.manifest.preCapture && <>
+            <Text style={styles.label}>Vorab-Block BTC · Höhe {selected.manifest.preCapture.bitcoin.height}</Text>
+            <Text selectable style={styles.hash}>{selected.manifest.preCapture.bitcoin.hash}</Text>
+            <Text style={styles.label}>Vorab-Block DOI · Höhe {selected.manifest.preCapture.doichain.height}</Text>
+            <Text selectable style={styles.hash}>{selected.manifest.preCapture.doichain.hash}</Text>
+          </>}
         </View>}
         <View style={styles.card}>
           <Text style={styles.label}>Tageskontingent</Text>
@@ -273,12 +295,14 @@ export default function App() {
           <Text selectable numberOfLines={3} style={styles.hash}>{record.sha256}</Text>
           {record.txid && <Text selectable numberOfLines={2} style={styles.hash}>TX: {record.txid}</Text>}
           {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
+          {record.blockHeight !== undefined && <Text>Bestätigungsblock: {record.blockHeight}</Text>}
+          {record.blockHash && <Text selectable style={styles.hash}>Block-Hash: {record.blockHash}</Text>}
           <View style={styles.row}>
             <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, exportingId === record.id && styles.disabled]} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>{exportingId === record.id ? 'PDF wird erstellt …' : 'PDF-Beleg'}</Text></Pressable>
             {record.manifest && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
           </View>
         </View>)}
-        <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Ein Hash belegt nur, dass dieselben Dateibytes verankert wurden; Aufnahmezeit, Urheberschaft und Echtheit des Motivs beweist er nicht. Die optionale Gerätezeit ist öffentlich und nicht verifiziert.</Text>
+        <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Die Vorab-Blöcke und die selbst gemeldete App-Version sind Indizien für die Erstellung des Pakets, keine Attestierung der App oder der tatsächlichen Aufnahmezeit. Ein altes Foto könnte erneut verwendet werden. Belastbar ist die Verankerung erst nach Bestätigung in einem Doichain-Block.</Text>
       </ScrollView>
     </SafeAreaView>
   );
