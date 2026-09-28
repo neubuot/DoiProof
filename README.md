@@ -2,7 +2,7 @@
 
 DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie erstellt lokal ein kryptografisch gebundenes Beweispaket aus Originalfoto und optionalen Metadaten und verankert ausschließlich dessen SHA-256-Hash als Proof of Existence auf der Doichain.
 
-> **Version 0.4:** Vor einer Kameraaufnahme werden BTC- und Doichain-Vorabblöcke erfasst. Diese Erweiterung benötigt noch einen Gerätetest. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
+> **Android-Version 0.5:** Originalfoto und Manifest werden vor der Übermittlung lokal gesichert. Das APK-Buildprofil ist vorbereitet; ein signierter Build und der Gerätetest benötigen noch das Expo/EAS-Projekt. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
 
 ## Dokumentation
 
@@ -14,6 +14,7 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 | [Technische Architektur](docs/ARCHITECTURE.md) | Datenmodell, Implementierung und Sicherheitsgrenzen |
 | [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Prüfbefehl, Bericht und Onlineprüfung ohne DoiProof-App |
 | [Windows-Prüfer mit Oberfläche](docs/DESKTOP-PRUEFER.md) | Portable EXE herunterladen und Beweispakete per Dialog prüfen |
+| [Android-APK und Gerätetest](docs/ANDROID-RELEASE.md) | Signierter EAS-Build, Installation und Testablauf |
 
 Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
 
@@ -27,6 +28,7 @@ Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest
 - Optional einen eigenen PoE- oder Write-Schlüssel ausschließlich für die aktuelle App-Sitzung verwenden.
 - Bei Kameraaufnahmen optional sofort senden.
 - Nachweise dauerhaft und ausschließlich lokal auf dem Gerät speichern.
+- Originalfoto und Manifest vor der Einreichung sichern; lokale Entwürfe nach App-Neustart erneut senden können.
 - Ausstehende Nachweise beim App-Start, bei Rückkehr in die App und während der Nutzung automatisch aktualisieren.
 - Einen nachvollziehbaren PDF-Beleg erstellen und über den Systemdialog teilen.
 - Zwischen den Profilen „Privat“, „Standortnachweis“ und „Individuell“ wählen.
@@ -46,7 +48,7 @@ Im Profil „Privat“ werden keine GPS-Daten angefordert. Standort- und weitere
 
 ## Schnellstart
 
-Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Ab Prüfer-Version 0.6.0 können Originalfoto und sämtliche Manifest- und Exportstatusangaben bewusst eingeblendet werden; der Kartenausschnitt wird erst nach gesondertem Klick abgerufen. Die Handy-App bleibt bei Version 0.4.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
+Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Ab Prüfer-Version 0.6.0 können Originalfoto und sämtliche Manifest- und Exportstatusangaben bewusst eingeblendet werden; der Kartenausschnitt wird erst nach gesondertem Klick abgerufen. Die Android-App trägt Version 0.5.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
 
 Voraussetzungen:
 
@@ -137,6 +139,7 @@ Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECUR
 - Serverseitig signierte Empfangsbestätigungen und Geräte-Attestierung prüfen.
 - Plattformabhängige GNSS-/Satellitendetails als optionale Erweiterung evaluieren.
 - Android- und iOS-Release-Builds mit EAS Build einrichten.
+- Android: EAS-Projekt verknüpfen, signiertes APK bauen und den Gerätetest durchführen; [Anleitung](docs/ANDROID-RELEASE.md).
 - Serverseitig signierte Einmal-Challenge vor dem Kamerastart mit Verifikationsschlüssel, Ablaufzeit und Replay-Schutz ergänzen.
 
 ## Lizenz

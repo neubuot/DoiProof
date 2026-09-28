@@ -11,12 +11,13 @@ DoiProof erstellt für eine ausgewählte Fotodatei einen kryptografischen SHA-25
 3. Die App liest die Dateibytes lokal und berechnet den Foto-SHA-256 auf dem Gerät.
 4. Je nach Profil erfasst sie GPS- und technische Metadaten und serialisiert sie mit den Vorabblöcken als kanonisches Manifest v2.
 5. Foto-Hash und Manifest-Hash werden mit `DoiProof:v2` domänenspezifisch zu einem versionierten Beweispaket-Hash verbunden. Historische v1-Belege behalten ihr altes Schema und Hashverfahren.
-6. Die App ruft über Streamable HTTP das MCP-Werkzeug `anchor_proof` auf.
-7. Der MCP-Server verankert den Hash und liefert zunächst gegebenenfalls `pending`.
-8. `check_proof` fragt den späteren Kettenstatus ab.
-9. Die App speichert Metadaten des Nachweises als JSON im privaten Dokumentverzeichnis der App.
-10. Ausstehende Einträge werden beim Start, beim Wechsel in den Vordergrund und im Minutentakt aktualisiert.
-11. Für einzelne Einträge kann lokal ein PDF-Beleg erstellt und über den Systemdialog geteilt werden.
+6. Die App kopiert die Bilddatei ins private Dokumentverzeichnis und speichert Manifest und lokalen Entwurf, bevor ein Netzaufruf erfolgt. Ein einfaches Backup der Verlaufsdatei bleibt erhalten.
+7. Die App ruft über Streamable HTTP das MCP-Werkzeug `anchor_proof` auf.
+8. Der MCP-Server verankert den Hash und liefert zunächst gegebenenfalls `pending`.
+9. `check_proof` fragt den späteren Kettenstatus ab.
+10. Die App aktualisiert den zuvor gesicherten Entwurf mit der Serverantwort; bei fehlender Antwort bleibt der Status als unklar erhalten.
+11. Ausstehende Einträge werden beim Start, beim Wechsel in den Vordergrund und im Minutentakt aktualisiert.
+12. Für einzelne Einträge kann lokal ein PDF-Beleg erstellt und über den Systemdialog geteilt werden.
 
 ## Komponenten
 

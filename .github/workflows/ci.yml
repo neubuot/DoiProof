@@ -28,3 +28,5 @@ jobs:
         run: npm run check
       - name: Run tests
         run: npm test
+      - name: Bundle Android JavaScript
+        run: npx expo export --platform android --output-dir /tmp/doiproof-android-export

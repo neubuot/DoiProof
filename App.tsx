@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import { StatusBar } from 'expo-status-bar';
 import { createProof, getQuota, Proof, Quota, verifyProof, withConfirmedBlock } from './src/doichain';
-import { isPending, loadHistory, ProofRecord, proofToRecord, saveHistory } from './src/history';
+import { isPending, loadHistory, ProofRecord, proofToRecord, updateHistory } from './src/history';
+import { upsertRecord } from './src/proofRecord';
 import { shareReceipt } from './src/receipt';
 import { createEvidence, LOCATION_SETTINGS, MetadataSettings, PRIVATE_SETTINGS } from './src/evidence';
 import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
@@ -22,12 +24,18 @@ type Selected = {
 };
 
 function statusLabel(status: string): string {
+  if (status === 'local') return 'Lokal gesichert';
+  if (status === 'submission_unknown') return 'Einreichung unklar';
   if (status === 'confirmed' || status === 'expired') return 'Bestätigt';
   if (status === 'pending') return 'Ausstehend';
   return status || 'Offen';
 }
 
 export default function App() {
+  return <SafeAreaProvider><ProofScreen /></SafeAreaProvider>;
+}
+
+function ProofScreen() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [key, setKey] = useState('');
   const [autoSend, setAutoSend] = useState(true);
@@ -41,39 +49,55 @@ export default function App() {
   const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
   const [includeSensitiveInPdf, setIncludeSensitiveInPdf] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const historyRef = useRef<ProofRecord[]>([]);
+  const refreshingRef = useRef(false);
 
-  const storeRecord = useCallback((record: ProofRecord) => {
-    setHistory(current => {
-      const next = [record, ...current.filter(item => item.id !== record.id && item.sha256 !== record.sha256)]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      void saveHistory(next);
-      return next;
-    });
+  const storeRecord = useCallback(async (record: ProofRecord) => {
+    const next = await updateHistory(current => upsertRecord(current, record));
+    historyRef.current = next;
+    setHistory(next);
   }, []);
 
   const refreshPending = useCallback(async (showMessage = false) => {
-    const current = await loadHistory();
-    const pending = current.filter(isPending);
-    if (!pending.length) { setHistory(current); return; }
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshingHistory(true);
-    const updated = await Promise.all(current.map(async record => {
-      if (!isPending(record)) return record;
-      try {
-        const proof = await withConfirmedBlock(await verifyProof(record.sha256));
-        return proofToRecord(record.sha256, record.source, proof, record.capturedAt, record);
-      } catch {
-        return record;
+    try {
+      const current = await loadHistory();
+      const pending = current.filter(isPending);
+      if (!pending.length) {
+        historyRef.current = current;
+        setHistory(current);
+        if (showMessage) setMessage('Keine offenen Einreichungen. Lokal gesicherte Entwürfe werden nicht automatisch gesendet.');
+        return;
       }
-    }));
-    setHistory(updated);
-    await saveHistory(updated);
-    setRefreshingHistory(false);
-    if (showMessage) setMessage('Nachweisverlauf wurde aktualisiert.');
+      const proofs = new Map<string, Proof>();
+      await Promise.all(pending.map(async record => {
+        try { proofs.set(record.sha256, await withConfirmedBlock(await verifyProof(record.sha256))); }
+        catch { /* An outage must not discard a saved record. */ }
+      }));
+      if (proofs.size) {
+        const updated = await updateHistory(records => records.map(record => {
+          const proof = proofs.get(record.sha256);
+          return proof && isPending(record)
+            ? proofToRecord(record.sha256, record.source, proof, record.capturedAt, record) : record;
+        }));
+        historyRef.current = updated;
+        setHistory(updated);
+      }
+      if (showMessage) setMessage(proofs.size === pending.length ? 'Nachweisverlauf wurde aktualisiert.' : 'Einige Statusabfragen waren nicht erreichbar. Gespeicherte Nachweise bleiben erhalten.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Verlauf konnte nicht gelesen werden.');
+    } finally {
+      refreshingRef.current = false;
+      setRefreshingHistory(false);
+    }
   }, []);
 
   useEffect(() => {
     getQuota().then(setQuota).catch(() => setQuota(null));
-    loadHistory().then(setHistory).then(() => refreshPending()).catch(() => setHistory([]));
+    loadHistory().then(records => { historyRef.current = records; setHistory(records); return refreshPending(); })
+      .catch(error => setMessage(error instanceof Error ? error.message : 'Verlauf konnte nicht gelesen werden.'));
     const timer = setInterval(() => { void refreshPending(); }, 60_000);
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') void refreshPending();
@@ -93,21 +117,17 @@ export default function App() {
       const proof = await withConfirmedBlock(await createProof(item.hash, key,
         item.capturedAt ? `DoiProof v2; Gerät: ${item.capturedAt}` : 'DoiProof evidence v2'));
       setResult(proof);
-      const existing = history.find(record => record.sha256 === item.hash);
-      const base = proofToRecord(item.hash, item.source, proof, item.capturedAt, existing);
-      const localPhotoUri = existing?.localPhotoUri ?? await preserveEvidencePhoto(base.id, item.uri);
-      storeRecord({
-        ...base,
-        photoSha256: item.photoHash,
-        manifestSha256: item.manifestHash,
-        evidenceProfile: item.manifest.profile,
-        manifest: item.manifest,
-        localPhotoUri,
-      });
+      const existing = historyRef.current.find(record => record.sha256 === item.hash);
+      await storeRecord(proofToRecord(item.hash, item.source, proof, item.capturedAt, existing));
       getQuota(key).then(setQuota).catch(() => setQuota(null));
       setMessage('Einreichung angenommen und im Nachweisverlauf gespeichert.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Einreichung fehlgeschlagen.');
+      const existing = historyRef.current.find(record => record.sha256 === item.hash);
+      if (existing?.status === 'local') {
+        try { await storeRecord({ ...existing, status: 'submission_unknown' }); }
+        catch { /* The original local record remains in the file. */ }
+      }
+      setMessage('Einreichung nicht bestätigt. Original und Manifest sind lokal gesichert. Status prüfen oder später erneut senden. ' + (error instanceof Error ? error.message : ''));
     } finally {
       setBusy(false);
     }
@@ -159,11 +179,22 @@ export default function App() {
         source,
         capturedAt,
       };
+      const now = new Date().toISOString();
+      const id = `${now}-${item.hash.slice(0, 12)}`;
+      const localPhotoUri = await preserveEvidencePhoto(id, item.uri);
+      item.uri = localPhotoUri;
+      await storeRecord({
+        id, sha256: item.hash, source, createdAt: now, capturedAt,
+        status: 'local', lastCheckedAt: now,
+        photoSha256: photoHash, manifestSha256: item.manifestHash,
+        evidenceProfile: item.manifest.profile, manifest: item.manifest,
+        localPhotoUri,
+      });
       setSelected(item);
       setResult(null);
       setMessage(preCapture
-        ? 'Foto bereit. Die beiden Vorab-Blöcke sind im lokalen Beweispaket gebunden.'
-        : 'Foto bereit. Nur der Hash und ggf. die öffentliche Gerätenotiz werden übertragen.');
+        ? 'Original und Manifest lokal gesichert. Die beiden Vorab-Blöcke sind gebunden.'
+        : 'Original und Manifest lokal gesichert. Zum Senden wird nur der Paket-Hash übertragen.');
       setBusy(false);
       if (autoSend) await submit(item);
     } catch (error) {
@@ -178,8 +209,8 @@ export default function App() {
     try {
       const proof = await withConfirmedBlock(await verifyProof(selected.hash));
       setResult(proof);
-      const existing = history.find(item => item.sha256 === selected.hash);
-      storeRecord(proofToRecord(selected.hash, selected.source, proof, selected.capturedAt, existing));
+      const existing = historyRef.current.find(item => item.sha256 === selected.hash);
+      await storeRecord(proofToRecord(selected.hash, selected.source, proof, selected.capturedAt, existing));
       setMessage(proof.status === 'confirmed' || proof.status === 'expired' ? 'Nachweis auf der Doichain gefunden.' : proof.status === 'pending' ? 'Nachweis ist noch ausstehend.' : 'Noch kein bestätigter Nachweis gefunden.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Prüfung fehlgeschlagen.');
@@ -188,14 +219,25 @@ export default function App() {
     }
   }
 
+  async function retryRecord(record: ProofRecord) {
+    if (busy || !record.manifest || !record.localPhotoUri || !record.photoSha256 || !record.manifestSha256) return;
+    const item: Selected = {
+      uri: record.localPhotoUri, hash: record.sha256,
+      photoHash: record.photoSha256, manifestHash: record.manifestSha256,
+      manifest: record.manifest, source: record.source, capturedAt: record.capturedAt,
+    };
+    setSelected(item);
+    await submit(item);
+  }
+
   async function exportReceipt(record: ProofRecord) {
     if (exportingId) return;
     try {
       setExportingId(record.id);
       await shareReceipt(record, includeSensitiveInPdf);
-      Alert.alert('PDF-Beleg', 'Der PDF-Beleg wurde erstellt.');
+      setMessage('PDF-Beleg wurde lokal gespeichert und im Teilen-Dialog angeboten.');
     } catch (error) {
-      Alert.alert('PDF-Beleg konnte nicht erstellt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
+      Alert.alert('PDF-Beleg konnte nicht geteilt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
     } finally {
       setExportingId(null);
     }
@@ -214,10 +256,14 @@ export default function App() {
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.brand}>DOI / PROOF</Text>
-        <Text style={styles.title}>Dein Foto. Dein Nachweis.</Text>
-        <Text style={styles.lead}>DoiProof berechnet den SHA-256-Hash auf deinem Gerät und verankert ihn kostenlos über den Doichain-MCP-Server.</Text>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.hero}>
+          <Text style={styles.brand}>DOIPROOF  /  ANDROID 0.5</Text>
+          <Text style={styles.title}>Dein Foto.{'\n'}Dein Nachweis.</Text>
+          <Text style={styles.lead}>Original und Manifest bleiben bei dir. An Doichain gehen nur der Paket-Hash und gegebenenfalls eine kurze Gerätenotiz.</Text>
+          <View style={styles.heroStats}><Text style={styles.heroStat}>◈  {history.length} lokal gesichert</Text><Text style={styles.heroStat}>◎  SHA-256</Text></View>
+        </View>
+        <Text style={styles.sectionEyebrow}>01  /  AUFNAHME VORBEREITEN</Text>
         <View style={styles.card}>
           <Text style={styles.label}>Metadatenprofil</Text>
           <View style={styles.row}>
@@ -246,9 +292,14 @@ export default function App() {
           <Text selectable style={styles.hash}>{selected.photoHash}</Text>
           <Text style={styles.label}>SHA-256 des Metadaten-Manifests</Text>
           <Text selectable style={styles.hash}>{selected.manifestHash}</Text>
-          <Text style={styles.label}>Auf Doichain verankerter Beweispaket-Hash</Text>
+          <Text style={styles.label}>Beweispaket-Hash für Doichain</Text>
           <Text selectable style={styles.hash}>{selected.hash}</Text>
           {selected.capturedAt && <Text style={styles.muted}>Gerätezeit bei Aufnahme: {selected.capturedAt}</Text>}
+          {selected.manifest.location && <>
+            <Text style={styles.label}>Erfasster Standort (Geräteangabe)</Text>
+            <Text selectable style={styles.hash}>{selected.manifest.location.latitude.toFixed(6)}°, {selected.manifest.location.longitude.toFixed(6)}°</Text>
+            <Text style={styles.muted}>Genauigkeit: {selected.manifest.location.accuracy ?? 'nicht erfasst'} m · Messung: {selected.manifest.location.measuredAt}{selected.manifest.location.mocked ? ' · Gerät meldet simulierten Standort' : ''}</Text>
+          </>}
           {selected.manifest.preCapture && <>
             <Text style={styles.label}>Vorab-Block BTC · Höhe {selected.manifest.preCapture.bitcoin.height}</Text>
             <Text selectable style={styles.hash}>{selected.manifest.preCapture.bitcoin.hash}</Text>
@@ -256,6 +307,7 @@ export default function App() {
             <Text selectable style={styles.hash}>{selected.manifest.preCapture.doichain.hash}</Text>
           </>}
         </View>}
+        <Text style={styles.sectionEyebrow}>02  /  EINREICHUNG</Text>
         <View style={styles.card}>
           <Text style={styles.label}>Tageskontingent</Text>
           <Text>{quota ? quota.unlimited ? 'Mit eigenem Schlüssel: unbegrenzt' : `${quota.remaining_for_this_ip ?? '?'} von ${quota.limit_per_ip_per_day ?? 10} für diese IP übrig · ${quota.remaining_all_users ?? '?'} insgesamt übrig (UTC-Tag)` : 'Kontingent noch nicht geladen'}</Text>
@@ -289,15 +341,19 @@ export default function App() {
         {history.map(record => <View key={record.id} style={styles.card}>
           <View style={styles.historyTop}>
             <Text style={styles.label}>{record.source === 'camera' ? 'Kameraaufnahme' : 'Ausgewähltes Foto'}</Text>
-            <Text style={[styles.badge, isPending(record) ? styles.pending : styles.confirmed]}>{statusLabel(record.status)}</Text>
+            <Text style={[styles.badge, record.status === 'local' ? styles.local : isPending(record) ? styles.pending : styles.confirmed]}>{statusLabel(record.status)}</Text>
           </View>
-          <Text style={styles.muted}>Eingereicht: {new Date(record.createdAt).toLocaleString()}</Text>
+          <Text style={styles.muted}>{record.status === 'local' ? 'Lokal erstellt' : 'Erstellt'}: {new Date(record.createdAt).toLocaleString()}</Text>
+          {record.status === 'local' && <Text style={styles.muted}>Original und Manifest sind lokal gesichert. Dieser Hash wurde noch nicht eingereicht.</Text>}
+          {record.status === 'submission_unknown' && <Text style={styles.muted}>Die Serverantwort blieb aus. Der Status wird geprüft; du kannst später erneut senden.</Text>}
           <Text selectable numberOfLines={3} style={styles.hash}>{record.sha256}</Text>
           {record.txid && <Text selectable numberOfLines={2} style={styles.hash}>TX: {record.txid}</Text>}
           {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
           {record.blockHeight !== undefined && <Text>Bestätigungsblock: {record.blockHeight}</Text>}
           {record.blockHash && <Text selectable style={styles.hash}>Block-Hash: {record.blockHash}</Text>}
           <View style={styles.row}>
+            {(record.status === 'local' || record.status === 'submission_unknown' || record.status === 'not_found')
+              && record.manifest && record.localPhotoUri && <Pressable accessibilityRole="button" disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={() => retryRecord(record)}><Text style={styles.buttonText}>Jetzt senden</Text></Pressable>}
             <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, exportingId === record.id && styles.disabled]} onPress={() => exportReceipt(record)}><Text style={styles.secondaryText}>{exportingId === record.id ? 'PDF wird erstellt …' : 'PDF-Beleg'}</Text></Pressable>
             {record.manifest && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
           </View>
@@ -309,10 +365,14 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f4f3eb' }, content: { padding: 22, paddingTop: 38, paddingBottom: 54, gap: 18 },
-  brand: { color: '#156a65', fontSize: 13, fontWeight: '800', letterSpacing: 3 },
-  title: { fontSize: 34, fontWeight: '800', color: '#172c2b' },
-  lead: { fontSize: 16, lineHeight: 24, color: '#445d5a' },
+  screen: { flex: 1, backgroundColor: '#f4f3eb' }, content: { padding: 22, paddingTop: 20, paddingBottom: 54, gap: 18 },
+  hero: { backgroundColor: '#123739', borderRadius: 24, padding: 26, gap: 15 },
+  brand: { color: '#abdac3', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
+  title: { fontSize: 38, lineHeight: 43, fontWeight: '700', color: '#f4f3eb' },
+  lead: { fontSize: 14, lineHeight: 22, color: '#c4dbd0' },
+  heroStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  heroStat: { color: '#e7d0a5', fontSize: 11, fontWeight: '700', borderWidth: 1, borderColor: '#45716c', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8 },
+  sectionEyebrow: { color: '#39716a', fontSize: 11, fontWeight: '800', letterSpacing: 1.4, marginTop: 7 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   button: { backgroundColor: '#156a65', borderRadius: 12, padding: 14 },
   secondary: { borderColor: '#156a65', borderWidth: 1, borderRadius: 12, padding: 13 },
@@ -330,4 +390,5 @@ const styles = StyleSheet.create({
   historyTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   badge: { overflow: 'hidden', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12, fontWeight: '700' },
   pending: { backgroundColor: '#fff0c2', color: '#725400' }, confirmed: { backgroundColor: '#dcefe9', color: '#145c4f' },
+  local: { backgroundColor: '#e7ece8', color: '#345e57' },
 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isPending, isProofRecord, proofToRecord } from './proofRecord';
+import { isPending, isProofRecord, proofToRecord, upsertRecord } from './proofRecord';
 
 const hash = 'a'.repeat(64);
 const now = '2026-09-27T21:00:00.000Z';
@@ -52,4 +52,19 @@ test('preserves block height and v2 manifest while confirming a proof', () => {
   }, now, previous);
   assert.equal(record.blockHeight, 432010);
   assert.equal(record.manifest, previous.manifest);
+});
+
+test('local capture remains available for retry and is not polled before submission', () => {
+  const draft = {
+    ...proofToRecord(hash, 'camera', { sha256: hash, status: 'local' }, now, undefined, now),
+    localPhotoUri: 'file:///private/original.jpg',
+    manifest: { schema: 'org.doichain.doiproof.evidence/v2' as const,
+      createdAt: now, profile: 'private' as const, photo: { sha256: 'b'.repeat(64) } },
+  };
+  assert.equal(isPending(draft), false);
+  const submitted = proofToRecord(hash, 'camera', { sha256: hash, status: 'pending' }, now, draft, now);
+  assert.equal(submitted.localPhotoUri, draft.localPhotoUri);
+  assert.equal(submitted.manifest, draft.manifest);
+  assert.deepEqual(upsertRecord([draft], submitted), [submitted]);
+  assert.equal(isPending({ ...draft, status: 'submission_unknown' }), true);
 });

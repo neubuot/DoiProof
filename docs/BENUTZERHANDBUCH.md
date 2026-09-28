@@ -1,12 +1,12 @@
 # DoiProof: ausführliches Benutzerhandbuch
 
-**Stand:** Version 0.4, 28. September 2026. Die Funktion mit BTC- und Doichain-Vorabblöcken ist implementiert, aber noch nicht auf einem Mobilgerät getestet. Oberfläche und Datenformat können sich in späteren Versionen ändern; GitHub hält die Änderungen dieses Dokuments fest.
+**Stand:** Version 0.5, 29. September 2026. Die Funktion mit BTC- und Doichain-Vorabblöcken ist implementiert, aber noch nicht auf einem Mobilgerät getestet. Oberfläche und Datenformat können sich in späteren Versionen ändern; GitHub hält die Änderungen dieses Dokuments fest.
 
 ## 1. Was DoiProof erzeugt
 
 Ein Nachweis besteht aus der ausgewählten Fotodatei, einem Manifest mit den bewusst gewählten Metadaten und dem gemeinsamen Beweispaket-Hash. Nur dieser Hash und eine kurze öffentliche Gerätenotiz werden an den Doichain-Dienst gesendet. Nach bestätigter Aufnahme in einen Block kann ein Dritter die Identität der vorgelegten Bytes und deren zeitlich eingeordneten Paketbestand prüfen. Die [Produktbeschreibung](PRODUKT-UND-BEWEISKETTE.md) erklärt die Aussagekraft und Grenzen ausführlich.
 
-Für Entwicklung und Tests läuft die App mit Expo Go auf Android oder iOS. Ein eigener Release-Build mit attestierter App-Identität ist noch nicht eingerichtet. Die DoiProof-Oberfläche benötigt den laufenden Expo-Entwicklungsserver auf dem Notebook, solange sie über diesen Weg gestartet wird. Der Gerätestand von Version 0.4 ist noch offen.
+Für Entwicklung und Tests läuft die App mit Expo Go auf Android oder iOS. Ein eigener Release-Build mit attestierter App-Identität ist noch nicht eingerichtet. Die DoiProof-Oberfläche benötigt den laufenden Expo-Entwicklungsserver auf dem Notebook, solange sie über diesen Weg gestartet wird. Ein APK-Buildprofil ist vorbereitet; der eigenständige Android-Build und sein Gerätetest stehen noch aus. Siehe [Android-Release](ANDROID-RELEASE.md).
 
 ## 2. Start über das Notebook
 
@@ -48,24 +48,26 @@ Die Abfragezeiten und die spätere Aufnahme-Gerätezeit stammen vom Gerät. Die 
 4. Optional „Eigener PoE- oder Write-Schlüssel“ eintragen. Der Schlüssel wird während dieser App-Sitzung im Speicher gehalten und an den MCP-Dienst übertragen. **Niemals einen Admin-Schlüssel eintragen.**
 5. „Nach Aufnahme sofort senden“ ist standardmäßig aktiv und greift auch bei einem aus der Mediathek gewählten Bild. Bei deaktiviertem Schalter „Nachweis anlegen“ tippen. „Status prüfen“ fragt den Status des gerade ausgewählten Hashs ab.
 
-Falls eine Übertragung fehlschlägt, ist der ausgewählte Inhalt nicht allein deshalb im Nachweisverlauf gespeichert. Eine lokale Kopie der Bilddatei wird erst nach angenommener Einreichung abgelegt. Die App behauptet keine automatische Galerie-Sicherung. Im Zweifel Einreichung und Verlauf prüfen, dann ein vollständiges ZIP exportieren.
+Originalfoto und Manifest werden bereits vor dem Senden im privaten App-Verzeichnis gespeichert. Ein Entwurf erscheint als „Lokal gesichert“ und kann nach einem Neustart mit „Jetzt senden“ eingereicht werden. Bei fehlender Serverantwort zeigt die App „Einreichung unklar“ und fragt den Status später erneut ab. Die App speichert das Foto nicht automatisch in der Galerie. Sichere das ZIP zusätzlich außerhalb der App.
 
 ### Status
 
 | Anzeige/API-Status | Bedeutung |
 |---|---|
+| `local` | Nur lokal gespeichert; noch keine Einreichung. |
+| `submission_unknown` | Keine eindeutige Serverantwort; Status abfragen oder später erneut senden. |
 | `pending` | Vom Dienst als ausstehend gemeldet; noch kein bestätigter Blocknachweis. |
 | `confirmed` | Nachweis wurde im Doichain-Block gefunden; Transaktion und Block unabhängig nachprüfen. |
 | `expired` | PoE-Status des Dienstes abgelaufen; eine historisch bestätigte Transaktion kann weiter bestehen. Den konkreten Ketteneintrag selbst prüfen. |
 | Sonstiger Status oder Fehler | Keine Bestätigung aus dem Wortlaut ableiten; Abfrage und gegebenenfalls Dienst prüfen. |
 
-Der Verlauf prüft offene Einträge beim App-Start, bei Rückkehr in den Vordergrund, während der Nutzung und mit „Offene prüfen“. Eine ergänzende Abfrage des Transaktionsblocks kann einen Block-Hash hinzufügen; fehlt er im lokalen Verlauf, ist die Transaktion gesondert zu verifizieren. Die lokal gespeicherte Anzahl der Bestätigungen ist nur ein früherer Abfragestand.
+Der Verlauf fragt nur eingereichte oder unklare Einträge ab, nicht lokale Entwürfe. Er prüft offene Einträge beim App-Start, bei Rückkehr in den Vordergrund, während der Nutzung und mit „Offene prüfen“. Eine ergänzende Abfrage des Transaktionsblocks kann einen Block-Hash hinzufügen; fehlt er im lokalen Verlauf, ist die Transaktion gesondert zu verifizieren. Die lokal gespeicherte Anzahl der Bestätigungen ist nur ein früherer Abfragestand.
 
 ## 5. Export und Aufbewahrung
 
 Im „Nachweisverlauf“:
 
-- „PDF-Beleg“ erstellt eine lesbare Zusammenfassung und öffnet den Systemdialog zum Teilen. Je nach Gerät kann Drucken als Alternative erscheinen. Erst eine abgeschlossene Freigabe/Speicherung im Zielsystem bewahrt eine externe Kopie.
+- „PDF-Beleg“ erstellt eine lesbare Zusammenfassung, speichert sie im privaten App-Verzeichnis und öffnet den Systemdialog zum Teilen. Erst eine abgeschlossene Freigabe/Speicherung im Zielsystem bewahrt eine externe Kopie.
 - „Sensible Metadaten im PDF zeigen“ steuert nur die Anzeige im PDF. Das vollständige ZIP enthält immer das ausgewählte Bild und das vollständige Manifest mit den tatsächlich erfassten Koordinaten und Geräteangaben.
 - „Beweispaket ZIP“ teilt `original.<endung>`, `manifest.json`, `verification.json` und `README.txt`. Den Export in einem gesicherten Verzeichnis ablegen, eine zweite Kopie aufbewahren und Empfängern nur bewusst Zugriff geben.
 
@@ -101,7 +103,7 @@ Dann den Paket-Hash unabhängig über Doichain `check_proof` oder eine eigene Ke
 
 **Welche Daten verlassen das Gerät?** Bei der Verankerung der Paket-Hash und eine kurze öffentliche Gerätenotiz; für Vorabblöcke werden öffentliche Blockdienste kontaktiert. Auch ein solcher Netzwerkaufruf kann technische Verbindungsdaten beim Dienst hinterlassen. Bild und rohe Standortdaten werden von DoiProof dabei nicht hochgeladen. Das Teilen von PDF oder ZIP ist eine gesonderte, vom Nutzer ausgelöste Weitergabe.
 
-**Wo finde ich den Software-Fingerprint?** Version 0.4 erfasst keinen unabhängig gemessenen Fingerprint einer installierten App-Datei. Versionsnummer und möglicher Commit sind Selbstauskünfte. App-/Geräteattestierung und signierte Challenge sind als [#6](https://github.com/neubuot/DoiProof/issues/6) und [#7](https://github.com/neubuot/DoiProof/issues/7) vorgemerkt.
+**Wo finde ich den Software-Fingerprint?** Version 0.5 erfasst keinen unabhängig gemessenen Fingerprint einer installierten App-Datei. Versionsnummer und möglicher Commit sind Selbstauskünfte. App-/Geräteattestierung und signierte Challenge sind als [#6](https://github.com/neubuot/DoiProof/issues/6) und [#7](https://github.com/neubuot/DoiProof/issues/7) vorgemerkt.
 
 ## 8. Dokumentation und Änderungen
 

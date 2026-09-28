@@ -107,5 +107,10 @@ export function proofToRecord(
 }
 
 export function isPending(record: ProofRecord): boolean {
-  return record.status !== 'confirmed' && record.status !== 'expired';
+  return record.status !== 'local' && record.status !== 'confirmed' && record.status !== 'expired';
+}
+
+export function upsertRecord(records: ProofRecord[], record: ProofRecord): ProofRecord[] {
+  return [record, ...records.filter(item => item.id !== record.id && item.sha256 !== record.sha256)]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

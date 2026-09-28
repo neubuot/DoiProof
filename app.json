@@ -3,11 +3,17 @@
     "name": "DoiProof",
     "slug": "doiproof",
     "scheme": "doiproof",
-    "version": "0.4.0",
+    "version": "0.5.0",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": { "supportsTablet": true },
-    "android": { "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"] },
+    "android": {
+      "package": "org.doichain.doiproof",
+      "versionCode": 1,
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#123739" },
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
     "plugins": [
       ["expo-image-picker", {
         "cameraPermission": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen.",
