@@ -14,6 +14,7 @@ const ui = {
   locationEmpty: $('location-empty'), locationContent: $('location-content'),
   coordinates: $('coordinates'), mapButton: $('map-button'), map: $('map'), mapGrid: $('map-grid'),
   metadata: $('metadata-list'), metadataCount: $('metadata-count'), manifestJson: $('manifest-json'),
+  verificationJson: $('verification-json'),
 };
 let file = null;
 let result = null;
@@ -189,7 +190,7 @@ function showDetails(data) {
   ui.locationEmpty.hidden = hasCoords;
   ui.locationContent.hidden = !hasCoords;
   if (hasCoords) ui.coordinates.textContent = `${loc.latitude.toFixed(6)}°, ${loc.longitude.toFixed(6)}°`;
-  const rows = flatten(data.manifest);
+  const rows = [...flatten(data.manifest, ['Manifest']), ...flatten(data.verification, ['Exportstatus'])];
   ui.metadata.replaceChildren();
   for (const [path, value] of rows) {
     const row = document.createElement('div'); row.className = 'metadata-item';
@@ -200,6 +201,7 @@ function showDetails(data) {
   }
   ui.metadataCount.textContent = rows.length + ' Angaben';
   ui.manifestJson.textContent = JSON.stringify(data.manifest, null, 2);
+  ui.verificationJson.textContent = JSON.stringify(data.verification, null, 2);
   ui.evidence.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 ui.reveal.addEventListener('click', async () => {

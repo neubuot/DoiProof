@@ -46,7 +46,7 @@ Im Profil „Privat“ werden keine GPS-Daten angefordert. Standort- und weitere
 
 ## Schnellstart
 
-Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Ab Prüfer-Version 0.6.0 können Originalfoto und sämtliche Manifestangaben bewusst eingeblendet werden; der Kartenausschnitt wird erst nach gesondertem Klick abgerufen. Die Handy-App bleibt bei Version 0.4.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
+Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Ab Prüfer-Version 0.6.0 können Originalfoto und sämtliche Manifest- und Exportstatusangaben bewusst eingeblendet werden; der Kartenausschnitt wird erst nach gesondertem Klick abgerufen. Die Handy-App bleibt bei Version 0.4.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
 
 Voraussetzungen:
 

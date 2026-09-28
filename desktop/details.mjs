@@ -18,11 +18,13 @@ export async function evidenceDetails(zipBytes, expectedHash) {
   if (local.evidenceSha256 !== expectedHash) throw new Error('Die ZIP-Datei hat sich seit der Prüfung geändert. Bitte erneut prüfen.');
   const zip = await JSZip.loadAsync(zipBytes);
   const manifest = JSON.parse(await zip.file('manifest.json').async('string'));
+  const verification = JSON.parse(await zip.file('verification.json').async('string'));
   const photo = await zip.file(local.photoFile).async('nodebuffer');
   if (sha(photo) !== local.photoSha256) throw new Error('Fotodatei wurde verändert.');
   const mime = photo.length <= PREVIEW_LIMIT ? imageMime(photo) : null;
   return {
     manifest,
+    verification,
     photoFile: local.photoFile,
     photoBytes: photo.length,
     photoPreview: mime ? `data:${mime};base64,${photo.toString('base64')}` : null,

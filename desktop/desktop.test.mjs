@@ -51,6 +51,7 @@ test('revealed details are bound to the verified ZIP and preserve the complete m
   const bytes = await zip.generateAsync({ type: 'nodebuffer' });
   const details = await evidenceDetails(bytes, evidenceHash);
   assert.deepEqual(details.manifest, manifest);
+  assert.equal(details.verification.evidenceSha256, evidenceHash);
   assert.match(details.photoPreview, /^data:image\/jpeg;base64,/);
   await assert.rejects(evidenceDetails(bytes, '0'.repeat(64)), /seit der Prüfung geändert/);
 });
