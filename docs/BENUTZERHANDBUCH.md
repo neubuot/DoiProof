@@ -73,6 +73,8 @@ Der Nachweisverlauf und die bewahrte Bildkopie liegen lokal in der App. Es gibt 
 
 ## 6. Technische Prüfung eines übergebenen Pakets
 
+Mit dem [ZIP-Prüfprogramm](PRUEFPROGRAMM.md) lässt sich ein exportiertes Paket unabhängig von der App zunächst offline prüfen: `npm run verify -- paket.zip`. `--online` fragt zusätzlich den Status und die genannten Blöcke über die beschriebenen öffentlichen Dienste ab. Ein lesbarer Bericht kann mit `--report pruefbericht.md` gespeichert werden.
+
 Die drei Hash-Schritte für v2 sind:
 
 ```text

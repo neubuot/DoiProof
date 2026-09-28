@@ -28,6 +28,7 @@ DoiProof erstellt für eine ausgewählte Fotodatei einen kryptografischen SHA-25
 - `src/history.ts`: lokale, app-private JSON-Speicherung.
 - `src/proofRecord.ts`: Datenmodell, Aktualisierung und Statuslogik.
 - `src/receipt.ts`: lokale PDF-Erzeugung und Systemfreigabe.
+- `scripts/verify.mjs`: unabhängige Offlineprüfung exportierter ZIPs und optionale MCP-/BTC-Abfragen.
 - `app.json`: Expo-Metadaten und Berechtigungstexte.
 - `package.json`: reproduzierbare Befehle und Abhängigkeiten.
 

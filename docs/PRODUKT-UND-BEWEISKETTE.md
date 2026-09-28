@@ -49,6 +49,8 @@ Eine Reihe aus Übersicht, Detail und Kontext ist häufig aussagekräftiger als 
 
 ## Prüfung durch Dritte
 
+Das [eigenständige ZIP-Prüfprogramm](PRUEFPROGRAMM.md) automatisiert die lokale Hashprüfung und bietet eine optionale Netzabfrage. Es verwendet bei DOI denselben MCP-Dienst wie die App; für eine vom Dienst unabhängige Kettenprüfung ist ein eigener oder anders ausgewählter Node erforderlich.
+
 1. Das vollständige ZIP vom Übergebenden erhalten, sicher kopieren und seinen eigenen Empfang und etwaige Änderungen dokumentieren. Das ZIP selbst enthält private Inhalte; eine PDF-Zusammenfassung allein reicht zur Neuberechnung nicht.
 2. SHA-256 über die Bytes von `original.<endung>` berechnen und mit `manifest.photo.sha256` und `verification.photoSha256` vergleichen.
 3. Das Manifest gemäß `src/evidence.ts` kanonisieren: Objektschlüssel rekursiv mit JavaScript `localeCompare` sortieren, `undefined`-Felder auslassen, JSON ohne Leerraum serialisieren. Das ZIP-`manifest.json` enthält anschließend **einen zusätzlichen Zeilenumbruch**, der bei der Manifest-Hashberechnung nicht dazugehört. Den SHA-256 über die UTF-8-Bytes der kanonischen JSON-Zeichenfolge mit `verification.manifestSha256` vergleichen.
