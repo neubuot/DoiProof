@@ -229,8 +229,9 @@ ui.mapButton.addEventListener('click', async () => {
     const grid = await window.doiproof.mapTiles(loc.latitude, loc.longitude);
     if (details?.manifest.location !== loc) return;
     ui.mapGrid.replaceChildren();
-    ui.mapGrid.style.left = grid.offsetX + 'px';
-    ui.mapGrid.style.top = grid.offsetY + 'px';
+    ui.map.hidden = false;
+    ui.mapGrid.style.left = (ui.map.clientWidth / 2 - grid.centerX) + 'px';
+    ui.mapGrid.style.top = (ui.map.clientHeight / 2 - grid.centerY) + 'px';
     for (const tile of grid.tiles) {
       const image = document.createElement('img');
       image.src = tile.data; image.alt = '';
@@ -238,7 +239,6 @@ ui.mapButton.addEventListener('click', async () => {
       image.style.top = tile.row * 256 + 'px';
       ui.mapGrid.append(image);
     }
-    ui.map.hidden = false;
     ui.mapButton.textContent = 'Karte geladen ✓';
   } catch (error) {
     say('Karte nicht verfügbar: ' + error.message + '. Die Koordinaten bleiben oben sichtbar.');

@@ -17,5 +17,5 @@ export function tileGrid(latitude, longitude, zoom = 14) {
       if (y >= 0 && y < n) tiles.push({ col: dx + 1, row: dy + 1, x: (tx + dx + n) % n, y, zoom });
     }
   }
-  return { tiles, offsetX: 300 - (1 + px - tx) * 256, offsetY: 170 - (1 + py - ty) * 256 };
+  return { tiles, centerX: (1 + px - tx) * 256, centerY: (1 + py - ty) * 256 };
 }

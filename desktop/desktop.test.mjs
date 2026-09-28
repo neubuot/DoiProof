@@ -59,6 +59,7 @@ test('map uses valid Web Mercator tiles and rejects malformed coordinates', () =
   const grid = tileGrid(48.19, 16.37);
   assert.equal(grid.tiles.length, 9);
   assert(grid.tiles.every(tile => tile.x >= 0 && tile.x < 16384 && tile.y >= 0 && tile.y < 16384));
-  assert(grid.offsetX < 300 && grid.offsetY < 170);
+  assert(grid.centerX >= 256 && grid.centerX < 512);
+  assert(grid.centerY >= 256 && grid.centerY < 512);
   assert.throws(() => tileGrid(91, 16.37), /gültigen Koordinaten/);
 });
