@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Directory, File, Paths } from 'expo-file-system';
 import { ProofRecord } from './history';
 
 function escapeHtml(value: string): string {
@@ -13,7 +14,7 @@ function row(label: string, value?: string | number): string {
   return `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(String(value))}</td></tr>`;
 }
 
-export async function shareReceipt(record: ProofRecord, includeSensitive = false): Promise<void> {
+export async function shareReceipt(record: ProofRecord, includeSensitive = false): Promise<string> {
   const location = includeSensitive ? record.manifest?.location : undefined;
   const pre = record.manifest?.preCapture;
   const html = `<!doctype html>
@@ -56,13 +57,11 @@ ${row('GPS-Genauigkeit (m)', location?.accuracy ?? undefined)}
 <p class="note">Dieser Beleg dokumentiert die Antwort der Doichain-API. Der Beweispaket-Hash bindet Originaldatei und Manifest. Vorab-Blöcke und selbst gemeldete App-Version sind nicht attestiert; sie beweisen weder eine frische Kameraaufnahme noch Urheberschaft, Echtheit des Motivs oder exakte Uhrzeiten. Prüfe den Originalblock und die Transaktion unabhängig. Das Foto selbst ist nicht Bestandteil dieses PDF-Belegs.</p>
 </body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
-  if (await Sharing.isAvailableAsync()) {
-    try {
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'DoiProof-Beleg teilen', UTI: 'com.adobe.pdf' });
-      return;
-    } catch {
-      // Some Android share targets reject temporary PDF URIs. Fall back to the system print dialog.
-    }
-  }
-  await Print.printAsync({ uri });
+  const directory = new Directory(Paths.document, 'receipts');
+  if (!directory.exists) directory.create({ idempotent: true, intermediates: true });
+  const saved = new File(directory, `DoiProof-Beleg-${record.sha256.slice(0, 12)}-${Date.now()}.pdf`);
+  await new File(uri).copy(saved);
+  if (!await Sharing.isAvailableAsync()) throw new Error('PDF wurde lokal gespeichert, aber der Teilen-Dialog ist auf diesem Gerät nicht verfügbar.');
+  await Sharing.shareAsync(saved.uri, { mimeType: 'application/pdf', dialogTitle: 'DoiProof-Beleg teilen', UTI: 'com.adobe.pdf' });
+  return saved.uri;
 }

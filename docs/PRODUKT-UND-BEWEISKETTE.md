@@ -13,7 +13,7 @@ DoiProof ist eine mobile Anwendung, die die Bytes einer ausgewählten Fotodatei 
 | Technische Prüfer | Manifestversion, Dateibytes, Hashberechnung, Vorabblöcke, Transaktion und Kettenverlauf unabhängig prüfen. |
 | Gericht oder Sachverständige | Technisch überprüfbare Tatsachen von Geräteangaben und Schilderungen trennen; Beweiswert im Einzelfall und zusammen mit anderen Beweismitteln würdigen. |
 
-## Ablauf in Version 0.4
+## Ablauf ab Version 0.4
 
 1. Vor dem Öffnen der **Kamera** fragt die App standardmäßig den aktuellen BTC-Block über Blockstream und den aktuellen Doichain-Block über den Doichain-MCP-Dienst ab. Sie übernimmt jeweils Höhe, Hash, Headerzeit, Quelle und eine vom Gerät gemeldete Abfragezeit. Die beiden Abfragen laufen parallel. Falls eine scheitert, öffnet die Kamera in diesem Modus nicht. Der Nutzer kann den Modus sichtbar ausschalten und erneut fotografieren. Bei „Foto wählen“ aus der Mediathek entstehen keine Vorabblöcke.
 2. Nach Rückkehr aus der Kamera oder Bildauswahl berechnet die App SHA-256 über die **von der Bildauswahl gelieferten Dateibytes**. Das ist nicht zwangsläufig die unveränderte Rohdatei des Sensors oder eine früher vorhandene externe Originaldatei. Die App notiert eine Gerätezeit nach der Rückkehr; es ist keine unabhängig gemessene Auslösezeit.
@@ -65,4 +65,4 @@ Das Profil „Privat“ fordert keinen Standort an. Andere Profile können präz
 
 DoiProof stellt **keinen qualifizierten elektronischen Zeitstempel** aus und beansprucht keine gesetzliche Vermutung wie ein solcher. Nach [Art. 41 eIDAS-Verordnung](https://eur-lex.europa.eu/eli/reg/2014/910/oj?locale=de) sind die Wirkungen eines elektronischen Zeitstempels und die besondere Vermutung für qualifizierte Zeitstempel zu unterscheiden. Die rechtliche Würdigung bleibt eine Frage des konkreten Verfahrens, der überprüften Tatsachen und aller weiteren Beweismittel. Diese Dokumentation ist keine Rechtsberatung.
 
-Geräte- und Software-Authentizität sind künftige Arbeiten: [Issue #6: App-/Geräteattestierung](https://github.com/neubuot/DoiProof/issues/6), [Issue #7: signierte Server-Challenge](https://github.com/neubuot/DoiProof/issues/7). Sie sind **nicht** Teil von Version 0.4. Für die Bedienung siehe [Kurzanleitung](KURZANLEITUNG.md) und [Benutzerhandbuch](BENUTZERHANDBUCH.md); das technische Modell steht in [ARCHITECTURE.md](ARCHITECTURE.md).
+Geräte- und Software-Authentizität sind künftige Arbeiten: [Issue #6: App-/Geräteattestierung](https://github.com/neubuot/DoiProof/issues/6), [Issue #7: signierte Server-Challenge](https://github.com/neubuot/DoiProof/issues/7). Sie sind **nicht** Teil von Version 0.5. Für die Bedienung siehe [Kurzanleitung](KURZANLEITUNG.md) und [Benutzerhandbuch](BENUTZERHANDBUCH.md); das technische Modell steht in [ARCHITECTURE.md](ARCHITECTURE.md).
