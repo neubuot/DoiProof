@@ -73,7 +73,7 @@ Der Nachweisverlauf und die bewahrte Bildkopie liegen lokal in der App. Es gibt 
 
 ## 6. Technische Prüfung eines übergebenen Pakets
 
-Die vier Hash-Schritte für v2 sind:
+Die drei Hash-Schritte für v2 sind:
 
 ```text
 foto = SHA-256(Bytes von original.<endung>)
