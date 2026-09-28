@@ -32,10 +32,13 @@ export async function shareEvidenceBundle(record: ProofRecord): Promise<void> {
     status: record.status,
     txid: record.txid,
     blockTimeUtc: record.blockTimeUtc,
+    blockHeight: record.blockHeight,
+    blockHash: record.blockHash,
     confirmations: record.confirmations,
     lastCheckedAt: record.lastCheckedAt,
   }, null, 2)}\n`);
-  zip.file('README.txt', 'DoiProof-Beweispaket\n\nPrüfung: SHA-256 des Originals und des kanonischen manifest.json berechnen. Der gemeinsame Hash ist SHA-256 von "DoiProof:v1\\nphoto:<PHOTO_HASH>\\nmanifest:<MANIFEST_HASH>" und wurde auf Doichain verankert.\n');
+  const version = record.manifest.schema.endsWith('/v2') ? 'v2' : 'v1';
+  zip.file('README.txt', `DoiProof-Beweispaket\n\nPrüfung: SHA-256 des Originals und des kanonischen manifest.json (ohne abschließenden Zeilenumbruch) berechnen. Der gemeinsame Hash ist SHA-256 von "DoiProof:${version}\\nphoto:<PHOTO_HASH>\\nmanifest:<MANIFEST_HASH>". Nur dieser Hash wird auf Doichain verankert. Die Vorab-Blöcke sind im Manifest enthalten; ihre Abfragezeit und die App-Version sind Selbstauskünfte des Geräts. Ein altes Foto kann erneut verwendet werden. Den Bestätigungsblock und die Transaktion unabhängig auf der Kette prüfen.\n`);
   const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
   const output = new File(Paths.cache, `DoiProof-${record.id}.zip`);
   output.write(bytes);

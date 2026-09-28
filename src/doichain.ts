@@ -7,10 +7,23 @@ export type Proof = {
   already_anchored?: boolean;
   txid?: string;
   block_time_utc?: string;
+  block_height?: number;
+  block_hash?: string;
   confirmations?: number;
   verify_url?: string;
   [key: string]: unknown;
 };
+
+export type ChainStatus = {
+  block_height: number;
+  best_block_hash: string;
+  best_block_time_utc: string;
+  synced: boolean;
+  fork_check_ok: boolean;
+};
+
+export type DoichainBlock = { height: number; hash: string; time_utc: string; confirmations: number };
+type DoichainTransaction = { txid?: string; block_hash?: string; confirmations?: number };
 
 export type Quota = {
   unlimited: boolean;
@@ -58,6 +71,32 @@ async function callTool<T>(name: string, args: Record<string, unknown>, apiKey =
 
 export async function getQuota(apiKey = ''): Promise<Quota> {
   return callTool<Quota>('get_anchoring_quota', {}, apiKey);
+}
+
+export async function getChainStatus(): Promise<ChainStatus> {
+  return callTool<ChainStatus>('get_chain_status', {});
+}
+
+export async function getBlock(block: number | string): Promise<DoichainBlock> {
+  return callTool<DoichainBlock>('get_block', { block });
+}
+
+/** The proof response supplies a height; fetch the actual transaction to bind its block hash. */
+export async function withConfirmedBlock(proof: Proof): Promise<Proof> {
+  if ((proof.status !== 'confirmed' && proof.status !== 'expired') || !proof.txid
+    || !Number.isSafeInteger(proof.block_height)) return proof;
+  try {
+    const transaction = await callTool<DoichainTransaction>('get_transaction', { txid: proof.txid });
+    if (transaction.txid && transaction.txid !== proof.txid) return proof;
+    if (!transaction.block_hash || !HASH_PATTERN.test(transaction.block_hash)
+      || (transaction.confirmations ?? 0) < 1) return proof;
+    const block = await getBlock(transaction.block_hash);
+    if (block.hash !== transaction.block_hash || block.height !== proof.block_height) return proof;
+    return { ...proof, block_hash: block.hash };
+  } catch {
+    // Do not convert a confirmed proof into an error when the supplemental lookup is unavailable.
+    return proof;
+  }
 }
 
 export async function verifyProof(hash: string): Promise<Proof> {

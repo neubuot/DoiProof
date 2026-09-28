@@ -15,6 +15,7 @@ function row(label: string, value?: string | number): string {
 
 export async function shareReceipt(record: ProofRecord, includeSensitive = false): Promise<void> {
   const location = includeSensitive ? record.manifest?.location : undefined;
+  const pre = record.manifest?.preCapture;
   const html = `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><style>
 body{font-family:Arial,sans-serif;color:#172c2b;padding:36px}h1{color:#156a65}
@@ -27,11 +28,24 @@ th{width:30%}td.hash{font-family:monospace;word-break:break-all}.note{margin-top
 ${row('Beweispaket SHA-256', record.sha256).replace('<td>', '<td class="hash">')}
 ${row('Foto SHA-256', record.photoSha256).replace('<td>', '<td class="hash">')}
 ${row('Manifest SHA-256', record.manifestSha256).replace('<td>', '<td class="hash">')}
+${row('Beweisformat', record.manifest?.schema)}
+${row('BTC-Vorabblock Höhe', pre?.bitcoin.height)}
+${row('BTC-Vorabblock Hash', pre?.bitcoin.hash).replace('<td>', '<td class="hash">')}
+${row('BTC-Blockzeit laut Header', pre?.bitcoin.headerTimeUtc)}
+${row('BTC-Abfrage laut Gerät', pre?.bitcoin.observedAtDeviceUtc)}
+${row('DOI-Vorabblock Höhe', pre?.doichain.height)}
+${row('DOI-Vorabblock Hash', pre?.doichain.hash).replace('<td>', '<td class="hash">')}
+${row('DOI-Blockzeit laut Header', pre?.doichain.headerTimeUtc)}
+${row('DOI-Abfrage laut Gerät', pre?.doichain.observedAtDeviceUtc)}
+${row('DoiProof-Version (Selbstauskunft)', record.manifest?.app?.version)}
+${row('Quellcode-Commit (Selbstauskunft)', record.manifest?.app?.sourceCommit)}
 ${row('Einreichung (UTC)', record.createdAt)}
 ${row('Gerätezeit der Aufnahme', record.capturedAt)}
 ${row('Quelle', record.source === 'camera' ? 'Kamera' : 'Fotobibliothek')}
 ${row('Transaktions-ID', record.txid).replace('<td>', '<td class="hash">')}
 ${row('Blockzeit (UTC)', record.blockTimeUtc)}
+${row('Bestätigungsblock Höhe', record.blockHeight)}
+${row('Bestätigungsblock Hash', record.blockHash).replace('<td>', '<td class="hash">')}
 ${row('Bestätigungen', record.confirmations)}
 ${row('Zuletzt geprüft', record.lastCheckedAt)}
 ${row('Breitengrad', location?.latitude)}
@@ -39,7 +53,7 @@ ${row('Längengrad', location?.longitude)}
 ${row('Höhe (m)', location?.altitude ?? undefined)}
 ${row('GPS-Genauigkeit (m)', location?.accuracy ?? undefined)}
 </table>
-<p class="note">Dieser Beleg dokumentiert die Antwort der Doichain-API. Der Beweispaket-Hash bindet den Hash der Originaldatei und den Hash des kanonischen Metadaten-Manifests. Er beweist nicht automatisch Urheberschaft, Echtheit des Motivs oder die Richtigkeit geräteseitig gemeldeter Werte. Das Foto selbst ist nicht Bestandteil dieses PDF-Belegs.</p>
+<p class="note">Dieser Beleg dokumentiert die Antwort der Doichain-API. Der Beweispaket-Hash bindet Originaldatei und Manifest. Vorab-Blöcke und selbst gemeldete App-Version sind nicht attestiert; sie beweisen weder eine frische Kameraaufnahme noch Urheberschaft, Echtheit des Motivs oder exakte Uhrzeiten. Prüfe den Originalblock und die Transaktion unabhängig. Das Foto selbst ist nicht Bestandteil dieses PDF-Belegs.</p>
 </body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
   if (await Sharing.isAvailableAsync()) {

@@ -9,6 +9,8 @@ export type ProofRecord = {
   status: string;
   txid?: string;
   blockTimeUtc?: string;
+  blockHeight?: number;
+  blockHash?: string;
   confirmations?: number;
   verifyUrl?: string;
   lastCheckedAt: string;
@@ -21,10 +23,27 @@ export type ProofRecord = {
 
 export type EvidenceProfile = 'private' | 'location' | 'custom';
 
+export type BlockAnchor = {
+  chain: 'btc' | 'doi';
+  height: number;
+  hash: string;
+  headerTimeUtc: string;
+  observedAtDeviceUtc: string;
+  source: string;
+};
+
+export type PreCaptureAnchors = { bitcoin: BlockAnchor; doichain: BlockAnchor };
+
 export type EvidenceManifest = {
-  schema: 'org.doichain.doiproof.evidence/v1';
+  schema: 'org.doichain.doiproof.evidence/v1' | 'org.doichain.doiproof.evidence/v2';
   createdAt: string;
   profile: EvidenceProfile;
+  preCapture?: PreCaptureAnchors;
+  app?: {
+    version: string;
+    sourceCommit?: string;
+    identification: 'self-reported-unattested';
+  };
   photo: {
     sha256: string;
     width?: number;
@@ -79,6 +98,8 @@ export function proofToRecord(
     status: proof.status ?? existing?.status ?? 'pending',
     txid: proof.txid ?? existing?.txid,
     blockTimeUtc: proof.block_time_utc ?? existing?.blockTimeUtc,
+    blockHeight: proof.block_height ?? existing?.blockHeight,
+    blockHash: proof.block_hash ?? existing?.blockHash,
     confirmations: proof.confirmations ?? existing?.confirmations,
     verifyUrl: proof.verify_url ?? existing?.verifyUrl,
     lastCheckedAt: now,

@@ -2,7 +2,7 @@
 
 DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie erstellt lokal ein kryptografisch gebundenes Beweispaket aus Originalfoto und optionalen Metadaten und verankert ausschließlich dessen SHA-256-Hash als Proof of Existence auf der Doichain.
 
-> **Version 0.3:** Die Kernfunktion wurde auf einem realen Android-Gerät erfolgreich getestet. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
+> **Version 0.4:** Vor einer Kameraaufnahme werden BTC- und Doichain-Vorabblöcke erfasst. Diese Erweiterung benötigt noch einen Gerätetest. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
 
 ## Funktionen
 
@@ -19,6 +19,8 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 - Zwischen den Profilen „Privat“, „Standortnachweis“ und „Individuell“ wählen.
 - Optional GPS-Position, Höhe, Genauigkeit, Richtung, Geschwindigkeit, Bilddaten und Geräteangaben kryptografisch an den Nachweis binden.
 - Ein vollständiges ZIP-Beweispaket mit Originalfoto, kanonischem Manifest, Verifikationsdaten und Prüfanleitung exportieren.
+- Vor dem Kamerastart aktuelle BTC- und DOI-Blockhöhe, -Hash, Blockzeit und lokale Abfragezeit ins neue Manifest v2 aufnehmen; bei Fehler abbrechen oder den Modus sichtbar ausschalten.
+- App-Version und bei Start über `npm start` den Git-Commit als **nicht attestierte Selbstauskunft** im Manifest erfassen.
 
 ## Datenschutz
 
@@ -48,7 +50,7 @@ npm start
 Den anschließend angezeigten QR-Code mit Expo Go öffnen. Falls Mobilgerät und Notebook nicht zuverlässig direkt miteinander kommunizieren können:
 
 ```sh
-npx expo start --tunnel
+npm start -- --tunnel
 ```
 
 ## Befehle
@@ -82,6 +84,10 @@ SECURITY.md             Richtlinie für Sicherheitsmeldungen
 
 DoiProof berechnet getrennt den SHA-256 des Originalfotos und des kanonischen Metadaten-Manifests. Der auf Doichain verankerte Beweispaket-Hash bindet beide Werte über eine versionierte, domänenspezifische Zeichenfolge. Dadurch bleiben ältere Nachweise unterscheidbar und neue Pakete reproduzierbar prüfbar.
 
+Neue Pakete verwenden `org.doichain.doiproof.evidence/v2` und `DoiProof:v2\nphoto:<PHOTO_HASH>\nmanifest:<MANIFEST_HASH>`. Alte v1-Pakete bleiben anhand ihres Manifests nach dem v1-Verfahren prüfbar. Die Vorabblöcke werden nur bei einer **neuen Kameraaufnahme** abgerufen. Bei bereits vorhandenen Bildern gibt es keine nachträglich behauptete Vorabaufnahme. Der BTC-Block wird über die öffentliche Blockstream-Esplora-API gelesen, der DOI-Block über das MCP-Werkzeug `get_chain_status`. Eine Netzstörung stoppt diesen Ablauf; die Person kann den Vorabmodus ausdrücklich deaktivieren.
+
+Block-Headerzeiten und Gerätezeiten sind nicht sekundengenau vertrauenswürdig. Die im Manifest stehenden Abfragezeiten und die App-/Commit-Angaben sind **Selbstauskünfte**, keine Attestierung. Die Blockchain-Hashes sind unabhängig nachprüfbar, aber ein bereits vorhandenes Foto kann nach dem Abruf erneut eingebunden werden. Eine signierte, kurzlebige Server-Challenge erfordert einen zusätzlichen Backend-Endpunkt und ist noch nicht aktiv.
+
 Rohdaten einschließlich GPS und Originalfoto bleiben im privaten App-Verzeichnis. Auf die Blockchain gelangen nur der Beweispaket-Hash und eine kurze Kennzeichnung. Der PDF-Export kann sensible Standortdaten ausblenden; das vollständige ZIP enthält bewusst Original und Manifest und sollte nur an vertrauenswürdige Empfänger weitergegeben werden.
 
 Satelliten-Einzeldaten sind über die gemeinsame Android-/iOS-Schnittstelle nicht zuverlässig verfügbar und gehören deshalb noch nicht zum portablen Schema.
@@ -110,6 +116,7 @@ Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECUR
 - Serverseitig signierte Empfangsbestätigungen und Geräte-Attestierung prüfen.
 - Plattformabhängige GNSS-/Satellitendetails als optionale Erweiterung evaluieren.
 - Android- und iOS-Release-Builds mit EAS Build einrichten.
+- Serverseitig signierte Einmal-Challenge vor dem Kamerastart mit Verifikationsschlüssel, Ablaufzeit und Replay-Schutz ergänzen.
 
 ## Lizenz
 

@@ -1,7 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
-import { EvidenceManifest, EvidenceProfile } from './proofRecord';
+import { EvidenceManifest, EvidenceProfile, PreCaptureAnchors } from './proofRecord';
+import { isValidPreCaptureAnchors } from './chainAnchors';
 
 export type MetadataSettings = {
   profile: EvidenceProfile;
@@ -53,7 +54,11 @@ export async function createEvidence(
   capturedAt: string | undefined,
   image: ImageDetails,
   settings: MetadataSettings,
+  preCapture?: PreCaptureAnchors,
 ): Promise<Evidence> {
+  if (source === 'camera' && preCapture && !isValidPreCaptureAnchors(preCapture)) {
+    throw new Error('Vorab-Blöcke sind ungültig.');
+  }
   let location: EvidenceManifest['location'];
   if (settings.includeLocation) {
     const permission = await Location.requestForegroundPermissionsAsync();
@@ -72,9 +77,16 @@ export async function createEvidence(
     };
   }
   const manifest: EvidenceManifest = {
-    schema: 'org.doichain.doiproof.evidence/v1',
+    schema: 'org.doichain.doiproof.evidence/v2',
     createdAt: new Date().toISOString(),
     profile: settings.profile,
+    preCapture: source === 'camera' ? preCapture : undefined,
+    app: {
+      version: '0.4.0',
+      ...(process.env.EXPO_PUBLIC_SOURCE_COMMIT && /^[0-9a-f]{40}$/.test(process.env.EXPO_PUBLIC_SOURCE_COMMIT)
+        ? { sourceCommit: process.env.EXPO_PUBLIC_SOURCE_COMMIT } : {}),
+      identification: 'self-reported-unattested',
+    },
     photo: {
       sha256: photoSha256,
       ...(settings.includeImageDetails ? image : {}),
@@ -84,10 +96,10 @@ export async function createEvidence(
     device: settings.includeDevice ? {
       platform: Platform.OS,
       osVersion: Platform.Version,
-      appVersion: '0.3.0',
+      appVersion: '0.4.0',
     } : undefined,
   };
   const manifestSha256 = await sha256Text(canonicalJson(manifest));
-  const evidenceSha256 = await sha256Text(`DoiProof:v1\nphoto:${photoSha256}\nmanifest:${manifestSha256}`);
+  const evidenceSha256 = await sha256Text(`DoiProof:v2\nphoto:${photoSha256}\nmanifest:${manifestSha256}`);
   return { manifest, manifestSha256, evidenceSha256 };
 }
