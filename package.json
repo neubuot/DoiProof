@@ -8,7 +8,8 @@
     "android": "node scripts/expo.mjs start --android",
     "ios": "node scripts/expo.mjs start --ios",
     "check": "tsc --noEmit",
-    "test": "node --import tsx --test src/*.test.ts"
+    "test": "node --import tsx --test src/*.test.ts scripts/*.test.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "expo": "~57.0.25",

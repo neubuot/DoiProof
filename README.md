@@ -12,6 +12,7 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 | [Kurzanleitung](docs/KURZANLEITUNG.md) | Erste Aufnahme, Einreichung und sichere Weitergabe |
 | [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Alle Einstellungen, Status, Export und Fehlerfälle |
 | [Technische Architektur](docs/ARCHITECTURE.md) | Datenmodell, Implementierung und Sicherheitsgrenzen |
+| [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Prüfbefehl, Bericht und Onlineprüfung ohne DoiProof-App |
 
 Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
 
@@ -74,6 +75,7 @@ npm start -- --tunnel
 | `npm run check` | TypeScript ohne Build prüfen |
 | `npm test` | Automatisierte Modelltests ausführen |
 | `npm ci` | Abhängigkeiten reproduzierbar aus dem Lockfile installieren |
+| `npm run verify -- paket.zip` | ZIP ohne Netzwerk lokal prüfen; optional mit `--online` |
 
 ## Projektstruktur
 
@@ -90,6 +92,8 @@ docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
 docs/PRODUKT-UND-BEWEISKETTE.md  Zweck und Beweisaussagen
 docs/KURZANLEITUNG.md    Erste Schritte
 docs/BENUTZERHANDBUCH.md  Bedienung und Prüfung
+docs/PRUEFPROGRAMM.md     Unabhängiger ZIP-Prüfer
+scripts/verify.mjs        Prüfprogramm für Node.js
 CONTRIBUTING.md         Entwicklungs- und Git-Workflow
 SECURITY.md             Richtlinie für Sicherheitsmeldungen
 ```
