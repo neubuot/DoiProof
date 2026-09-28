@@ -4,6 +4,17 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 
 > **Version 0.4:** Vor einer Kameraaufnahme werden BTC- und Doichain-Vorabblöcke erfasst. Diese Erweiterung benötigt noch einen Gerätetest. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
 
+## Dokumentation
+
+| Dokument | Für wen und wofür |
+|---|---|
+| [Produktbeschreibung und Beweiskette](docs/PRODUKT-UND-BEWEISKETTE.md) | Nutzer, Prüfer, Versicherungen und Gerichte: Aussagekraft, Grenzen und Anwendungsfälle |
+| [Kurzanleitung](docs/KURZANLEITUNG.md) | Erste Aufnahme, Einreichung und sichere Weitergabe |
+| [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Alle Einstellungen, Status, Export und Fehlerfälle |
+| [Technische Architektur](docs/ARCHITECTURE.md) | Datenmodell, Implementierung und Sicherheitsgrenzen |
+
+Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
+
 ## Funktionen
 
 - Foto aufnehmen oder vorhandenes Bild auswählen.
@@ -76,6 +87,9 @@ src/proofRecord.ts      Datenmodell und Statuslogik
 src/receipt.ts          Erzeugung und Teilen des PDF-Belegs
 app.json                Expo-Konfiguration und Berechtigungstexte
 docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
+docs/PRODUKT-UND-BEWEISKETTE.md  Zweck und Beweisaussagen
+docs/KURZANLEITUNG.md    Erste Schritte
+docs/BENUTZERHANDBUCH.md  Bedienung und Prüfung
 CONTRIBUTING.md         Entwicklungs- und Git-Workflow
 SECURITY.md             Richtlinie für Sicherheitsmeldungen
 ```
