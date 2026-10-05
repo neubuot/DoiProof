@@ -14,7 +14,9 @@ const ui = {
   locationEmpty: $('location-empty'), locationContent: $('location-content'),
   coordinates: $('coordinates'), mapButton: $('map-button'), map: $('map'), mapGrid: $('map-grid'),
   metadata: $('metadata-list'), metadataCount: $('metadata-count'), manifestJson: $('manifest-json'),
-  verificationJson: $('verification-json'),
+  verificationJson: $('verification-json'), hashLabel: $('hash-label'),
+  localCard: $('local-card'), localIcon: $('local-icon'), localTitle: $('local-title'),
+  localDescription: $('local-description'), pdfPhoto: $('pdf-photo'), pdfLocation: $('pdf-location'),
 };
 let file = null;
 let result = null;
@@ -53,7 +55,7 @@ function setBusy(value) {
   ui.verify.disabled = value || !file;
   ui.online.disabled = value;
   ui.save.disabled = value;
-  ui.reveal.disabled = value;
+  ui.reveal.disabled = value || !result?.ok || !!details;
   ui.verifyLabel.textContent = value ? 'Prüfung läuft …' : 'Paket prüfen';
 }
 async function choose(path) {
@@ -115,16 +117,43 @@ function addCheck(check) {
   row.append(name, status, detail);
   ui.chainDetails.append(row);
 }
+function showFailure(report) {
+  ui.pill.textContent = 'PRÜFUNG FEHLGESCHLAGEN';
+  ui.pill.classList.add('failed');
+  ui.localCard.classList.add('failed');
+  ui.localIcon.textContent = '×';
+  ui.localTitle.textContent = 'Paket nicht unverändert';
+  ui.localDescription.textContent = report.error || 'Die lokale Prüfung ist fehlgeschlagen.';
+  ui.hashLabel.textContent = 'ZIP-DATEI SHA-256';
+  ui.hash.textContent = report.zipSha256;
+  ui.version.textContent = 'FEHLER BEI: ' + ({ zip: 'ZIP', structure: 'AUFBAU', photo: 'FOTO', manifest: 'MANIFEST', evidence: 'PAKET-HASH' }[report.failedStep] || 'PRÜFUNG');
+  ui.chainTitle.textContent = 'Nicht abgefragt';
+  ui.chainDescription.textContent = 'Ein verändertes Paket wird nicht online abgeglichen. Der PDF-Bericht dokumentiert den Fehler.';
+  ui.reveal.disabled = true;
+  step('step-chain', '');
+}
 function showResult(report) {
   result = report;
   const online = report.online;
   ui.result.hidden = false;
-  ui.hash.textContent = report.local.evidenceSha256;
-  ui.version.textContent = 'MANIFEST ' + report.local.version.toUpperCase();
+  ui.localCard.classList.remove('failed');
+  ui.localIcon.textContent = '✓';
+  ui.localTitle.textContent = 'Byteintegrität bestätigt';
+  ui.localDescription.textContent = 'Bildbytes, kanonisches Manifest und Paket-Hash stimmen zusammen.';
+  ui.hashLabel.textContent = 'BEWEISPAKET SHA-256';
   ui.time.textContent = 'GEPRÜFT ' + new Date(report.generatedAtUtc).toLocaleString('de-DE');
   ui.chainDetails.replaceChildren();
   ui.chainDetails.hidden = !online;
   ui.pill.className = 'result-pill';
+  if (!report.ok) {
+    showFailure(report);
+    step('step-local', 'active');
+    step('step-report', 'active');
+    ui.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  ui.hash.textContent = report.local.evidenceSha256;
+  ui.version.textContent = 'MANIFEST ' + report.local.version.toUpperCase();
   if (!online) {
     ui.pill.textContent = 'OFFLINE GEPRÜFT';
     ui.chainTitle.textContent = 'Nicht abgefragt';
@@ -161,8 +190,24 @@ const labels = {
   altitude: 'Höhe (m)', accuracy: 'Horizontale Genauigkeit (m)',
   altitudeAccuracy: 'Vertikale Genauigkeit (m)', heading: 'Richtung (°)', speed: 'Geschwindigkeit (m/s)',
   measuredAt: 'Standortmessung (UTC)', mocked: 'Als simuliert markiert', device: 'Gerät',
-  platform: 'Betriebssystem', osVersion: 'OS-Version', appVersion: 'App-Version',
+  platform: 'Betriebssystem', osVersion: 'OS-Version', appVersion: 'App-Version', model: 'Gerätemodell',
+  status: 'Status', reason: 'Begründung', cameraOpenedAt: 'Kamera geöffnet (Gerät)',
+  sensors: 'Sensoren', window: 'Messfenster', startedAt: 'Beginn (Gerät)', endedAt: 'Ende (Gerät)',
+  intervalMs: 'Abtastintervall (ms)', accelerometer: 'Beschleunigungssensor', gyroscope: 'Gyroskop',
+  magnetometer: 'Magnetometer', compass: 'Kompass', barometer: 'Barometer', light: 'Lichtsensor',
+  units: 'Einheiten', received: 'Empfangene Messungen', reading: 'Einzelwert zur Aufnahme',
+  series: 'Messreihe', at: 'Zeitpunkt (Gerät)', pressure: 'Luftdruck (hPa)', relativeAltitude: 'Relative Höhe (m)',
+  illuminance: 'Beleuchtungsstärke (lx)', magHeading: 'Richtung magnetisch Nord (°)',
+  trueHeading: 'Richtung geografisch Nord (°)', update: 'App-Update', channel: 'Kanal',
+  runtimeVersion: 'Laufzeitversion', updateId: 'Update-ID', embedded: 'Eingebettetes Bundle',
 };
+function label(path, index) {
+  const key = path[index];
+  if (/^\d+$/.test(key)) return 'Nr. ' + (Number(key) + 1);
+  if (key === 'accuracy' && path.includes('compass')) return 'Kalibrierung (0–3)';
+  if (['x', 'y', 'z'].includes(key)) return key.toUpperCase();
+  return labels[key] || key;
+}
 function flatten(value, path = [], output = []) {
   if (value && typeof value === 'object') {
     const entries = Object.entries(value);
@@ -194,7 +239,7 @@ function showDetails(data) {
   ui.metadata.replaceChildren();
   for (const [path, value] of rows) {
     const row = document.createElement('div'); row.className = 'metadata-item';
-    const title = document.createElement('strong'); title.textContent = path.map(key => labels[key] || key).join(' · ');
+    const title = document.createElement('strong'); title.textContent = path.map((_, i) => label(path, i)).join(' · ');
     const key = document.createElement('small'); key.textContent = path.join('.');
     const body = document.createElement('span'); body.textContent = value;
     row.append(title, key, body); ui.metadata.append(row);
@@ -205,7 +250,7 @@ function showDetails(data) {
   ui.evidence.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 ui.reveal.addEventListener('click', async () => {
-  if (!result || !file || busy || details) return;
+  if (!result?.ok || !file || busy || details) return;
   const selected = result.local.evidenceSha256;
   ui.reveal.disabled = true;
   ui.reveal.textContent = 'Details werden geprüft …';
@@ -264,7 +309,7 @@ ui.verify.addEventListener('click', async () => {
 ui.save.addEventListener('click', async () => {
   if (!result || busy) return;
   try {
-    const path = await window.doiproof.saveReport(result);
+    const path = await window.doiproof.saveReport({ includePhoto: ui.pdfPhoto.checked, includeLocation: ui.pdfLocation.checked });
     if (path) {
       step('step-report', 'done');
       say('Bericht gespeichert: ' + path, 'info');
@@ -273,6 +318,9 @@ ui.save.addEventListener('click', async () => {
 });
 ui.copy.addEventListener('click', async () => {
   if (!result) return;
-  try { await window.doiproof.copyHash(result.local.evidenceSha256); say('Beweispaket-Hash kopiert.', 'info'); }
+  try {
+    await window.doiproof.copyHash(result.ok ? result.local.evidenceSha256 : result.zipSha256);
+    say(result.ok ? 'Beweispaket-Hash kopiert.' : 'Hash der ZIP-Datei kopiert.', 'info');
+  }
   catch (error) { say(error.message); }
 });

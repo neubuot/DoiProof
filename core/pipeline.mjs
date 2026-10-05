@@ -5,8 +5,9 @@
 import { buildReportModel } from './report-model.mjs';
 import { renderReportPdf } from './report-pdf.mjs';
 import { analyzeBundle, checkOnline, localSummary } from './verify.mjs';
+import { VERSION } from './version.mjs';
 
-export const VERSION = '1.0.0';
+export { VERSION };
 
 /**
  * @param {Uint8Array} zipBytes

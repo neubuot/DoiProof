@@ -3,12 +3,14 @@
  * runden Platzhalterort, das Bild ist synthetisch erzeugt.
  */
 import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createBundleZip } from '../../core/bundle.mjs';
 import { computeEvidence } from '../../core/manifest.mjs';
 import { notRequestedSensors, SensorCollector } from '../../core/sensors.mjs';
 import { nodeSha256 } from '../../core/node.mjs';
 
-export const SYNTHETIC_JPEG = new URL('./synthetic-orientation6.jpg', import.meta.url);
+export const SYNTHETIC_JPEG = join(dirname(fileURLToPath(import.meta.url)), 'synthetic-orientation6.jpg');
 export const CAPTURE_MS = Date.parse('2026-10-01T07:31:35.000Z');
 
 export const PRE_CAPTURE = {

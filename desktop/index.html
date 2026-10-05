@@ -16,7 +16,7 @@
         <div class="brand-type"><strong>DoiProof</strong><small>PRÜFER</small></div>
       </div>
       <div class="rail-intro">
-        <p class="eyebrow rail-eyebrow">BEWEISPAKET · V0.6</p>
+        <p class="eyebrow rail-eyebrow">BEWEISPAKET · V1.0</p>
         <h2>Gewissheit beginnt beim Original.</h2>
         <p>Prüfe ein exportiertes ZIP direkt auf deinem Rechner. Jeder Schritt bleibt nachvollziehbar.</p>
       </div>
@@ -24,7 +24,7 @@
         <div class="step active" id="step-file"><span class="step-nr">01</span><div><strong>Paket wählen</strong><small>Original-ZIP öffnen</small></div></div>
         <div class="step" id="step-local"><span class="step-nr">02</span><div><strong>Bytes prüfen</strong><small>Foto · Manifest · Hash</small></div></div>
         <div class="step" id="step-chain"><span class="step-nr">03</span><div><strong>Kette abfragen</strong><small>Freiwillig · online</small></div></div>
-        <div class="step" id="step-report"><span class="step-nr">04</span><div><strong>Bericht sichern</strong><small>Markdown oder JSON</small></div></div>
+        <div class="step" id="step-report"><span class="step-nr">04</span><div><strong>Bericht sichern</strong><small>PDF, Markdown oder JSON</small></div></div>
       </nav>
       <div class="rail-bottom">
         <span class="rail-diamond" aria-hidden="true">◇</span>
@@ -35,14 +35,14 @@
     <main class="main">
       <header class="topbar">
         <span class="topline"><span class="tiny-dot"></span> LOKALES PRÜFPROGRAMM</span>
-        <span class="top-version">WINDOWS · VERSION 0.6.0</span>
+        <span class="top-version">WINDOWS · VERSION 1.0.0</span>
       </header>
       <div class="content">
         <section class="hero" aria-labelledby="page-title">
           <div class="hero-copy">
             <p class="eyebrow">UNABHÄNGIG VON DER HANDY-APP</p>
             <h1 id="page-title">Beweispaket<br><em>prüfen.</em></h1>
-            <p>Foto, Manifest und Kettenreferenzen in einer verständlichen Prüfung. Starte mit dem ZIP aus DoiProof.</p>
+            <p>Foto, Manifest, Sensorwerte und Kettenreferenzen in einer verständlichen Prüfung. Starte mit dem ZIP aus DoiProof – Manifest v1, v2 und v3.</p>
           </div>
           <div class="hero-art" aria-hidden="true">
             <div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="art-ring ring-three"></div>
@@ -80,11 +80,11 @@
             <span class="result-pill" id="result-pill"></span>
           </div>
           <div class="result-grid">
-            <div class="result-card"><span class="result-icon">✓</span><p class="result-kicker">01 / DATEI & HASH</p><h3>Byteintegrität bestätigt</h3><p>Bildbytes, kanonisches Manifest und Paket-Hash stimmen zusammen.</p></div>
+            <div class="result-card" id="local-card"><span class="result-icon" id="local-icon">✓</span><p class="result-kicker">01 / DATEI & HASH</p><h3 id="local-title">Byteintegrität bestätigt</h3><p id="local-description">Bildbytes, kanonisches Manifest und Paket-Hash stimmen zusammen.</p></div>
             <div class="result-card chain-card"><span class="result-icon chain-icon">◎</span><p class="result-kicker">02 / KETTE</p><h3 id="chain-title">Nicht abgefragt</h3><p id="chain-description">Die lokale Prüfung benötigt keinen Netzwerkzugang.</p></div>
           </div>
           <div class="hash-panel">
-            <div class="hash-top"><span>BEWEISPAKET SHA-256</span><button type="button" class="text-button" id="copy-button">Hash kopieren ↗</button></div>
+            <div class="hash-top"><span id="hash-label">BEWEISPAKET SHA-256</span><button type="button" class="text-button" id="copy-button">Hash kopieren ↗</button></div>
             <code id="evidence-hash"></code>
             <div class="hash-meta"><span id="format-version"></span><span id="verified-time"></span></div>
           </div>
@@ -117,8 +117,12 @@
             </div>
           </section>
           <div class="result-bottom">
-            <p>Diese Prüfung bestätigt keine Aufnahmezeit, Urheberschaft oder Echtheit des Bildmotivs. Die Doichain-Abfrage nutzt denselben MCP-Dienst wie die mobile App.</p>
-            <button type="button" class="button button-save" id="save-button">Bericht sichern <span aria-hidden="true">↓</span></button>
+            <p>Diese Prüfung bestätigt keine Aufnahmezeit, Urheberschaft oder Echtheit des Bildmotivs. Die Doichain-Abfrage nutzt denselben MCP-Dienst wie die mobile App. Der PDF-Prüfbericht enthält Foto, Standort und alle Messwerte; beides lässt sich hier ausblenden.</p>
+            <div class="save-group">
+              <label class="pdf-option"><input type="checkbox" id="pdf-photo" checked> Foto im PDF</label>
+              <label class="pdf-option"><input type="checkbox" id="pdf-location" checked> Standort im PDF</label>
+              <button type="button" class="button button-save" id="save-button">Bericht sichern <span aria-hidden="true">↓</span></button>
+            </div>
           </div>
         </section>
         <div class="alert" id="alert" role="status" aria-live="polite" hidden></div>

@@ -34,8 +34,22 @@ export type BlockAnchor = {
 
 export type PreCaptureAnchors = { bitcoin: BlockAnchor; doichain: BlockAnchor };
 
+export type LocationRecord = {
+  status?: 'recorded' | 'not_requested' | 'permission_denied' | 'unavailable' | 'error';
+  reason?: string;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number | null;
+  accuracy?: number | null;
+  altitudeAccuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  measuredAt?: string;
+  mocked?: boolean;
+};
+
 export type EvidenceManifest = {
-  schema: 'org.doichain.doiproof.evidence/v1' | 'org.doichain.doiproof.evidence/v2';
+  schema: 'org.doichain.doiproof.evidence/v1' | 'org.doichain.doiproof.evidence/v2' | 'org.doichain.doiproof.evidence/v3';
   createdAt: string;
   profile: EvidenceProfile;
   preCapture?: PreCaptureAnchors;
@@ -43,6 +57,7 @@ export type EvidenceManifest = {
     version: string;
     sourceCommit?: string;
     identification: 'self-reported-unattested';
+    update?: { channel: string | null; runtimeVersion: string | null; updateId: string | null; embedded: boolean };
   };
   photo: {
     sha256: string;
@@ -52,22 +67,15 @@ export type EvidenceManifest = {
     mimeType?: string;
     fileName?: string;
   };
-  capture?: { deviceTime?: string; source: 'camera' | 'library' };
-  location?: {
-    latitude: number;
-    longitude: number;
-    altitude?: number | null;
-    accuracy?: number | null;
-    altitudeAccuracy?: number | null;
-    heading?: number | null;
-    speed?: number | null;
-    measuredAt: string;
-    mocked?: boolean;
-  };
+  capture?: { deviceTime?: string; cameraOpenedAt?: string; source: 'camera' | 'library' };
+  location?: LocationRecord;
+  /** Ab v3: Sensorblock (siehe core/sensors.mjs). */
+  sensors?: Record<string, unknown>;
   device?: {
     platform: string;
     osVersion?: string | number;
     appVersion: string;
+    model?: string;
   };
 };
 
