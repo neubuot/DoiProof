@@ -13,7 +13,7 @@ Die Android-App wird mit **EAS Build** (Expo Application Services) als signierte
 
 ## Automatischer Build bei einem Release-Tag
 
-Der Workflow [`.github/workflows/android-apk.yml`](../.github/workflows/android-apk.yml) startet bei jedem Tag `v*` (und manuell über *Actions → Android-APK → Run workflow*):
+Der Workflow [`.github/workflows/android-apk.yml`](../.github/workflows/android-apk.yml) startet bei jedem Tag `v*` (und manuell über *Actions → Android-APK (EAS Build) → Run workflow*; diese Schaltfläche gibt es erst, wenn der Workflow auf `main` liegt):
 
 1. Abhängigkeiten installieren, TypeScript prüfen, Tests ausführen; Tag und `package.json`-Version müssen übereinstimmen.
 2. `eas build --platform android --profile preview --non-interactive` mit dem Repository-Secret **`EXPO_TOKEN`**.
@@ -36,7 +36,7 @@ Ein **Robot-Nutzer** in der Expo-Organisation `neubuots-team` mit Rolle **Develo
 
 ### Erster Build: Signaturschlüssel
 
-Für das APK braucht EAS einen Android-Keystore. Er wird von EAS erzeugt und in Expo gespeichert; er darf nie ins Repository. Falls der erste CI-Build mit einem Hinweis auf fehlende Zugangsdaten abbricht (der Robot-Nutzer darf je nach Rolle keine Zugangsdaten anlegen), einmalig lokal mit einem **Owner-/Admin-Login** ausführen:
+Für das APK braucht EAS einen Android-Keystore. Er wird von EAS erzeugt und in Expo gespeichert; er darf nie ins Repository. Expo empfiehlt, den ersten Build einmal interaktiv vom eigenen Rechner zu starten (Rolle mindestens Developer in `neubuots-team`); die Rückfrage „Generate a new Android Keystore?“ mit **Y** beantworten. Schritt für Schritt: [ERSTER-TEST.md, Teil C](ERSTER-TEST.md#c-erstes-apk-bauen). Alternativ lässt sich der Schlüssel vorab anlegen:
 
 ```sh
 npx eas-cli@latest login
@@ -44,7 +44,7 @@ npx eas-cli@latest credentials --platform android
 # Profil "preview" wählen → "Set up a new keystore" → von EAS erzeugen lassen
 ```
 
-Danach den Workflow erneut starten. Alle späteren Builds nutzen denselben Schlüssel; nur so lassen sich neue APKs über installierte Apps installieren.
+Alle späteren Builds, auch die aus GitHub Actions, nutzen denselben Schlüssel; nur so lassen sich neue APKs über installierte Apps installieren. Einen vorhandenen Keystore nie ersetzen oder löschen.
 
 ## EAS Update
 

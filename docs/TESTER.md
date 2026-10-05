@@ -7,9 +7,9 @@ Danke, dass du DoiProof 1.0 testest. Die App erstellt aus einem Foto und Messwer
 ## Android: Installation
 
 1. Öffne den Download-Link aus der Einladung oder aus den [GitHub-Releases](https://github.com/neubuot/DoiProof/releases) (Abschnitt „Android-App … (APK für Tester)“) auf dem Android-Handy. Alternativ auf der Expo-Build-Seite den QR-Code mit der Handykamera scannen.
-2. Die Datei `….apk` herunterladen und öffnen.
-3. Android fragt, ob der Browser bzw. die Dateien-App **unbekannte Apps installieren** darf: in den Einstellungen für diese App erlauben und zurückkehren.
-4. **Google Play Protect** kann warnen, weil die App nicht aus dem Play Store stammt: „Weitere Details“ → „Trotzdem installieren“. Die App ist signiert; installiere sie nur über den Link aus der Einladung oder dem offiziellen Release.
+2. Die Datei `….apk` herunterladen (warnt Chrome vor dem Dateityp: „Trotzdem herunterladen“) und über die Download-Meldung oder „Dateien → Downloads“ öffnen.
+3. Android fragt, ob der Browser bzw. die Dateien-App **unbekannte Apps installieren** darf: in den Einstellungen für diese App erlauben und zurückkehren. Auf Samsung-Geräten blockiert eventuell die „Automatische Sperre“ die Installation: unter Einstellungen → Sicherheit und Datenschutz → Automatische Sperre vorübergehend ausschalten und danach wieder einschalten.
+4. **Google Play Protect** kann warnen oder einen Scan anbieten, weil die App nicht aus dem Play Store stammt: Scan zulassen bzw. „Weitere Details“ → „Trotzdem installieren“. Die App ist signiert; installiere sie nur über den Link aus der Einladung oder dem offiziellen Release.
 5. DoiProof öffnen.
 
 **Neue Versionen:**

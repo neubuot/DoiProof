@@ -160,7 +160,12 @@ export function CaptureScreen() {
       let preCapture;
       if (source === 'camera' && usePreCaptureAnchors) {
         setMessage('Aktuelle BTC- und Doichain-Blöcke werden vor der Aufnahme geladen …');
-        [preCapture] = await Promise.all([getPreCaptureAnchors(), preparation.sensors?.warmUp()]);
+        try {
+          [preCapture] = await Promise.all([getPreCaptureAnchors(), preparation.sensors?.warmUp()]);
+        } catch (error) {
+          throw new Error(`Die Vorab-Blöcke konnten nicht geladen werden (${error instanceof Error ? error.message : 'unbekannter Fehler'}). `
+            + 'Die Kamera wurde nicht geöffnet. Netzverbindung prüfen und erneut versuchen oder „BTC- und Doichain-Block vor Kameraaufnahme“ ausschalten.');
+        }
       } else await preparation.sensors?.warmUp();
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'], allowsEditing: false, quality: 1, exif: false,

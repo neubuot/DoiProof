@@ -10,6 +10,7 @@ DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die
 |---|---|
 | [Produktbeschreibung und Beweiskette](docs/PRODUKT-UND-BEWEISKETTE.md) | Nutzer, Prüfer, Versicherungen und Gerichte: Aussagekraft, Grenzen und Anwendungsfälle |
 | [Kurzanleitung](docs/KURZANLEITUNG.md) | Erste Aufnahme, Einreichung, Prüfung und Weitergabe |
+| [Erster Test](docs/ERSTER-TEST.md) | Projektinhaber: Schritt für Schritt vom ersten APK bis zur Gegenprüfung auf Handy und Windows, mit Prompts für Claude |
 | [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Profile, Sensoren, Status, Prüfbericht, Prüfer und Fehlerfälle |
 | [Anleitung für Tester](docs/TESTER.md) | Android-APK installieren, TestFlight-Einladung, Feedback |
 | [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Kommandozeilen-Prüfer, PDF-Bericht, Hashverfahren |

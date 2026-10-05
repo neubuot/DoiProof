@@ -24,3 +24,7 @@ GoogleService-Info.plist
 /android/
 /ios/
 .scratch/
+# Beweispakete und Prüfberichte enthalten Fotos und Standorte
+*.zip
+*.pdf
+!docs/design/*.pdf
