@@ -1,0 +1,92 @@
+name: EAS Update (JavaScript-Aktualisierung für Tester)
+
+# Veröffentlicht JS-Änderungen über EAS Update. Push auf main → Kanal preview (Android-Tester).
+# Manuell auch für den Kanal production (TestFlight). Builds mit abweichender nativer
+# Laufzeitversion (Fingerprint) erhalten das Update nicht; dafür ist ein neuer Build nötig.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'App.tsx'
+      - 'src/**'
+      - 'core/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/eas-update.yml'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Update-Kanal'
+        type: choice
+        options: [preview, production]
+        default: preview
+      message:
+        description: 'Beschreibung des Updates'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eas-update-${{ inputs.channel || 'preview' }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update veröffentlichen
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHANNEL: ${{ inputs.channel || 'preview' }}
+    steps:
+      - name: EXPO_TOKEN prüfen
+        id: token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::warning::Secret EXPO_TOKEN fehlt – kein EAS Update veröffentlicht."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Repository auschecken
+        if: steps.token.outputs.available == 'true'
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        if: steps.token.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren, prüfen und testen
+        if: steps.token.outputs.available == 'true'
+        run: |
+          npm ci
+          npm run check
+          npm test
+
+      - name: EAS CLI einrichten
+        if: steps.token.outputs.available == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: Update veröffentlichen
+        if: steps.token.outputs.available == 'true'
+        env:
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          node scripts/build-info.mjs
+          TEXT="${MESSAGE:-$(git log -1 --pretty=%s)}"
+          eas update --channel "$CHANNEL" --message "$TEXT (${GITHUB_SHA::12})" --non-interactive
+          echo "EAS Update für Kanal $CHANNEL veröffentlicht: $TEXT" >> "$GITHUB_STEP_SUMMARY"

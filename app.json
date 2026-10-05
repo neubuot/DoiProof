@@ -5,7 +5,9 @@
     "owner": "neubuots-team",
     "scheme": "doiproof",
     "version": "1.0.0",
-    "runtimeVersion": { "policy": "fingerprint" },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "updates": {
       "url": "https://u.expo.dev/190b3b9c-3911-4831-947e-06bb20ce9d89",
       "checkAutomatically": "ON_LOAD",
@@ -18,7 +20,9 @@
       "bundleIdentifier": "org.doichain.doiproof",
       "buildNumber": "1",
       "supportsTablet": true,
-      "config": { "usesNonExemptEncryption": false },
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen. Das Foto bleibt auf dem Gerät.",
         "NSPhotoLibraryUsageDescription": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu berechnen. Das Foto wird nicht hochgeladen.",
@@ -29,25 +33,51 @@
     "android": {
       "package": "org.doichain.doiproof",
       "versionCode": 1,
-      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#123739" },
-      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
-      "blockedPermissions": ["android.permission.RECORD_AUDIO", "android.permission.ACCESS_BACKGROUND_LOCATION"]
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#123739"
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
-      ["expo-image-picker", {
-        "cameraPermission": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen. Das Foto bleibt auf dem Gerät.",
-        "photosPermission": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu berechnen. Das Foto wird nicht hochgeladen.",
-        "microphonePermission": false
-      }],
-      ["expo-location", {
-        "locationWhenInUsePermission": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen."
-      }],
-      ["expo-sensors", {
-        "motionPermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
-      }]
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen. Das Foto bleibt auf dem Gerät.",
+          "photosPermission": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu berechnen. Das Foto wird nicht hochgeladen.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
+        }
+      ]
     ],
     "extra": {
-      "eas": { "projectId": "190b3b9c-3911-4831-947e-06bb20ce9d89" }
+      "eas": {
+        "projectId": "190b3b9c-3911-4831-947e-06bb20ce9d89"
+      }
     }
   }
 }
