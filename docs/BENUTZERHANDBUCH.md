@@ -1,54 +1,61 @@
 # DoiProof: ausführliches Benutzerhandbuch
 
-**Stand:** Version 0.5, 29. September 2026. Die Funktion mit BTC- und Doichain-Vorabblöcken ist implementiert, aber noch nicht auf einem Mobilgerät getestet. Oberfläche und Datenformat können sich in späteren Versionen ändern; GitHub hält die Änderungen dieses Dokuments fest.
+**Stand:** Version 1.0.0, 5. Oktober 2026. Oberfläche und Datenformat können sich in späteren Versionen ändern; GitHub hält die Änderungen dieses Dokuments fest. Die Grundlagen zur Aussagekraft stehen in der [Produktbeschreibung](PRODUKT-UND-BEWEISKETTE.md).
 
 ## 1. Was DoiProof erzeugt
 
-Ein Nachweis besteht aus der ausgewählten Fotodatei, einem Manifest mit den bewusst gewählten Metadaten und dem gemeinsamen Beweispaket-Hash. Nur dieser Hash und eine kurze öffentliche Gerätenotiz werden an den Doichain-Dienst gesendet. Nach bestätigter Aufnahme in einen Block kann ein Dritter die Identität der vorgelegten Bytes und deren zeitlich eingeordneten Paketbestand prüfen. Die [Produktbeschreibung](PRODUKT-UND-BEWEISKETTE.md) erklärt die Aussagekraft und Grenzen ausführlich.
+Ein Nachweis besteht aus der Fotodatei, einem **Manifest** mit den bei der Aufnahme gemessenen Angaben (Gerätezeit, Vorabblöcke und je nach Profil Standort, Bewegungs-, Kompass-, Luftdruck- und Lichtsensoren, Bild- und Gerätedaten) und dem gemeinsamen **Beweispaket-Hash**. Nur dieser Hash und eine kurze öffentliche Gerätenotiz gehen an den Doichain-Dienst. Nach der Aufnahme in einen Doichain-Block kann jeder prüfen, dass genau dieses Foto mit genau diesen Angaben seit diesem Block unverändert ist.
 
-Für Entwicklung und Tests läuft die App mit Expo Go auf Android oder iOS. Ein eigener Release-Build mit attestierter App-Identität ist noch nicht eingerichtet. Die DoiProof-Oberfläche benötigt den laufenden Expo-Entwicklungsserver auf dem Notebook, solange sie über diesen Weg gestartet wird. Ein APK-Buildprofil ist vorbereitet; der eigenständige Android-Build und sein Gerätetest stehen noch aus. Siehe [Android-Release](ANDROID-RELEASE.md).
+## 2. Installation
 
-## 2. Start über das Notebook
+DoiProof 1.0 ist eine eigenständige App:
 
-Im lokalen Git-Klon von DoiProof auf dem Notebook:
+- **Android:** signiertes APK aus dem GitHub-Release bzw. von der Expo-Build-Seite.
+- **iPhone:** über TestFlight nach Einladung.
 
-```sh
-git pull
-npm ci
-npm start
-```
+Die Schritte für Tester stehen in [TESTER.md](TESTER.md). Kleinere Änderungen erhält die App automatisch als Update (aktiv nach dem nächsten Start); „Über diese App“ zeigt Version, Kanal und Update-Stand und bietet „Nach Update suchen“.
 
-Den QR-Code mit Expo Go öffnen. Wenn die direkte Verbindung zwischen Telefon und Notebook nicht funktioniert, den Server gegebenenfalls mit `npm start -- --tunnel` neu starten. Der private GitHub-Klon erfordert die gewohnte GitHub-Berechtigung. Nach Änderungen im Repository erst `git pull`, dann bei geänderten Abhängigkeiten `npm ci`; der aktuelle Code liegt im GitHub-Branch `main`. Ein Notebook-Test ist nicht notwendig, um diese Anleitung zu lesen.
+Für Entwicklung läuft die App weiterhin mit Expo Go über `npm start` (siehe [README](../README.md)); Updates sind dort nicht aktiv.
 
 ## 3. Aufnahme vorbereiten
+
+Oben wechselt die App zwischen **„Aufnehmen“** und **„Prüfen“**.
 
 ### Metadatenprofil
 
 | Profil | Was die App erfasst |
 |---|---|
-| „Privat“ | Kein angeforderter GPS-Standort und keine optionalen Bild-/Gerätedetails. Das Foto selbst, sein Hash, Gerätezeit, Profil und gegebenenfalls Vorabblöcke bleiben Bestandteil des Pakets. |
-| „Standortnachweis“ | Standort-Fix mit Koordinaten und verfügbaren Feldern wie Höhe, Genauigkeit, Richtung und Geschwindigkeit; dazu Bild- und Geräteangaben. Die Betriebssystemfreigabe ist nötig. |
-| „Individuell“ | Schalter für „GPS, Höhe und Genauigkeit“, „Bildformat und Abmessungen“ sowie „Betriebssystem und App-Version“ einzeln setzen. |
+| „Privat“ | Kein Standort, keine Sensoren, keine Bild-/Gerätedetails. Foto-Hash, Gerätezeit, Profil und gegebenenfalls Vorabblöcke bleiben Bestandteil des Pakets. Das Manifest vermerkt ausdrücklich, dass Standort und Sensoren nicht angefordert wurden. |
+| „Standort & Sensoren“ | Standort-Fix mit Koordinaten, Höhe, Genauigkeit, Richtung und Geschwindigkeit; Sensoren (Beschleunigung, Gyroskop, Magnetometer, Kompass, Luftdruck, Licht); Bild- und Gerätedaten. |
+| „Individuell“ | Schalter für „GPS, Höhe und Genauigkeit“, „Bewegung, Kompass, Luftdruck, Licht“, „Bildformat und Abmessungen“ sowie „Betriebssystem und App-Version“ einzeln setzen. |
 
-Ein GPS-Fix wird nach Rückkehr von Kamera oder Mediathek gemessen; er ist keine Messung im Moment des Auslösens. Fehler, Abschattung oder simulierte Gerätestandorte sind möglich. Standortverweigerung führt bei aktivierter Standortoption zu einer Fehlermeldung; „Privat“ oder deaktiviertes GPS ermöglicht einen erneuten Versuch.
+### Berechtigungen
 
-Die App-Version im Manifest wird unabhängig vom Metadatenschalter als Selbstauskunft gespeichert. Ein Quellcode-Commit wird nur eingetragen, wenn die Entwicklungsumgebung ihn beim Start bereitstellt. Beide Angaben sind keine Prüfung der ausführbaren Datei.
+Vor dem Öffnen der Kamera fragt die App die benötigten Freigaben ab: Kamera, Standort („beim Verwenden der App“) und auf dem iPhone „Bewegung & Fitness“. **Verweigerst du eine Freigabe, wird die Aufnahme nicht abgebrochen**: Das Manifest vermerkt dann „Berechtigung verweigert“ für den Standort bzw. die betroffenen Sensoren.
+
+### Sensoren
+
+Die Sensoren starten kurz vor dem Öffnen der Kamera und messen alle 200 ms. Für jeden Sensor speichert die App
+
+- den **Einzelwert zur Aufnahme** mit Zeitstempel (der Messwert, der dem Moment der Rückkehr aus der Kamera am nächsten liegt),
+- eine **kurze Messreihe** (höchstens je zehn Werte vor dem Öffnen der Kamera, bei geöffneter Kamera und nach der Rückkehr) und
+- die Zahl aller empfangenen Werte.
+
+Nicht vorhandene Sensoren (z. B. Lichtsensor auf dem iPhone, Barometer auf manchen Android-Geräten), verweigerte Freigaben, Fehler oder Sensoren ohne Messwert im Zeitfenster werden mit Status und Begründung vermerkt. Android unterbricht die Sensoren der App, solange die System-Kamera geöffnet ist; die Reihe liegt dann kurz vor und nach der Aufnahme. Der Kompass meldet ohne Standortfreigabe nur die magnetische Richtung.
 
 ### Vorabblöcke
 
-„BTC- und Doichain-Block vor Kameraaufnahme“ ist standardmäßig aktiv. Vor dem Kameraaufruf holt die App den jeweils aktuellen Block-Hash, die Höhe und die Headerzeit beider Ketten. Netzfehler verhindern den Kamerastart in diesem Modus. Nach erfolgreicher Abfrage kann man in der Kamera beliebig lange warten; die Referenz sagt deshalb nichts Genaues über die Auslösezeit. Bei ausgeschaltetem Schalter kann fotografiert werden, sofern die übrigen Voraussetzungen erfüllt sind; das Paket enthält dann keine Vorabblöcke. Bei „Foto wählen“ sind Vorabblöcke nie als Vorabaufnahme eingetragen.
-
-Die Abfragezeiten und die spätere Aufnahme-Gerätezeit stammen vom Gerät. Die Existenz der genannten Blöcke lässt sich unabhängig prüfen; der behauptete Ablauf auf dem Gerät ist bislang nicht attestiert.
+„BTC- und Doichain-Block vor Kameraaufnahme“ ist standardmäßig aktiv. Vor dem Kameraaufruf holt die App Hash, Höhe und Headerzeit beider Ketten. Netzfehler verhindern den Kamerastart in diesem Modus; der Schalter lässt sich bewusst ausschalten. Bei „Foto wählen“ gibt es keine Vorabblöcke. Nach erfolgreicher Abfrage kann man in der Kamera beliebig lange warten; die Referenz sagt deshalb nichts Genaues über die Auslösezeit, belegt aber, dass das Paket nicht vor diesem Block entstanden sein kann.
 
 ## 4. Foto und Einreichung
 
-1. „Foto aufnehmen“ oder „Foto wählen“ tippen. Bei Bedarf die Kamera-/Mediathekfreigabe erteilen.
-2. Nach Rückkehr berechnet die App den SHA-256 der gelieferten Bilddatei und erstellt das Manifest. Sichtbar sind Foto-Hash, Manifest-Hash und Beweispaket-Hash; bei aktivem Vorabmodus auch die Blockreferenzen.
-3. Das Feld „Tageskontingent“ mit „Kontingent aktualisieren“ abfragen. Ohne Schlüssel nennt die derzeitige App bis zu 10 Einreichungen je vom Server gesehener IP-Adresse und UTC-Tag und einen gemeinsamen Tagesdeckel von 200. VPN, Proxy und geteilter Anschluss können dasselbe Kontingent nutzen. Maßgeblich ist die aktuelle Serverantwort.
-4. Optional „Eigener PoE- oder Write-Schlüssel“ eintragen. Der Schlüssel wird während dieser App-Sitzung im Speicher gehalten und an den MCP-Dienst übertragen. **Niemals einen Admin-Schlüssel eintragen.**
-5. „Nach Aufnahme sofort senden“ ist standardmäßig aktiv und greift auch bei einem aus der Mediathek gewählten Bild. Bei deaktiviertem Schalter „Nachweis anlegen“ tippen. „Status prüfen“ fragt den Status des gerade ausgewählten Hashs ab.
+1. „Foto aufnehmen“ oder „Foto wählen“ tippen.
+2. Nach der Rückkehr berechnet die App den SHA-256 der Bilddatei, misst Standort und letzte Sensorwerte und erstellt das Manifest v3. Sichtbar sind Foto-, Manifest- und Paket-Hash, Standort, Sensorübersicht und Vorabblöcke.
+3. „Tageskontingent“ zeigt die freien Einreichungen (ohne Schlüssel bis zu 10 je IP-Adresse und UTC-Tag, insgesamt höchstens 200). Maßgeblich ist die Serverantwort.
+4. Optional einen eigenen PoE- oder Write-Schlüssel eintragen; er bleibt nur in dieser App-Sitzung im Speicher. **Niemals einen Admin-Schlüssel eintragen.**
+5. „Nach Aufnahme sofort senden“ ist standardmäßig aktiv. Sonst „Nachweis anlegen“ tippen. „Status prüfen“ fragt den Status des angezeigten Hashs ab.
 
-Originalfoto und Manifest werden bereits vor dem Senden im privaten App-Verzeichnis gespeichert. Ein Entwurf erscheint als „Lokal gesichert“ und kann nach einem Neustart mit „Jetzt senden“ eingereicht werden. Bei fehlender Serverantwort zeigt die App „Einreichung unklar“ und fragt den Status später erneut ab. Die App speichert das Foto nicht automatisch in der Galerie. Sichere das ZIP zusätzlich außerhalb der App.
+Foto und Manifest werden vor dem Senden im privaten App-Verzeichnis gesichert („Lokal gesichert“) und lassen sich nach einem Neustart mit „Jetzt senden“ einreichen. Bei fehlender Serverantwort zeigt die App „Einreichung unklar“ und fragt später nach. Die App legt das Foto nicht in der Galerie ab; sichere wichtige Nachweise als ZIP.
 
 ### Status
 
@@ -56,55 +63,58 @@ Originalfoto und Manifest werden bereits vor dem Senden im privaten App-Verzeich
 |---|---|
 | `local` | Nur lokal gespeichert; noch keine Einreichung. |
 | `submission_unknown` | Keine eindeutige Serverantwort; Status abfragen oder später erneut senden. |
-| `pending` | Vom Dienst als ausstehend gemeldet; noch kein bestätigter Blocknachweis. |
-| `confirmed` | Nachweis wurde im Doichain-Block gefunden; Transaktion und Block unabhängig nachprüfen. |
-| `expired` | PoE-Status des Dienstes abgelaufen; eine historisch bestätigte Transaktion kann weiter bestehen. Den konkreten Ketteneintrag selbst prüfen. |
-| Sonstiger Status oder Fehler | Keine Bestätigung aus dem Wortlaut ableiten; Abfrage und gegebenenfalls Dienst prüfen. |
+| `pending` | Eingereicht, noch kein bestätigter Block. |
+| `confirmed` | Im Doichain-Block gefunden; Transaktion und Block lassen sich unabhängig prüfen. |
+| `expired` | PoE-Name des Dienstes abgelaufen; die historische Transaktion besteht weiter. |
 
-Der Verlauf fragt nur eingereichte oder unklare Einträge ab, nicht lokale Entwürfe. Er prüft offene Einträge beim App-Start, bei Rückkehr in den Vordergrund, während der Nutzung und mit „Offene prüfen“. Eine ergänzende Abfrage des Transaktionsblocks kann einen Block-Hash hinzufügen; fehlt er im lokalen Verlauf, ist die Transaktion gesondert zu verifizieren. Die lokal gespeicherte Anzahl der Bestätigungen ist nur ein früherer Abfragestand.
+Offene Einträge werden beim Start, bei Rückkehr in die App, minütlich und mit „Offene prüfen“ aktualisiert.
 
-## 5. Export und Aufbewahrung
+## 5. Prüfbericht, Export und Aufbewahrung
 
 Im „Nachweisverlauf“:
 
-- „PDF-Beleg“ erstellt eine lesbare Zusammenfassung, speichert sie im privaten App-Verzeichnis und öffnet den Systemdialog zum Teilen. Erst eine abgeschlossene Freigabe/Speicherung im Zielsystem bewahrt eine externe Kopie.
-- „Sensible Metadaten im PDF zeigen“ steuert nur die Anzeige im PDF. Das vollständige ZIP enthält immer das ausgewählte Bild und das vollständige Manifest mit den tatsächlich erfassten Koordinaten und Geräteangaben.
-- „Beweispaket ZIP“ teilt `original.<endung>`, `manifest.json`, `verification.json` und `README.txt`. Den Export in einem gesicherten Verzeichnis ablegen, eine zweite Kopie aufbewahren und Empfängern nur bewusst Zugriff geben.
+- **„Prüfbericht PDF“** baut das Beweispaket, prüft es mit derselben Logik wie Kommandozeile und Windows-Prüfer, gleicht es – wenn eingeschaltet – online ab und erstellt den PDF-Prüfbericht. Schalter: „Kettenstatus online abgleichen“, „Foto im Bericht“, „Standort im Bericht“ (standardmäßig aus).
+- **„Beweispaket ZIP“** teilt `original.<endung>`, `manifest.json`, `verification.json` und `README.txt`. Das ZIP enthält immer das Foto und das vollständige Manifest mit Standort und Sensorwerten.
 
-Der Nachweisverlauf und die bewahrte Bildkopie liegen lokal in der App. Es gibt derzeit keine automatische Synchronisierung oder ZIP-Importfunktion. App-Löschung, Gerätewechsel oder Datenverlust können den internen Verlauf beseitigen. Ein exportiertes ZIP ist deshalb für die langfristige unabhängige Prüfung entscheidend. Ältere Nachweise ohne Manifest oder fehlende Bilddatei erlauben keinen vollständigen ZIP-Export.
+Der Verlauf liegt nur auf diesem Gerät. App-Löschung oder Gerätewechsel beseitigen ihn; das exportierte ZIP ist für die langfristige Prüfung entscheidend. Eine zweite Kopie aufbewahren.
 
-## 6. Technische Prüfung eines übergebenen Pakets
+### Aufbau des PDF-Prüfberichts
 
-Mit dem [ZIP-Prüfprogramm](PRUEFPROGRAMM.md) lässt sich ein exportiertes Paket unabhängig von der App zunächst offline prüfen: `npm run verify -- paket.zip`. `--online` fragt zusätzlich den Status und die genannten Blöcke über die beschriebenen öffentlichen Dienste ab. Ein lesbarer Bericht kann mit `--report pruefbericht.md` gespeichert werden.
+1. **Seite 1:** Ergebnis (bestanden / unvollständig / fehlgeschlagen), Foto, „Auf einen Blick“, Zeitstrahl und „Was die Prüfung zeigt“ (gefüllt = mathematisch belegt, umrandet = stimmiges Indiz).
+2. **Seite 2:** Beweiskette mit allen Hashwerten, Transaktion und Block, Zeitanker, QR-Code zu verifile.it, „Dieser Bericht belegt / belegt nicht“.
+3. **Anhang:** jede im Manifest gebundene Angabe nach Quelle, nicht erfasste Sensoren mit Grund, Messreihen als Minimum/Maximum/Mittelwert/Anzahl und in Anhang B jede Einzelmessung.
 
-Die drei Hash-Schritte für v2 sind:
+„Bestanden“ setzt den Online-Abgleich voraus. Ohne ihn ist das Ergebnis „unvollständig“: Das Paket ist unverändert, ein Zeitpunkt der Versiegelung ist aber noch nicht belegt.
 
-```text
-foto = SHA-256(Bytes von original.<endung>)
-manifest = SHA-256(UTF-8 des kanonischen Manifest-JSON ohne Schluss-Zeilenumbruch)
-paket = SHA-256(UTF-8 von "DoiProof:v2\nphoto:<foto>\nmanifest:<manifest>"))
-```
+## 6. Pakete prüfen (Tab „Prüfen“)
 
-Die Zeichenfolge enthält zwei echte Zeilenumbrüche und keinen am Ende. Kanonisierung nach `src/evidence.ts`: Objektschlüssel rekursiv per JavaScript `localeCompare` sortieren, `undefined` weglassen und JSON ohne Formatierungsleerraum serialisieren. `manifest.json` im ZIP hat für die Lesbarkeit einen abschließenden Zeilenumbruch; zum Nachrechnen der Manifest-Bytes diesen ausnehmen. Die Werte müssen mit `verification.json` und `manifest.photo.sha256` übereinstimmen. Ein `sha256sum original.*` oder `shasum -a 256 original.*` prüft zunächst den Fotohash. Zur vollständigen Prüfung sind die konkrete Kanonisierung und für alte Pakete die jeweilige v1-Implementierung maßgeblich.
+1. „ZIP-Beweispaket importieren“ und ein eigenes oder fremdes DoiProof-ZIP aus Dateien, Downloads oder einem Messenger wählen (bis 200 MiB, Manifest v1, v2 oder v3).
+2. „Kettenstatus online abgleichen“ ein- oder ausschalten. Online werden nur der Paket-Hash und die Hashes der Vorabblöcke abgefragt.
+3. „Paket prüfen“. Die Ergebniskarte zeigt dieselben Aussagen wie der PDF-Bericht.
+4. Optional Foto und Standort für den Bericht abwählen und „PDF-Prüfbericht erstellen und teilen“.
 
-Dann den Paket-Hash unabhängig über Doichain `check_proof` oder eine eigene Kettenprüfung suchen, Transaktion und bestätigenden Block kontrollieren und gegebenenfalls die im Manifest genannten BTC-/DOI-Vorabblöcke auf ihren Ketten vergleichen. Zeitangaben getrennt behandeln: Gerätezeit, GPS-Messzeit, Headerzeiten und Bestätigungsblockzeit sind unterschiedliche Quellen. `verification.json` ist ein exportierter Status-Schnappschuss und kein signierter Serverbeleg. Für strittige Fälle eine fachkundige unabhängige Prüfung veranlassen.
+Ein verändertes oder beschädigtes Paket ergibt „Prüfung fehlgeschlagen“ mit der Stelle, an der die Kette bricht. Auch dafür lässt sich ein PDF erzeugen.
 
-## 7. Häufige Fragen und Störungen
+## 7. Technische Prüfung durch Dritte
 
-**Was ist der Unterschied zwischen PDF und ZIP?** Das PDF erläutert den Nachweis; das ZIP enthält die überprüfbaren Originalbytes und das Manifest. Für die technische Nachrechnung das ZIP sichern.
+Mit dem [Prüfprogramm](PRUEFPROGRAMM.md) lässt sich ein Paket unabhängig von der App prüfen: `npm run verify -- paket.zip --online --pdf bericht.pdf`. Für Windows gibt es den [Windows-Prüfer](DESKTOP-PRUEFER.md). Das Hashverfahren und die Kanonisierung (v3: RFC 8785) sind dort beschrieben. Zeitangaben getrennt behandeln: Gerätezeit, Standort-Messzeit, Sensorzeiten, Headerzeiten und Bestätigungsblockzeit sind unterschiedliche Quellen. `verification.json` ist ein Status-Schnappschuss und kein signierter Serverbeleg.
 
-**Beweist der Vorabblock, dass das Foto später entstanden ist?** Nein. Er belegt die Existenz eines genannten Blocks; die App meldet selbst, dass sie ihn vor dem Kameraaufruf gelesen hat. Alte Bilder und manipulierbare Geräte sind mögliche Gegenhypothesen.
+## 8. Häufige Fragen und Störungen
 
-**Beweist der Doichain-Block den Unfallort oder Eigentum am Gemälde?** Nein. Er bindet einen Paket-Hash an eine Transaktion. Ort, Gegenstand, Recht und Ereignis benötigen weitere Nachweise.
+**Was ist der Unterschied zwischen PDF und ZIP?** Das PDF erläutert und dokumentiert die Prüfung; das ZIP enthält die nachrechenbaren Originalbytes. Für eine spätere Prüfung immer das ZIP aufbewahren.
 
-**Was passiert bei fehlendem Netz?** Vorabblöcke können die Kamera blockieren. Später erneut versuchen oder den Schalter für diese Aufnahme bewusst ausschalten. Ohne erfolgreiche Einreichung kein bestätigter Nachweis.
+**Belegen die Sensorwerte, dass das Foto echt ist?** Nein. Sie sind Angaben des Geräts zum Zeitpunkt der Aufnahme und sind gegen nachträgliche Änderung geschützt. Ein manipuliertes Gerät könnte sie fälschen. Sie sind ein Indiz, das mit anderen Umständen abgeglichen werden kann (z. B. Luftdruck und Höhe am angegebenen Ort).
 
-**Warum bleibt ein Nachweis `pending`?** Die Einreichung und die Aufnahme in einen Block sind verschiedene Schritte. Später „Offene prüfen“ verwenden und den Kettenstatus kontrollieren.
+**Warum fehlt der Lichtsensor?** iPhones stellen Apps keinen Umgebungslichtsensor zur Verfügung; manche Android-Geräte melden Licht nur bei Änderungen. Der Bericht vermerkt den Grund.
 
-**Welche Daten verlassen das Gerät?** Bei der Verankerung der Paket-Hash und eine kurze öffentliche Gerätenotiz; für Vorabblöcke werden öffentliche Blockdienste kontaktiert. Auch ein solcher Netzwerkaufruf kann technische Verbindungsdaten beim Dienst hinterlassen. Bild und rohe Standortdaten werden von DoiProof dabei nicht hochgeladen. Das Teilen von PDF oder ZIP ist eine gesonderte, vom Nutzer ausgelöste Weitergabe.
+**Beweist der Vorabblock, dass das Foto später entstanden ist?** Nein. Er belegt, dass das Paket nicht vor dem Block erstellt wurde. Ein altes Bild könnte erneut fotografiert oder ausgewählt werden.
 
-**Wo finde ich den Software-Fingerprint?** Version 0.5 erfasst keinen unabhängig gemessenen Fingerprint einer installierten App-Datei. Versionsnummer und möglicher Commit sind Selbstauskünfte. App-/Geräteattestierung und signierte Challenge sind als [#6](https://github.com/neubuot/DoiProof/issues/6) und [#7](https://github.com/neubuot/DoiProof/issues/7) vorgemerkt.
+**Was passiert bei fehlendem Netz?** Vorabblöcke können die Kamera blockieren (Schalter ausschalten oder später erneut versuchen). Der Nachweis bleibt lokal gesichert, bis er gesendet wird.
 
-## 8. Dokumentation und Änderungen
+**Welche Daten verlassen das Gerät?** Bei der Verankerung der Paket-Hash und eine kurze öffentliche Gerätenotiz; für Vorabblöcke und Online-Prüfungen öffentliche Blockabfragen; für Updates die Update-Abfrage bei Expo. Foto, Standort und Sensorwerte nicht. Das Teilen von PDF oder ZIP ist eine bewusste Weitergabe durch dich.
 
-Die [Kurzanleitung](KURZANLEITUNG.md), die [Produkt- und Beweiskettenbeschreibung](PRODUKT-UND-BEWEISKETTE.md), dieses Handbuch sowie [ARCHITECTURE.md](ARCHITECTURE.md) gehören zum Repository. Änderungen an Oberfläche, Datenformat, Verankerung oder Export sollen die betroffenen Dokumente im gleichen Pull Request aktualisieren. Bei älteren Paketen immer die Version im Manifest und den dazugehörigen Git-Stand heranziehen.
+**Wo finde ich den Software-Fingerprint?** Das Manifest enthält Version, gegebenenfalls Commit, Update-Kanal, Laufzeitversion und Update-ID – als Selbstauskunft, nicht als Attestierung ([Issue #6](https://github.com/neubuot/DoiProof/issues/6), [Issue #7](https://github.com/neubuot/DoiProof/issues/7)).
+
+## 9. Dokumentation und Änderungen
+
+[Kurzanleitung](KURZANLEITUNG.md), [Produkt- und Beweiskettenbeschreibung](PRODUKT-UND-BEWEISKETTE.md), dieses Handbuch, [ARCHITECTURE.md](ARCHITECTURE.md) und die [Release-Notes](../RELEASE_NOTES.md) gehören zum Repository. Änderungen an Oberfläche, Datenformat, Verankerung oder Export aktualisieren die betroffenen Dokumente im selben Pull Request. Bei älteren Paketen immer die Version im Manifest und den passenden Git-Stand heranziehen.

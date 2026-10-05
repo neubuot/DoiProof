@@ -27,3 +27,7 @@ Verbindliche Vorlage für den PDF-Prüfbericht, den der Windows-Prüfer, der Kom
 ## Neu: Anhang „Alle erhobenen Messwerte“
 
 Ab Seite 3 jede einzelne im Manifest gebundene Angabe als Tabelle, gruppiert nach Quelle (Standort/GNSS, Bewegungssensoren, Magnetfeld/Kompass, Luftdruck, Licht, Kamera/EXIF, Gerät/App, Netz/Zeitanker). Spalten: Messgröße, Wert mit Einheit, Messzeitpunkt, Quelle/Sensor, Hinweis (z. B. „Geräteangabe, nicht unabhängig belegt“, „nicht verfügbar“, „Berechtigung verweigert“). Nicht erhobene Sensoren ausdrücklich als „nicht erfasst“ aufführen. Rohreihen (Mehrfachmessungen) mit Min/Max/Mittel und Anzahl, die vollständige Reihe bleibt im Manifest.
+
+## Umsetzung (ab Version 1.0.0)
+
+Der Bericht entsteht in `core/report-model.mjs` (Inhalte und Zustände) und `core/report-pdf.mjs` (Layout mit pdf-lib nach den Koordinaten, Schriftgrößen, Farben und Radien der Mustervorlage). Kommandozeile (`npm run verify -- paket.zip --pdf bericht.pdf`), Windows-Prüfer und App verwenden denselben Code und dieselben eingebetteten Schriften (`assets/fonts/`). [Pruefbericht-Beispiel-1.0.pdf](Pruefbericht-Beispiel-1.0.pdf) zeigt das Ergebnis mit **synthetischen Daten** (künstliches Testbild, Platzhalterort 48° N / 11° O, erfundene Block- und Transaktions-Hashes); es ist kein echter Nachweis und auf keiner Kette auffindbar.

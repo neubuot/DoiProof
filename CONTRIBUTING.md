@@ -7,8 +7,11 @@ Voraussetzungen: aktuelle Node.js-LTS-Version, npm und Expo Go.
 ```sh
 npm ci
 npm run check
+npm test
 npm start
 ```
+
+Für den Windows-Prüfer zusätzlich `cd desktop && npm ci && npm test`. Der Prüf- und Berichtskern liegt in `core/` und muss ohne Node-spezifische APIs auskommen, weil die App ihn unter Hermes ausführt (Node-Adapter nur in `core/node.mjs`).
 
 ## Git-Workflow
 
@@ -22,10 +25,10 @@ npm start
 ## Pull-Request-Checkliste
 
 - [ ] Änderung ist auf den beschriebenen Zweck begrenzt.
-- [ ] `npm run check` ist erfolgreich.
+- [ ] `npm run check` und `npm test` sind erfolgreich (bei Desktop-Änderungen auch `desktop/npm test`).
 - [ ] Android und – sofern betroffen – iOS wurden berücksichtigt.
-- [ ] Keine Schlüssel, Tokens, personenbezogenen Daten oder `.env`-Dateien eingecheckt.
-- [ ] README oder Architektur-Dokumentation wurden bei Verhaltensänderungen aktualisiert.
+- [ ] Keine Schlüssel, Tokens, Signaturdateien, echten Fotos, Standorte oder `.env`-Dateien eingecheckt (das Repository ist öffentlich).
+- [ ] README, Benutzerhandbuch oder Architektur-Dokumentation wurden bei Verhaltensänderungen aktualisiert; Versionsnummern in `package.json`, `app.json`, `desktop/package.json` und `core/version.mjs` stimmen überein.
 - [ ] Neue Berechtigungen und öffentlich gespeicherte Daten sind erklärt.
 
 ## Sicherheit
