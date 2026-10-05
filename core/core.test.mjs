@@ -229,6 +229,7 @@ test('Berichtsmodell: Ergebnis, Kacheln, QR und Anhang mit jeder Manifestangabe'
   assert.equal(model.outcome, 'passed');
   assert.equal(model.banner.title, 'Echt versiegelt');
   assert.equal(model.glance.length, 6);
+  assert.equal(model.glance.find(row => row.label === 'Gerät')?.value, 'Android 14 · DoiProof 1.0.0 · 5 Sensoren');
   assert.equal(model.tiles.length, 6);
   assert.equal(model.tiles.filter(t => t.kind === 'proof').length, 4);
   assert.equal(model.timeline.accent, '40 Minuten');

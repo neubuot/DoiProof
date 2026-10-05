@@ -65,7 +65,7 @@ Plattformabhängig sind nur Adapter: SHA-256 (`node:crypto` bzw. `expo-crypto`),
 | `capture` | `source` (`camera`/`library`), `deviceTime?` (Rückkehr aus der Kamera), `cameraOpenedAt?` |
 | `location` | `status`: `recorded`, `not_requested`, `permission_denied`, `unavailable` oder `error`; bei `recorded` zusätzlich `latitude`, `longitude`, `altitude`, `accuracy`, `altitudeAccuracy`, `heading`, `speed`, `measuredAt`, `mocked`; sonst optional `reason` |
 | `sensors` | `window` (`startedAt`, `cameraOpenedAt`, `cameraReturnedAt`, `endedAt`, `intervalMs`, `platform`) und je Sensor `accelerometer`, `gyroscope`, `magnetometer`, `compass`, `barometer`, `light` ein Eintrag |
-| `device?` | `platform`, `osVersion`, `appVersion`, `model?` (Android) |
+| `device?` | `platform`, `osVersion` (Android: API-Level), `osRelease?` (Android-Version), `appVersion`, `model?` (Android) |
 
 Sensoreintrag: `status` (`recorded`, `not_requested`, `unavailable`, `permission_denied`, `no_data`, `error`), `source`, bei `recorded` `units`, `received` (Anzahl empfangener Werte), `reading` (Einzelwert zur Aufnahme mit `at`) und `series` (höchstens 10 Werte vor der Kamera, 10 bei geöffneter Kamera, 10 nach der Rückkehr, jeweils mit `at`), sonst `reason`. Werte sind auf sechs Nachkommastellen gerundet; nicht gemeldete Werte sind `null`.
 

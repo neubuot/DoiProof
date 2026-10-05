@@ -40,7 +40,8 @@ function deviceInfo(): NonNullable<EvidenceManifest['device']> {
   const constants = Platform.constants as unknown as Record<string, unknown>;
   const model = Platform.OS === 'android' && typeof constants.Model === 'string'
     ? `${typeof constants.Manufacturer === 'string' ? `${constants.Manufacturer} ` : ''}${constants.Model}`.slice(0, 80) : undefined;
-  return { platform: Platform.OS, osVersion: Platform.Version, appVersion: VERSION, ...(model ? { model } : {}) };
+  const osRelease = Platform.OS === 'android' && typeof constants.Release === 'string' ? constants.Release.slice(0, 20) : undefined;
+  return { platform: Platform.OS, osVersion: Platform.Version, ...(osRelease ? { osRelease } : {}), appVersion: VERSION, ...(model ? { model } : {}) };
 }
 
 /**

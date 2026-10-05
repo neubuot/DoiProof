@@ -60,6 +60,16 @@ function leaves(value, prefix, out) {
   return out;
 }
 
+/** Betriebssystem lesbar: Android meldet als osVersion den API-Level. @param {Record<string, any>} device */
+function osText(device) {
+  const name = /** @type {Record<string, string>} */ (PLATFORM)[device.platform] ?? String(device.platform);
+  if (device.platform === 'android') {
+    if (typeof device.osRelease === 'string' && device.osRelease) return `${name} ${device.osRelease}`;
+    return typeof device.osVersion === 'number' ? `${name} (API ${device.osVersion})` : name;
+  }
+  return device.osVersion !== undefined ? `${name} ${device.osVersion}` : name;
+}
+
 /** @param {unknown} value */
 function plain(value) {
   if (value === null) return 'nicht erfasst (null)';
@@ -167,6 +177,8 @@ export function buildReportModel(input) {
   }
   if (sealed) {
     glance.push({ label: 'Versiegelt', value: fmtLocal(sealed), sub: `Doichain-Block ${formatInt(anchor?.blockHeight ?? 0)}${anchor?.confirmations ? `, ${formatInt(anchor.confirmations)}-fach bestätigt` : ''}` });
+  } else if (anchorMatched) {
+    glance.push({ label: 'Versiegelt', value: 'bestätigt', sub: `Doichain-Block ${formatInt(anchor?.blockHeight ?? 0)}, Blockzeit nicht gemeldet` });
   } else if (pending) {
     glance.push({ label: 'Versiegelt', value: 'ausstehend', sub: 'noch in keinem Doichain-Block bestätigt' });
   } else if (!online) {
@@ -192,7 +204,7 @@ export function buildReportModel(input) {
     ? { label: 'Quelle', value: 'Live-Kamera der App', sub: 'nicht aus Galerie oder Download' }
     : { label: 'Quelle', value: capture.source === 'library' ? 'Galerie oder Datei' : 'unbekannt', sub: 'vorhandenes Bild, Herkunft nicht belegt' });
   const deviceParts = [];
-  if (device?.platform) deviceParts.push(`${/** @type {Record<string, string>} */ (PLATFORM)[device.platform] ?? device.platform}${device.osVersion !== undefined ? ` ${device.osVersion}` : ''}`);
+  if (device?.platform) deviceParts.push(osText(device));
   deviceParts.push(`DoiProof ${app?.version ?? device?.appVersion ?? '?'}`);
   if (sensors) deviceParts.push(`${overview.recorded.length} Sensor${overview.recorded.length === 1 ? '' : 'en'}`);
   glance.push({ label: 'Gerät', value: deviceParts.join(' · ') });
@@ -544,7 +556,8 @@ export function buildAppendix({ analysis, manifest, verification, includeLocatio
     rows.push({ quantity: 'Manifest erstellt', value: utcStamp(iso(manifest.createdAt)), time: utcStamp(iso(manifest.createdAt)), source: 'Geräteuhr', note: DEVICE_NOTE });
     rows.push({ quantity: 'Metadatenprofil', value: { private: 'Privat', location: 'Standort und Sensoren', custom: 'Individuell' }[/** @type {'private'} */ (manifest.profile)] ?? String(manifest.profile ?? '–'), time: '–', source: 'App-Einstellung', note: 'vom Nutzer gewählt' });
     if (device) {
-      rows.push({ quantity: 'Betriebssystem', value: `${/** @type {Record<string, string>} */ (PLATFORM)[device.platform] ?? device.platform}${device.osVersion !== undefined ? ` ${device.osVersion}` : ''}`, time: '–', source: 'Gerät', note: DEVICE_NOTE });
+      rows.push({ quantity: 'Betriebssystem', value: osText(device), time: '–', source: 'Gerät', note: DEVICE_NOTE });
+      if (device.platform === 'android' && device.osVersion !== undefined) rows.push({ quantity: 'Android-API-Level', value: String(device.osVersion), time: '–', source: 'Gerät', note: DEVICE_NOTE });
       if (device.model) rows.push({ quantity: 'Gerätemodell', value: String(device.model), time: '–', source: 'Gerät', note: DEVICE_NOTE });
       if (device.appVersion) rows.push({ quantity: 'App-Version (Gerätedaten)', value: String(device.appVersion), time: '–', source: 'App', note: 'Selbstauskunft, nicht attestiert' });
     } else rows.push({ quantity: 'Gerätedaten', value: 'nicht erfasst', time: '–', source: 'Gerät', note: 'im Metadatenprofil nicht angefordert' });

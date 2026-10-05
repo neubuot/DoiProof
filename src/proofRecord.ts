@@ -74,6 +74,8 @@ export type EvidenceManifest = {
   device?: {
     platform: string;
     osVersion?: string | number;
+    /** Android: Versionsname (z. B. „14“); osVersion ist dort der API-Level. */
+    osRelease?: string;
     appVersion: string;
     model?: string;
   };

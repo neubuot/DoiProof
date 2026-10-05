@@ -67,7 +67,7 @@ export async function buildBundle(options = {}) {
   if (version === 'v3') {
     manifest.capture.cameraOpenedAt = new Date(CAPTURE_MS - 7000).toISOString();
     manifest.app.update = { channel: 'preview', runtimeVersion: 'abc123', updateId: null, embedded: true };
-    manifest.device = { platform: 'android', osVersion: 34, appVersion: '1.0.0' };
+    manifest.device = { platform: 'android', osVersion: 34, osRelease: '14', appVersion: '1.0.0' };
     manifest.location = options.location === false ? { status: 'not_requested' } : {
       status: 'recorded', latitude: 48, longitude: 11, altitude: 500, accuracy: 10, altitudeAccuracy: 3,
       heading: null, speed: 0, measuredAt: new Date(CAPTURE_MS + 900).toISOString(), mocked: false,
