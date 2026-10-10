@@ -1,6 +1,6 @@
 /**
  * Kartenausschnitt mit OpenStreetMap-Kacheln (Web-Mercator) für den Windows-Prüfer und den
- * PDF-Prüfbericht. Kacheln werden nur auf ausdrücklichen Wunsch geladen; der Dienst sieht dabei
+ * PDF-Prüfbericht. Kacheln werden nur geladen, wenn die Karte eingeschaltet ist; der Dienst sieht dabei
  * ungefähr den Standort und die IP-Adresse. Der PDF-Renderer selbst greift nie auf das Netz zu.
  * Plattformneutral (Node und Hermes): kein Buffer, kein TextDecoder, kein AbortSignal.timeout.
  */

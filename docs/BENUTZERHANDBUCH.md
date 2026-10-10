@@ -73,7 +73,7 @@ Offene Einträge werden beim Start, bei Rückkehr in die App, minütlich und mit
 
 Im „Nachweisverlauf“:
 
-- **„Prüfbericht PDF“** baut das Beweispaket, prüft es mit derselben Logik wie Kommandozeile und Windows-Prüfer, gleicht es – wenn eingeschaltet – online ab und erstellt den PDF-Prüfbericht. Schalter: „Kettenstatus online abgleichen“, „Foto im Bericht“, „Standort im Bericht“ (standardmäßig aus) und „Kartenausschnitt (OpenStreetMap)“ (standardmäßig aus, nur mit eingeblendetem Standort).
+- **„Prüfbericht PDF“** baut das Beweispaket, prüft es mit derselben Logik wie Kommandozeile und Windows-Prüfer, gleicht es – wenn eingeschaltet – online ab und erstellt den PDF-Prüfbericht. Schalter: „Kettenstatus online abgleichen“, „Foto im Bericht“, „Standort im Bericht“ (standardmäßig aus) und „Kartenausschnitt (OpenStreetMap)“ (standardmäßig an; wirkt nur, wenn „Standort im Bericht“ an ist).
 - **„Beweispaket ZIP“** teilt `original.<endung>`, `manifest.json`, `verification.json` und `README.txt`. Das ZIP enthält immer das Foto und das vollständige Manifest mit Standort und Sensorwerten.
 
 Der Verlauf liegt nur auf diesem Gerät. App-Löschung oder Gerätewechsel beseitigen ihn; das exportierte ZIP ist für die langfristige Prüfung entscheidend. Eine zweite Kopie aufbewahren.
@@ -82,7 +82,7 @@ Der Verlauf liegt nur auf diesem Gerät. App-Löschung oder Gerätewechsel besei
 
 1. **Seite 1:** Ergebnis (bestanden / unvollständig / fehlgeschlagen), Foto, „Auf einen Blick“, Zeitstrahl und „Was die Prüfung zeigt“ (gefüllt = mathematisch belegt, umrandet = stimmiges Indiz).
 2. **Seite 2:** Beweiskette mit allen Hashwerten, Transaktion und Block, Zeitanker, QR-Code zu verifile.it, „Dieser Bericht belegt / belegt nicht“.
-3. **Anhang:** auf Wunsch zuerst der Kartenausschnitt (wie im Windows-Prüfer: Koordinaten, Karte mit Markierung, Quellenangabe), dann jede im Manifest gebundene Angabe nach Quelle, nicht erfasste Sensoren mit Grund, Messreihen als Minimum/Maximum/Mittelwert/Anzahl und in Anhang B jede Einzelmessung.
+3. **Anhang:** zuerst der Kartenausschnitt, sofern der Standort im Bericht steht und die Karte nicht abgeschaltet ist (wie im Windows-Prüfer: Koordinaten, Karte mit Markierung, Quellenangabe), dann jede im Manifest gebundene Angabe nach Quelle, nicht erfasste Sensoren mit Grund, Messreihen als Minimum/Maximum/Mittelwert/Anzahl und in Anhang B jede Einzelmessung.
 
 „Bestanden“ setzt den Online-Abgleich voraus. Ohne ihn ist das Ergebnis „unvollständig“: Das Paket ist unverändert, ein Zeitpunkt der Versiegelung ist aber noch nicht belegt.
 
@@ -91,7 +91,7 @@ Der Verlauf liegt nur auf diesem Gerät. App-Löschung oder Gerätewechsel besei
 1. „ZIP-Beweispaket importieren“ und ein eigenes oder fremdes DoiProof-ZIP aus Dateien, Downloads oder einem Messenger wählen (bis 200 MiB, Manifest v1, v2 oder v3).
 2. „Kettenstatus online abgleichen“ ein- oder ausschalten. Online werden nur der Paket-Hash und die Hashes der Vorabblöcke abgefragt.
 3. „Paket prüfen“. Die Ergebniskarte zeigt dieselben Aussagen wie der PDF-Bericht.
-4. Optional Foto und Standort für den Bericht abwählen oder „Kartenausschnitt (OpenStreetMap)“ einschalten und „PDF-Prüfbericht erstellen und teilen“.
+4. Optional Foto, Standort oder „Kartenausschnitt (OpenStreetMap)“ für den Bericht abwählen (alle drei sind standardmäßig an) und „PDF-Prüfbericht erstellen und teilen“.
 
 Ein verändertes oder beschädigtes Paket ergibt „Prüfung fehlgeschlagen“ mit der Stelle, an der die Kette bricht. Auch dafür lässt sich ein PDF erzeugen.
 
@@ -111,7 +111,7 @@ Mit dem [Prüfprogramm](PRUEFPROGRAMM.md) lässt sich ein Paket unabhängig von 
 
 **Was passiert bei fehlendem Netz?** Vorabblöcke können die Kamera blockieren (Schalter ausschalten oder später erneut versuchen). Der Nachweis bleibt lokal gesichert, bis er gesendet wird.
 
-**Welche Daten verlassen das Gerät?** Bei der Verankerung der Paket-Hash und eine kurze öffentliche Gerätenotiz; für Vorabblöcke und Online-Prüfungen öffentliche Blockabfragen; für Updates die Update-Abfrage bei Expo. Foto, Standort und Sensorwerte nicht. Ausnahme auf Wunsch: Mit „Kartenausschnitt (OpenStreetMap)“ lädt die App 6 bis 12 Kartenkacheln von OpenStreetMap; der Kartendienst sieht dabei den ungefähren Standort und deine IP-Adresse. Die Kacheln liegen danach sieben Tage im privaten Cache der App. Das Teilen von PDF oder ZIP ist eine bewusste Weitergabe durch dich.
+**Welche Daten verlassen das Gerät?** Bei der Verankerung der Paket-Hash und eine kurze öffentliche Gerätenotiz; für Vorabblöcke und Online-Prüfungen öffentliche Blockabfragen; für Updates die Update-Abfrage bei Expo. Foto, Standort und Sensorwerte nicht. Ausnahme beim PDF-Bericht: Ist „Kartenausschnitt (OpenStreetMap)“ an (Standard, sobald der Standort im Bericht steht), lädt die App 6 bis 12 Kartenkacheln von OpenStreetMap; der Kartendienst sieht dabei den ungefähren Standort und deine IP-Adresse. Die Kacheln liegen danach sieben Tage im privaten Cache der App. Das Teilen von PDF oder ZIP ist eine bewusste Weitergabe durch dich.
 
 **Wo finde ich den Software-Fingerprint?** Das Manifest enthält Version, gegebenenfalls Commit, Update-Kanal, Laufzeitversion und Update-ID – als Selbstauskunft, nicht als Attestierung ([Issue #6](https://github.com/neubuot/DoiProof/issues/6), [Issue #7](https://github.com/neubuot/DoiProof/issues/7)).
 

@@ -32,13 +32,13 @@ Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, 
 - Vor dem Kamerastart aktuelle BTC- und DOI-Blöcke ins Manifest aufnehmen (Vorabblöcke).
 - Verankerung ohne Schlüssel über den [Doichain-MCP-Server](https://doi-api.sendlabs.de/mcp) (`anchor_proof`), Status mit `check_proof`; kostenloses Tageskontingent (`get_anchoring_quota`).
 - Lokale Sicherung von Original und Manifest vor dem Senden; Verlauf mit automatischer Statusaktualisierung.
-- **PDF-Prüfbericht** nach Designvorlage mit Anhang aller erhobenen Messwerte, auf Wunsch mit Kartenausschnitt (OpenStreetMap) wie im Windows-Prüfer; ZIP-Beweispaket zum Teilen.
+- **PDF-Prüfbericht** nach Designvorlage mit Anhang aller erhobenen Messwerte, mit Kartenausschnitt (OpenStreetMap) wie im Windows-Prüfer; ZIP-Beweispaket zum Teilen.
 - **Prüfer in der App:** eigene oder fremde ZIPs importieren, offline prüfen, optional online abgleichen, Bericht teilen.
 - Eigenständige Builds (EAS) mit Over-the-Air-Updates für JavaScript-Änderungen.
 
 ## Datenschutz
 
-Übertragen werden nur der Beweispaket-Hash und eine kurze, als Geräteangabe gekennzeichnete Aufnahmezeit; für Vorabblöcke und Online-Prüfungen werden öffentliche Blockdaten abgefragt. Foto, Standort und Sensorwerte bleiben auf dem Gerät und im bewusst geteilten ZIP bzw. PDF. Nur wenn ein Kartenausschnitt für den PDF-Bericht ausdrücklich gewünscht ist, werden Kartenkacheln bei OpenStreetMap abgerufen; der Kartendienst sieht dabei den ungefähren Standort und die IP-Adresse. Im Profil „Privat“ werden weder Standort noch Sensoren erfasst. Ein Hash beweist, dass dieselben Bytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Gerätezeit, Standort, Sensorwerte und App-Version sind nicht attestierte Selbstauskünfte. Einzelheiten: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Übertragen werden nur der Beweispaket-Hash und eine kurze, als Geräteangabe gekennzeichnete Aufnahmezeit; für Vorabblöcke und Online-Prüfungen werden öffentliche Blockdaten abgefragt. Foto, Standort und Sensorwerte bleiben auf dem Gerät und im bewusst geteilten ZIP bzw. PDF. Für den Kartenausschnitt im PDF-Bericht (in der App standardmäßig an, sobald der Standort im Bericht steht; abschaltbar) werden Kartenkacheln bei OpenStreetMap abgerufen; der Kartendienst sieht dabei den ungefähren Standort und die IP-Adresse. Im Profil „Privat“ werden weder Standort noch Sensoren erfasst. Ein Hash beweist, dass dieselben Bytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Gerätezeit, Standort, Sensorwerte und App-Version sind nicht attestierte Selbstauskünfte. Einzelheiten: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Installation
 

@@ -104,7 +104,7 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 - Gerätezeit, Abfragezeiten, Standort, Sensorwerte, App-Version und Commit sind **nicht attestierte Selbstauskünfte**. Ein manipuliertes Gerät kann sie fälschen; ein altes Foto kann erneut verwendet werden. Vorabblöcke belegen nur, dass das **Paket** nach ihrer Entstehung erzeugt wurde. BTC und Doichain sind wegen Merged Mining nicht vollständig unabhängig.
 - API-Schlüssel bleiben nur im flüchtigen App-Zustand. Signaturschlüssel und Tokens liegen ausschließlich in Expo bzw. GitHub-Secrets.
 - Der Windows-Prüfer lädt keine Webseiten, isoliert den Renderer und erzeugt Berichte im Hauptprozess aus der erneut gehashten Datei.
-- Kartenkacheln (Windows-Prüfer „Karte laden“ bzw. „Karte im PDF“, App „Kartenausschnitt (OpenStreetMap)“, Kommandozeile `--karte`) werden nur auf ausdrücklichen Wunsch bei `tile.openstreetmap.org` geladen. Der Dienst sieht dabei den ungefähren Standort und die IP-Adresse; die Cache-Dateinamen verraten ebenfalls den ungefähren Ort und liegen deshalb nur in privaten Verzeichnissen.
+- Kartenkacheln (Windows-Prüfer „Karte laden“ bzw. „Karte im PDF“, App „Kartenausschnitt (OpenStreetMap)“, Kommandozeile `--karte`) werden nur geladen, wenn die Karte eingeschaltet ist (App: standardmäßig an, sobald der Standort im Bericht steht; Windows-Prüfer und Kommandozeile: nur auf ausdrücklichen Wunsch), und zwar bei `tile.openstreetmap.org`. Der Dienst sieht dabei den ungefähren Standort und die IP-Adresse; die Cache-Dateinamen verraten ebenfalls den ungefähren Ort und liegen deshalb nur in privaten Verzeichnissen.
 
 ## Aktuelle Einschränkungen
 

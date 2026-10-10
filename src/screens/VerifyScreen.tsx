@@ -16,7 +16,7 @@ export function VerifyScreen() {
   const [message, setMessage] = useState('');
   const [includePhoto, setIncludePhoto] = useState(true);
   const [includeLocation, setIncludeLocation] = useState(true);
-  const [includeMap, setIncludeMap] = useState(false);
+  const [includeMap, setIncludeMap] = useState(true);
 
   async function choose() {
     setMessage('');

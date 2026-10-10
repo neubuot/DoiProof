@@ -58,7 +58,7 @@ export function CaptureScreen() {
   const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
   const [reportPhoto, setReportPhoto] = useState(true);
   const [reportLocation, setReportLocation] = useState(false);
-  const [reportMap, setReportMap] = useState(false);
+  const [reportMap, setReportMap] = useState(true);
   const [reportOnline, setReportOnline] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const historyRef = useRef<ProofRecord[]>([]);

@@ -5,7 +5,7 @@ Verbindliche Vorlage für den PDF-Prüfbericht, den der Windows-Prüfer, der Kom
 ## Gestaltung
 
 - Format A4 hoch, Ränder etwa 36 pt, Kopf- und Fußzeile auf jeder Seite (Seite x von y, Berichtsnummer = erste 12 Hex-Zeichen des Paket-Hashs in Vierergruppen, z. B. `3DF2 5CFA 586B`).
-- Schriften: Überschriften Serifenschrift (z. B. Fraunces), Fließtext IBM Plex Sans, Hashes und Nummern IBM Plex Mono. Schriften einbetten, keine Netzwerkzugriffe beim Erzeugen. Einzige Ausnahme ist der optionale Kartenausschnitt: Seine Kacheln werden nur auf ausdrücklichen Wunsch **vor** dem Rendern geladen; der Renderer selbst greift nie auf das Netz zu.
+- Schriften: Überschriften Serifenschrift (z. B. Fraunces), Fließtext IBM Plex Sans, Hashes und Nummern IBM Plex Mono. Schriften einbetten, keine Netzwerkzugriffe beim Erzeugen. Einzige Ausnahme ist der optionale Kartenausschnitt: Seine Kacheln werden nur bei eingeschalteter Karte und **vor** dem Rendern geladen; der Renderer selbst greift nie auf das Netz zu.
 - Farben: Hintergrund `#fdfbf7`, Ergebnisbanner `#123d3a`, Akzent Petrol `#1c5c56`, helle Petrolfläche `#e6efec`, Sandfläche `#f2efe6`, Linien `#ddd5c7`, Text `#14201e` / `#3d4b48` / `#5b6865`, Hervorhebung Terrakotta `#a3532e`, Banner-Kursivtext `#e7b48f`.
 - Ergebnisbanner je nach Ausgang: bestanden (Petrol, Haken), unvollständig (Sand/Terrakotta, Uhr), fehlgeschlagen (Rot, Kreuz). Die Kopfzeile darf nie „echt“ sagen, wenn eine Prüfung fehlschlug.
 
@@ -30,7 +30,7 @@ Ab Seite 3 jede einzelne im Manifest gebundene Angabe als Tabelle, gruppiert nac
 
 ## Neu: Kartenausschnitt (optional)
 
-Auf ausdrücklichen Wunsch (App: „Kartenausschnitt (OpenStreetMap)“, Windows-Prüfer: „Karte im PDF“, Kommandozeile: `--karte`) zeigt der Anhang in der Gruppe „Standort / GNSS“ vor der Tabelle eine Karte, die der Detailkarte „02 / STANDORT“ des Windows-Prüfers entspricht:
+Ist die Karte eingeschaltet (App: „Kartenausschnitt (OpenStreetMap)“, standardmäßig an; Windows-Prüfer: „Karte im PDF“; Kommandozeile: `--karte`), zeigt der Anhang in der Gruppe „Standort / GNSS“ vor der Tabelle eine Karte, die der Detailkarte „02 / STANDORT“ des Windows-Prüfers entspricht:
 
 - Weiße Karte mit Titelzeile „KARTENAUSSCHNITT“ / „OPENSTREETMAP · ZOOMSTUFE 14“ (`#66877b`), Koordinaten in IBM Plex Mono (`#205b58`, Format `48.137154°, 11.575382°`) und dem Hinweis des Prüfers „Koordinaten sind Selbstauskünfte des Geräts; eine Kartenmarkierung attestiert keinen Aufnahmeort.“
 - Kartenbild 504 × 255 pt (672 × 340 px im Maßstab des Prüfers, 1 px = 0,75 pt), Radius 8,25 pt, Grund `#dfe6dd`, OSM-Kacheln in Zoomstufe 14, Koordinate genau in der Mitte.
