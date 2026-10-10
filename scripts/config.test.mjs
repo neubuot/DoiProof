@@ -85,9 +85,13 @@ test('Keine Zugangsdaten, Schlüssel oder Signaturdateien im Repository', () => 
   for (const file of files) {
     assert.doesNotMatch(file, /\.(jks|keystore|p8|p12|pem|mobileprovision)$|(^|\/)credentials\.json$|(^|\/)\.env(\.|$)(?!example)/, file);
   }
+  // -e, weil ein Muster mit führendem „-“ sonst als Option gilt; nur Exitcode 1 bedeutet „kein Treffer“
   const grep = (/** @type {string} */ pattern) => {
-    try { return execFileSync('git', ['grep', '-I', '-n', '-E', pattern, '--', '.', ':!package-lock.json', ':!desktop/package-lock.json', ':!scripts/config.test.mjs'], { cwd: new URL('.', root), encoding: 'utf8' }); }
-    catch { return ''; }
+    try { return execFileSync('git', ['grep', '-I', '-n', '-E', '-e', pattern, '--', '.', ':!package-lock.json', ':!desktop/package-lock.json', ':!scripts/config.test.mjs'], { cwd: new URL('.', root), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (error) {
+      if (/** @type {{ status?: number }} */ (error).status === 1) return '';
+      throw error;
+    }
   };
   assert.equal(grep('-----BEGIN [A-Z ]*PRIVATE KEY-----'), '');
   assert.equal(grep('EXPO_TOKEN *[:=] *["\']?[A-Za-z0-9_-]{20,}'), '');
