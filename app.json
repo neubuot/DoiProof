@@ -26,7 +26,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "DoiProof benötigt die Kamera, um ein Foto für einen Nachweis aufzunehmen. Das Foto bleibt auf dem Gerät.",
         "NSPhotoLibraryUsageDescription": "DoiProof benötigt Zugriff auf ein ausgewähltes Foto, um dessen Hash zu berechnen. Das Foto wird nicht hochgeladen.",
-        "NSLocationWhenInUseUsageDescription": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen.",
+        "NSLocationWhenInUseUsageDescription": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen; nur für den optionalen Kartenausschnitt im PDF-Bericht lädt die App Kartenkacheln dieser Umgebung von OpenStreetMap.",
         "NSMotionUsageDescription": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
       }
     },
@@ -46,7 +46,12 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.SYSTEM_ALERT_WINDOW",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "plugins": [
@@ -61,7 +66,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen.",
+          "locationWhenInUsePermission": "DoiProof misst den Standort nur bei aktivem Standortnachweis während der Aufnahme und bindet ihn lokal an das Beweispaket. Er wird nicht hochgeladen; nur für den optionalen Kartenausschnitt im PDF-Bericht lädt die App Kartenkacheln dieser Umgebung von OpenStreetMap.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "motionUsagePermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
@@ -72,7 +77,8 @@
         {
           "motionPermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
         }
-      ]
+      ],
+      "./plugins/with-android-play.js"
     ],
     "extra": {
       "eas": {

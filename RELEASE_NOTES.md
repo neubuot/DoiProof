@@ -14,6 +14,8 @@ Erste auslieferungsreife Version von App, Kommandozeilen-Prüfer und Windows-Pr�
 
 ## Verbessert und behoben
 
+- „Foto aufnehmen“ funktioniert wieder auf Android 7 bis 9: Die dort nötige Speicherberechtigung ist nur noch bis Android 9 deklariert. Nicht genutzte Berechtigungen (Bewegungserkennung, Medienzugriff, Werbe-ID) sind entfernt; die Fotoauswahl nutzt den Android-Photo-Picker ohne Zugriff auf die ganze Galerie.
+- Einheitliche Zeilenenden (`.gitattributes`): Builds unter Windows und aus GitHub Actions ergeben dieselbe Laufzeitversion, damit EAS Updates alle Installationen erreichen.
 - Manifest v3 verwendet die Kanonisierung nach RFC 8785 (JSON Canonicalization Scheme) statt der locale-abhängigen Sortierung. v1 und v2 bleiben unverändert prüfbar.
 - Der Prüfer begrenzt beim Entpacken die tatsächliche Datenmenge (Schutz vor ZIP-Bomben) statt nur die im ZIP behaupteten Größen und prüft CRC32 ohne vollständiges Vorab-Entpacken.
 - Die Standortfreigabe wird vor dem Öffnen der Kamera eingeholt; eine Verweigerung verwirft das Foto nicht mehr, sondern wird im Manifest vermerkt.

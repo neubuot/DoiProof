@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { VERSION } from '../core/version.mjs';
 import { androidSection, END, mergeSection, START } from './release-notes.mjs';
@@ -32,6 +33,14 @@ test('Expo-Konfiguration: Owner, Projekt, iOS-Bundle-ID, Berechtigungen und EAS 
   assert.equal(expo.ios.config.usesNonExemptEncryption, false);
   assert.equal(expo.android.package, 'org.doichain.doiproof');
   assert.ok(expo.android.blockedPermissions.includes('android.permission.RECORD_AUDIO'));
+  // Google Play: keine Bewegungserkennung (nicht genutzt), kein breiter Medienzugriff (Photo Picker), keine Werbe-ID
+  for (const permission of ['ACTIVITY_RECOGNITION', 'READ_EXTERNAL_STORAGE', 'READ_MEDIA_IMAGES', 'READ_MEDIA_VIDEO', 'READ_MEDIA_VISUAL_USER_SELECTED']) {
+    assert.ok(expo.android.blockedPermissions.includes(`android.permission.${permission}`), permission);
+  }
+  assert.ok(expo.android.blockedPermissions.includes('com.google.android.gms.permission.AD_ID'));
+  // Die Kamera braucht WRITE_EXTERNAL_STORAGE bis Android 9 (expo-image-picker); das Plugin begrenzt sie auf API 28
+  assert.ok(!expo.android.blockedPermissions.includes('android.permission.WRITE_EXTERNAL_STORAGE'));
+  assert.ok(expo.plugins.includes('./plugins/with-android-play.js'));
   assert.ok(expo.plugins.some((/** @type {any} */ p) => Array.isArray(p) && p[0] === 'expo-sensors' && p[1].motionPermission));
 });
 
@@ -45,9 +54,37 @@ test('EAS: APK für Tester im Kanal preview, Store/TestFlight im Kanal productio
   assert.equal(eas.build.production.distribution, 'store');
   assert.ok(eas.build.production.ios, 'iOS-Profil für TestFlight');
   assert.ok(eas.submit.production.ios, 'Submit-Profil für TestFlight');
+  // Google Play: erster Upload als Entwurf in den internen Test, nichts geht ungeprüft live
+  assert.deepEqual(eas.submit.production.android, { track: 'internal', releaseStatus: 'draft' });
+  assert.equal(eas.submit.production.android.serviceAccountKeyPath, undefined, 'Dienstkonto-Schlüssel nur in EAS, nie im Repo');
   const pkg = await json('package.json');
   for (const dep of ['expo-updates', 'expo-sensors', 'expo-document-picker', 'pdf-lib', '@pdf-lib/fontkit', 'qrcode-generator']) assert.ok(pkg.dependencies[dep], dep);
   assert.equal(pkg.scripts['eas-build-post-install'], 'node scripts/build-info.mjs');
+});
+
+test('Manifest-Plugin: Speicherrecht nur bis Android 9, Kamera als optionales Merkmal', () => {
+  const { applyPlayManifest } = createRequire(import.meta.url)('../plugins/with-android-play.js');
+  const manifest = applyPlayManifest({
+    $: { 'xmlns:android': 'http://schemas.android.com/apk/res/android' },
+    'uses-permission': [
+      { $: { 'android:name': 'android.permission.CAMERA' } },
+      { $: { 'android:name': 'android.permission.WRITE_EXTERNAL_STORAGE', 'android:maxSdkVersion': '32' } },
+    ],
+    'uses-feature': [{ $: { 'android:name': 'android.hardware.camera', 'android:required': 'true' } }],
+  });
+  assert.equal(manifest.$['xmlns:tools'], 'http://schemas.android.com/tools');
+  const write = manifest['uses-permission'].filter((/** @type {any} */ p) => p.$['android:name'] === 'android.permission.WRITE_EXTERNAL_STORAGE');
+  assert.deepEqual(write, [{ $: { 'android:name': 'android.permission.WRITE_EXTERNAL_STORAGE', 'android:maxSdkVersion': '28', 'tools:replace': 'android:maxSdkVersion' } }]);
+  assert.ok(manifest['uses-permission'].some((/** @type {any} */ p) => p.$['android:name'] === 'android.permission.CAMERA'));
+  assert.deepEqual(manifest['uses-feature'].map((/** @type {any} */ f) => [f.$['android:name'], f.$['android:required']]),
+    [['android.hardware.camera', 'false'], ['android.hardware.camera.autofocus', 'false']]);
+  // Zweimal angewendet bleibt das Ergebnis gleich
+  assert.deepEqual(applyPlayManifest(structuredClone(manifest)), manifest);
+});
+
+test('Zeilenenden einheitlich LF, damit Windows- und CI-Builds dieselbe Laufzeitversion ergeben', async () => {
+  assert.match(await text('.gitattributes'), /^\* text=auto eol=lf$/m);
+  assert.match(await text('.gitignore'), /^\*service-account\*\.json$/m);
 });
 
 test('Workflows: APK bei Release-Tag mit EXPO_TOKEN, EAS Update, Windows-Release', async () => {
@@ -83,7 +120,7 @@ test('Release-Notes erhalten den Expo-Link idempotent', () => {
 test('Keine Zugangsdaten, Schlüssel oder Signaturdateien im Repository', () => {
   const files = execFileSync('git', ['ls-files'], { cwd: new URL('.', root), encoding: 'utf8' }).split('\n').filter(Boolean);
   for (const file of files) {
-    assert.doesNotMatch(file, /\.(jks|keystore|p8|p12|pem|mobileprovision)$|(^|\/)credentials\.json$|(^|\/)\.env(\.|$)(?!example)/, file);
+    assert.doesNotMatch(file, /\.(jks|keystore|p8|p12|pem|mobileprovision)$|(^|\/)credentials\.json$|(^|\/)\.env(\.|$)(?!example)|service-account[^/]*\.json$|(^|\/)pc-api-[^/]*\.json$/, file);
   }
   // -e, weil ein Muster mit führendem „-“ sonst als Option gilt; nur Exitcode 1 bedeutet „kein Treffer“
   const grep = (/** @type {string} */ pattern) => {
@@ -96,4 +133,5 @@ test('Keine Zugangsdaten, Schlüssel oder Signaturdateien im Repository', () => 
   assert.equal(grep('-----BEGIN [A-Z ]*PRIVATE KEY-----'), '');
   assert.equal(grep('EXPO_TOKEN *[:=] *["\']?[A-Za-z0-9_-]{20,}'), '');
   assert.equal(grep('ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}'), '');
+  assert.equal(grep('"type": *"service_account"'), '', 'Google-Dienstkonto-Schlüssel');
 });

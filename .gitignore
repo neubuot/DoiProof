@@ -19,6 +19,9 @@ credentials.json
 *.mobileprovision
 *.pem
 google-services.json
+# Google-Play-Dienstkonto (JSON-Schlüssel für eas submit) – nur in EAS hinterlegen
+*service-account*.json
+pc-api-*.json
 GoogleService-Info.plist
 # Lokale Native-Projekte (Prebuild) und Testdaten
 /android/

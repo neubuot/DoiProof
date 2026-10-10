@@ -1,0 +1,12 @@
+# Einheitlich LF auf allen Rechnern: Der Expo-Fingerprint (Laufzeitversion für EAS Update)
+# hasht u. a. .gitignore und eas.json byteweise. Mit CRLF unter Windows ergäbe ein lokaler Build
+# eine andere Laufzeitversion als ein Build oder Update aus GitHub Actions.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.pdf binary
+*.zip binary

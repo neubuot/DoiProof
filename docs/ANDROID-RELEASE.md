@@ -8,7 +8,8 @@ Die Android-App wird mit **EAS Build** (Expo Application Services) als signierte
 | Paketname | `org.doichain.doiproof` |
 | Version | `1.0.0`; der `versionCode` wird von EAS verwaltet und automatisch erhöht (`appVersionSource: remote`) |
 | Profil `preview` | interne Verteilung, **APK**, Update-Kanal `preview` |
-| Profil `production` | Store-Verteilung, **AAB** für Google Play, Update-Kanal `production` |
+| Profil `production` | Store-Verteilung, **AAB** für Google Play, Update-Kanal `production`; Upload mit `eas submit` als Entwurf in den internen Test (`eas.json`). Ablauf bis zur Veröffentlichung: [PLAY-STORE.md](PLAY-STORE.md) |
+| Berechtigungen | Kamera, Standort (nur im Vordergrund), Internet; Speicher nur bis Android 9 (für die Kamera, `plugins/with-android-play.js`). Gesperrt: Mikrofon, Hintergrundstandort, Bewegungserkennung, Medienzugriff (Fotoauswahl über den Android-Photo-Picker), Werbe-ID |
 | Laufzeitversion | `fingerprint`: Jede native Änderung ergibt eine neue Laufzeitversion; alte Builds erhalten dann keine Updates mehr, sondern brauchen ein neues APK |
 
 ## Automatischer Build bei einem Release-Tag

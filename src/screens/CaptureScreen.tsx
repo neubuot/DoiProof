@@ -288,7 +288,7 @@ export function CaptureScreen() {
       <View style={styles.hero}>
         <Text style={styles.brand}>DOIPROOF  /  VERSION {VERSION}</Text>
         <Text style={styles.title}>Dein Foto.{'\n'}Dein Nachweis.</Text>
-        <Text style={styles.lead}>Original, Manifest und Sensorwerte bleiben bei dir. An Doichain gehen nur der Paket-Hash und gegebenenfalls eine kurze Gerätenotiz.</Text>
+        <Text style={styles.lead}>Original, Manifest und Sensorwerte bleiben bei dir. An Doichain gehen nur der Paket-Hash und eine kurze Notiz mit der Aufnahmezeit laut Gerät – beides steht öffentlich und dauerhaft auf der Blockchain.</Text>
         <View style={styles.heroStats}><Text style={styles.heroStat}>◈  {history.length} lokal gesichert</Text><Text style={styles.heroStat}>◎  SHA-256 · Manifest v3</Text></View>
       </View>
       <Text style={styles.sectionEyebrow}>01  /  AUFNAHME VORBEREITEN</Text>
@@ -306,8 +306,8 @@ export function CaptureScreen() {
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Betriebssystem und App-Version</Text><Switch value={metadata.includeDevice} onValueChange={value => setMetadata(current => ({ ...current, includeDevice: value }))} /></View>
         </>}
         <Text style={styles.muted}>{metadata.includeLocation || metadata.includeSensors
-          ? 'Standort und Sensorwerte (Beschleunigung, Gyroskop, Magnetfeld/Kompass, Luftdruck, Licht) werden während der Aufnahme lokal gemessen und durch den Hash gebunden. Nicht verfügbare oder verweigerte Sensoren werden ausdrücklich vermerkt. Auf der Blockchain stehen nur Hash und kurze Notiz.'
-          : 'Keine Standort- oder Sensordaten. Auf der Blockchain stehen nur Beweispaket-Hash und kurze Notiz.'}</Text>
+          ? 'Standort und Sensorwerte (Beschleunigung, Gyroskop, Magnetfeld/Kompass, Luftdruck, Licht) werden während der Aufnahme lokal gemessen und durch den Hash gebunden. Nicht verfügbare oder verweigerte Sensoren werden ausdrücklich vermerkt. Auf der Blockchain stehen nur Hash und kurze Notiz (öffentlich, nicht löschbar).'
+          : 'Keine Standort- oder Sensordaten. Auf der Blockchain stehen nur Beweispaket-Hash und kurze Notiz (öffentlich, nicht löschbar).'}</Text>
       </View>
       <View style={styles.row}>
         <Pressable accessibilityRole="button" style={styles.button} onPress={() => choose('camera')} disabled={busy}><Text style={styles.buttonText}>Foto aufnehmen</Text></Pressable>

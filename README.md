@@ -18,6 +18,7 @@ DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die
 | [Technische Architektur](docs/ARCHITECTURE.md) | Bausteine, Datenfluss, Manifest v3, Sicherheitsgrenzen |
 | [Android-Build und Gerätetest](docs/ANDROID-RELEASE.md) | EAS Build, Release-Tag, EAS Update, Testablauf |
 | [iOS-Release über TestFlight](docs/IOS-RELEASE.md) | Einmalige Schritte mit dem Apple-Login |
+| [Veröffentlichung im Google Play Store](docs/PLAY-STORE.md) | Play Console, Store-Eintrag, Datensicherheit, Build und Upload mit EAS |
 | [Review 1.0](docs/REVIEW-1.0.md) | Bewertung des Ausgangszustands, Befunde, Restrisiken |
 | [Release-Notes](RELEASE_NOTES.md) | Änderungen in 1.0.0 |
 | [Designvorlage Prüfbericht](docs/design/PRUEFBERICHT-DESIGN.md) | Verbindliche Gestaltung des PDF-Berichts |
@@ -38,7 +39,7 @@ Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, 
 
 ## Datenschutz
 
-Übertragen werden nur der Beweispaket-Hash und eine kurze, als Geräteangabe gekennzeichnete Aufnahmezeit; für Vorabblöcke und Online-Prüfungen werden öffentliche Blockdaten abgefragt. Foto, Standort und Sensorwerte bleiben auf dem Gerät und im bewusst geteilten ZIP bzw. PDF. Für den Kartenausschnitt im PDF-Bericht (in der App standardmäßig an, sobald der Standort im Bericht steht; abschaltbar) werden Kartenkacheln bei OpenStreetMap abgerufen; der Kartendienst sieht dabei den ungefähren Standort und die IP-Adresse. Im Profil „Privat“ werden weder Standort noch Sensoren erfasst. Ein Hash beweist, dass dieselben Bytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Gerätezeit, Standort, Sensorwerte und App-Version sind nicht attestierte Selbstauskünfte. Einzelheiten: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Übertragen werden nur der Beweispaket-Hash und eine kurze, als Geräteangabe gekennzeichnete Aufnahmezeit; für Vorabblöcke und Online-Prüfungen werden öffentliche Blockdaten abgefragt. Foto, Standort und Sensorwerte bleiben auf dem Gerät und im bewusst geteilten ZIP bzw. PDF. Für den Kartenausschnitt im PDF-Bericht (in der App standardmäßig an, sobald der Standort im Bericht steht; abschaltbar) werden Kartenkacheln bei OpenStreetMap abgerufen; der Kartendienst sieht dabei den Standort auf etwa 1 km genau und die IP-Adresse. Im Profil „Privat“ werden weder Standort noch Sensoren erfasst. Ein Hash beweist, dass dieselben Bytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Gerätezeit, Standort, Sensorwerte und App-Version sind nicht attestierte Selbstauskünfte. Einzelheiten: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Installation
 
@@ -68,6 +69,7 @@ Bei Verbindungsproblemen zwischen Gerät und Rechner: `npm start -- --tunnel`.
 | `npm run verify -- paket.zip [--online] [--pdf bericht.pdf [--karte]]` | ZIP prüfen, optional online abgleichen und PDF-Bericht erzeugen (mit `--karte` inklusive Kartenausschnitt) |
 | `cd desktop && npm ci && npm test` | Tests des Windows-Prüfers |
 | `npx eas-cli build -p android --profile preview` | Signiertes Test-APK (siehe [ANDROID-RELEASE.md](docs/ANDROID-RELEASE.md)) |
+| `npx eas-cli build -p android --profile production` | App-Bundle (AAB) für Google Play, Upload mit `npx eas-cli submit -p android --profile production --latest` (siehe [PLAY-STORE.md](docs/PLAY-STORE.md)) |
 
 ## Projektstruktur
 

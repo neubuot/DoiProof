@@ -1,7 +1,7 @@
 name: EAS Update (JavaScript-Aktualisierung für Tester)
 
 # Veröffentlicht JS-Änderungen über EAS Update. Push auf main → Kanal preview (Android-Tester).
-# Manuell auch für den Kanal production (TestFlight). Builds mit abweichender nativer
+# Manuell auch für den Kanal production (Google Play und TestFlight). Builds mit abweichender nativer
 # Laufzeitversion (Fingerprint) erhalten das Update nicht; dafür ist ein neuer Build nötig.
 
 on:

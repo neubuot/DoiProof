@@ -3,6 +3,8 @@
 Danke, dass du DoiProof 1.0 testest. Die App erstellt aus einem Foto und Messwerten des Handys ein Beweispaket und verankert dessen Fingerabdruck (SHA-256) auf der Doichain. Mit dem Tab **„Prüfen“** kannst du außerdem Beweispakete prüfen und einen PDF-Prüfbericht erzeugen.
 
 > **Wichtig:** Deine Nachweise liegen nur auf deinem Gerät. Beim Deinstallieren der App gehen sie verloren. Exportiere wichtige Nachweise vorher als **„Beweispaket ZIP“**.
+>
+> **Wechsel zur Play-Store-Version:** Die Version aus dem Google Play Store ist anders signiert als das Test-APK. Android installiert sie deshalb nicht über die Test-App: erst alle Nachweise als ZIP exportieren, dann die Test-App deinstallieren und DoiProof aus dem Play Store installieren. Die exportierten ZIPs lassen sich weiterhin im Tab „Prüfen“ prüfen.
 
 ## Android: Installation
 
