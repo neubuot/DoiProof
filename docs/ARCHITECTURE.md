@@ -18,12 +18,13 @@ core/                    Plattformneutraler Kern (ESM-JavaScript, JSDoc-typisier
   mcp.mjs                Doichain-MCP-Client (JSON und Server-Sent Events)
   verify.mjs             ZIP-Analyse mit Entpackgrenzen, Online-Abgleich
   map.mjs                Kartenausschnitt: Web-Mercator-Kacheln, Laden mit User-Agent und Cache
+  png.mjs                Strenge PNG-Vorprüfung vor dem Einbetten (Chunks, CRC, vollständiger zlib-Strom)
   bundle.mjs             Erzeugung des ZIP-Beweispakets
   report-model.mjs       Berichtsmodell (alle Aussagen und Tabellen)
   report-pdf.mjs         PDF nach Designvorlage (pdf-lib, fontkit, QR)
   report-text.mjs        Markdown-Kurzbericht
   pipeline.mjs           gemeinsamer Ablauf: prüfen → online → PDF
-  node.mjs               Node-Adapter (SHA-256, Schriften, IANA-Zeitzone)
+  node.mjs               Node-Adapter (SHA-256, Schriften, IANA-Zeitzone, Kachel-Cache)
   version.mjs            gemeinsame Versionsnummer
 assets/fonts/            Eingebettete OFL-Schriften (Fraunces, IBM Plex)
 App.tsx                  Umschalter „Aufnehmen“ / „Prüfen“
@@ -87,8 +88,8 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 - Entpackt wird schrittweise mit harten Grenzen; CRC32 wird auf den begrenzten Daten geprüft.
 - `checkOnline` fragt Transaktion, Block und Vorabblöcke ab; jeder Aufruf hat ein Zeitlimit.
 - `buildReportModel` erzeugt alle Aussagen (Ergebnis, „Auf einen Blick“, Zeitstrahl, Kacheln, Beweiskette, Anhang). Die App zeigt dieselben Aussagen in der Ergebniskarte an.
-- `prepareReportMap` lädt den optionalen Kartenausschnitt nur bei `includeMap`, eingeblendetem Standort und lokal bestandenem Paket (6 bis 12 OSM-Kacheln, Zoomstufe 14, nacheinander, mit eindeutigem User-Agent; Cache im Windows-Prüfer und in der App für 7 Tage, in der Kommandozeile keiner). Fehler führen zu einem Hinweis im Bericht statt zum Abbruch.
-- `renderReportPdf` setzt das Modell mit pdf-lib nach den Koordinaten der Mustervorlage um; den Kartenausschnitt zeichnet es wie die Kartenansicht des Windows-Prüfers, ohne selbst auf das Netz zuzugreifen. Fotos (JPEG, PNG) werden unverändert eingebettet und gemäß EXIF-Ausrichtung gedreht; andere Formate erhalten einen Platzhalter.
+- `prepareReportMap` lädt den optionalen Kartenausschnitt nur bei `includeMap`, eingeblendetem Standort und lokal bestandenem Paket (höchstens 12 OSM-Kacheln, Zoomstufe 14, nacheinander, mit eindeutigem User-Agent und Zeitlimit für die ganze Antwort; privater Cache für 7 Tage in App, Windows-Prüfer und Kommandozeile, abgelaufene Kacheln werden beim nächsten Kartenabruf gelöscht). Fehler führen zu einem Hinweis im Bericht statt zum Abbruch.
+- `renderReportPdf` setzt das Modell mit pdf-lib nach den Koordinaten der Mustervorlage um; den Kartenausschnitt zeichnet es wie die Kartenansicht des Windows-Prüfers, ohne selbst auf das Netz zuzugreifen. Fotos (JPEG, PNG) werden unverändert eingebettet und gemäß EXIF-Ausrichtung gedreht; andere Formate erhalten einen Platzhalter. PNG-Fotos und Kartenkacheln prüft `inspectPng` vorher vollständig, weil der PNG-Decoder von pdf-lib bei einem abgeschnittenen zlib-Strom nicht zurückkehrt; ein präpariertes Foto in einem fremden Paket erhält so nur einen Hinweis statt den Bericht zu blockieren.
 
 ## Build, Updates und Releases
 

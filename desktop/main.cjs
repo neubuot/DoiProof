@@ -102,12 +102,13 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('map-tiles', async (_event, latitude, longitude) => {
     const { map } = await maps();
-    const grid = map.tileGrid(latitude, longitude);
-    const tiles = await map.loadMapTiles({ tiles: grid.tiles }, await tileLoader());
-    return {
-      ...grid,
-      tiles: tiles.map(tile => ({ col: tile.col, row: tile.row, data: `data:image/png;base64,${Buffer.from(tile.bytes).toString('base64')}` })),
-    };
+    const view = map.mapView(latitude, longitude, map.VIEWER_MAP_SIZE);
+    const tiles = await map.loadMapTiles(view, await tileLoader());
+    // Lage relativ zur Kartenmitte: Die Markierung bleibt auch nach einer Größenänderung auf der Koordinate.
+    return tiles.map(tile => ({
+      dx: tile.left - view.width / 2, dy: tile.top - view.height / 2,
+      data: `data:image/png;base64,${Buffer.from(tile.bytes).toString('base64')}`,
+    }));
   });
   ipcMain.handle('save-report', async (_event, options) => {
     if (!lastResult) throw new Error('Kein Prüfergebnis vorhanden. Bitte das Paket zuerst prüfen.');

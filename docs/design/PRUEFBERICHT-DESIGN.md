@@ -32,10 +32,10 @@ Ab Seite 3 jede einzelne im Manifest gebundene Angabe als Tabelle, gruppiert nac
 
 Ist die Karte eingeschaltet (App: „Kartenausschnitt (OpenStreetMap)“, standardmäßig an; Windows-Prüfer: „Karte im PDF“; Kommandozeile: `--karte`), zeigt der Anhang in der Gruppe „Standort / GNSS“ vor der Tabelle eine Karte, die der Detailkarte „02 / STANDORT“ des Windows-Prüfers entspricht:
 
-- Weiße Karte mit Titelzeile „KARTENAUSSCHNITT“ / „OPENSTREETMAP · ZOOMSTUFE 14“ (`#66877b`), Koordinaten in IBM Plex Mono (`#205b58`, Format `48.137154°, 11.575382°`) und dem Hinweis des Prüfers „Koordinaten sind Selbstauskünfte des Geräts; eine Kartenmarkierung attestiert keinen Aufnahmeort.“
-- Kartenbild 504 × 255 pt (672 × 340 px im Maßstab des Prüfers, 1 px = 0,75 pt), Radius 8,25 pt, Grund `#dfe6dd`, OSM-Kacheln in Zoomstufe 14, Koordinate genau in der Mitte.
+- Weiße Karte (Rand `#dfe9df`, Radius 11,25 pt, Innenabstand 13,5 pt) mit Titelzeile „KARTENAUSSCHNITT“ / „OPENSTREETMAP · ZOOMSTUFE 14“ (`#66877b`), Koordinaten in IBM Plex Mono (`#205b58`, Format `48.137154°, 11.575382°`) und dem Hinweis des Prüfers „Koordinaten sind Selbstauskünfte des Geräts; eine Kartenmarkierung attestiert keinen Aufnahmeort.“
+- Kartenbild 496,5 × 255 pt (662 × 340 px im Maßstab des Prüfers, 1 px = 0,75 pt; die Kartenansicht des Prüfers hat bei breitem Fenster 768 × 340 px), Radius 8,25 pt, Grund `#dfe6dd`, OSM-Kacheln in Zoomstufe 14, Koordinate genau in der Mitte.
 - Markierung wie im Prüfer: Kreis mit 15 pt Durchmesser, 3 pt weißer Rand, Füllung `#bb775b`, weicher Schatten.
-- Quellenangabe unten rechts im Bild („© OpenStreetMap contributors“, `#245a57` auf halbtransparentem Weiß) und darunter „Kartendaten © OpenStreetMap-Mitwirkende, openstreetmap.org/copyright“, Zoomstufe, Abrufzeit und der Satz, dass die Karte nicht Teil des Beweispakets ist.
+- Quellenangabe unten rechts im Bild („© OpenStreetMap contributors“, `#245a57` auf halbtransparentem Weiß) und darunter „Kartendaten © OpenStreetMap-Mitwirkende, https://www.openstreetmap.org/copyright“, Zoomstufe, Abrufzeit der Kacheln („abgerufen am …“ bzw. bei Kacheln aus dem Cache „abgerufen zwischen … und …“) und der Satz, dass die Karte nicht Teil des Beweispakets ist. Beide Quellenangaben sind Links auf die Copyright-Seite von OpenStreetMap.
 - Meldet das Gerät einen simulierten Standort, steht der Warnhinweis in Terrakotta über der Karte.
 - Ist der Kartendienst nicht erreichbar, enthält die Karte statt des Bildes den Hinweis „Kartenausschnitt nicht verfügbar …“; der Bericht entsteht trotzdem.
 - Die Karte erscheint nur, wenn der Standort im Bericht eingeblendet ist und das Paket die lokale Prüfung bestanden hat. Die Fußzeile von Seite 1 nennt dann „Karte und alle Messwerte ab Seite 3“.

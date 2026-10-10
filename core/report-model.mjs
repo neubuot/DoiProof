@@ -399,6 +399,19 @@ export function buildReportModel(input) {
 }
 
 /**
+ * Abrufzeit der Kacheln; aus dem Cache können einzelne Kacheln bis zu 7 Tage älter sein als der Bericht.
+ * @param {Date | null} from @param {Date | null} until @param {import('./format.mjs').TimeZone} tz
+ */
+function tileTime(from, until, tz) {
+  if (!from) return '';
+  // Geschütztes Leerzeichen: Uhrzeit und „Uhr“ bleiben in der Bildunterschrift zusammen
+  const stamp = (/** @type {Date} */ date) => formatDateTimeMinutes(date, tz).replace(/ (\d\d:\d\d) Uhr$/, '\u00a0$1\u00a0Uhr');
+  const first = stamp(from);
+  const last = until ? stamp(until) : first;
+  return first === last ? ` · Kacheln abgerufen am ${first}` : ` · Kacheln abgerufen zwischen ${first} und ${last}`;
+}
+
+/**
  * Kartenausschnitt für den Anhang (wie im Windows-Prüfer): nur bei bestandener lokaler Prüfung,
  * gemessenem Standort und eingeblendeten Koordinaten.
  * @param {import('./map.mjs').LoadedMap | { error: string } | null} map
@@ -417,6 +430,7 @@ function buildLocationMap(map, analysis, includeLocation, tz) {
   };
   if ('error' in map) return { ...base, unavailable: `Kartenausschnitt nicht verfügbar: ${map.error} Die Koordinaten stehen in der Tabelle.` };
   const loadedAt = iso(map.loadedAt);
+  const loadedUntil = iso(map.loadedUntil);
   return {
     ...base,
     unavailable: null,
@@ -425,7 +439,7 @@ function buildLocationMap(map, analysis, includeLocation, tz) {
     height: map.view.height,
     tiles: map.tiles.map(tile => ({ key: `${tile.zoom}-${tile.x}-${tile.y}`, left: tile.left, top: tile.top, bytes: tile.bytes })),
     attribution: MAP_ATTRIBUTION,
-    caption: `${MAP_COPYRIGHT} · Zoomstufe ${map.view.zoom}${loadedAt ? ` · Kacheln abgerufen am ${formatDateTimeMinutes(loadedAt, tz)}` : ''} · Die Karte ist nicht Teil des Beweispakets.`,
+    caption: `${MAP_COPYRIGHT} · Zoomstufe ${map.view.zoom}${tileTime(loadedAt, loadedUntil, tz)} · Die Karte ist nicht Teil des Beweispakets.`,
   };
 }
 

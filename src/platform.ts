@@ -39,24 +39,31 @@ export function loadReportFonts(): Promise<FontBytes> {
 
 /**
  * Kachel-Cache im privaten Cache-Verzeichnis der App (7 Tage, wie im Windows-Prüfer). Die
- * Dateinamen verraten den ungefähren Standort und bleiben deshalb in der App-Sandbox.
+ * Dateinamen verraten den ungefähren Standort; sie bleiben in der App-Sandbox und werden nach
+ * Ablauf gelöscht.
  */
 function appTileCache(): TileCache {
   const directory = new Directory(Paths.cache, 'map-tiles');
   const file = (key: string) => new File(directory, `${key.replace(/[^0-9-]/g, '')}.png`);
+  // Kleine Abweichungen in die Zukunft (Zeitauflösung des Dateisystems) gelten als frisch.
+  const expired = (modified: number | null) => !modified || Date.now() - modified < -60_000 || Date.now() - modified >= TILE_MAX_AGE_MS;
   return {
     async get(key) {
       const entry = file(key);
       if (!entry.exists) return null;
-      const modified = entry.modificationTime;
-      if (!modified || Date.now() - modified >= TILE_MAX_AGE_MS) return null;
-      return entry.bytes();
+      if (expired(entry.lastModified)) { entry.delete(); return null; }
+      return { bytes: await entry.bytes(), storedAt: entry.lastModified ?? Date.now() };
     },
     async put(key, bytes) {
       if (!directory.exists) directory.create({ idempotent: true, intermediates: true });
       const entry = file(key);
       if (entry.exists) entry.delete();
       entry.write(bytes);
+      for (const item of directory.list()) {
+        if (item instanceof File && item.uri !== entry.uri && expired(item.lastModified)) {
+          try { item.delete(); } catch { /* bereits entfernt */ }
+        }
+      }
     },
   };
 }

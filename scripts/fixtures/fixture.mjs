@@ -189,3 +189,26 @@ export function fakeTileServer(options = {}) {
   });
   return { fetchImpl, calls };
 }
+
+/**
+ * Präpariertes PNG mit gültiger Chunk-Folge und gültigen Prüfsummen, aber abgeschnittenem
+ * zlib-Strom im IDAT. Der PNG-Decoder von pdf-lib würde daran endlos hängen.
+ * @param {Uint8Array} png gültige PNG-Datei mit genau einem IDAT-Chunk @param {number} [keep] Anteil des Stroms
+ */
+export function truncatedStreamPng(png, keep = 0.5) {
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  let offset = 8;
+  /** @type {Uint8Array[]} */
+  const parts = [png.subarray(0, 8)];
+  while (offset < png.length) {
+    const length = view.getUint32(offset);
+    const type = String.fromCharCode(...png.subarray(offset + 4, offset + 8));
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    parts.push(type === 'IDAT' ? pngChunk('IDAT', data.slice(0, Math.max(2, Math.floor(length * keep)))) : png.subarray(offset, offset + 12 + length));
+    offset += 12 + length;
+  }
+  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let at = 0;
+  for (const part of parts) { out.set(part, at); at += part.length; }
+  return out;
+}

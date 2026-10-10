@@ -7,10 +7,12 @@
 import fontkit from '@pdf-lib/fontkit';
 import qrcode from 'qrcode-generator';
 import {
-  LineCapStyle, PDFDocument, appendBezierCurve, clip, closePath, concatTransformationMatrix, drawObject,
+  LineCapStyle, PDFDocument, PDFString, appendBezierCurve, clip, closePath, concatTransformationMatrix, drawObject,
   endPath, lineTo, moveTo, popGraphicsState, pushGraphicsState, rgb, setCharacterSpacing,
 } from 'pdf-lib';
 import { formatInt, formatMeasure, formatTime, UTC } from './format.mjs';
+import { MAP_COPYRIGHT_URL } from './map.mjs';
+import { inspectPng } from './png.mjs';
 import { samplePhase } from './report-model.mjs';
 
 const W = 595.28;
@@ -32,8 +34,8 @@ const C = {
   red: c('#a52a1f'), redBg: c('#fbecea'), redBanner: c('#7e2a20'), redText: c('#f7ddd6'), redAccent: c('#f3bfae'),
   redRing: c('#d98a7a'), redInner: c('#9b3427'), warnBg: c('#fbf1ea'), gray: c('#9aa5a2'),
   // Kartenansicht wie im Windows-Prüfer (desktop/styles.css: .evidence-card-title, .coordinates, .map, .map-pin, .map-attribution)
-  mapTitle: c('#66877b'), mapCoordinates: c('#205b58'), mapBg: c('#dfe6dd'), mapPin: c('#bb775b'),
-  mapShadow: c('#153a3d'), mapAttribution: c('#245a57'),
+  mapTitle: c('#66877b'), mapTitleRight: c('#a3b4a7'), mapCoordinates: c('#205b58'), mapHint: c('#708783'),
+  mapCard: c('#dfe9df'), mapBg: c('#dfe6dd'), mapPin: c('#bb775b'), mapShadow: c('#153a3d'), mapAttribution: c('#245a57'),
 };
 /** Ein CSS-Pixel des Windows-Prüfers entspricht 0,75 pt; so erscheint die Karte im selben Maßstab. */
 const PX = 0.75;
@@ -156,6 +158,16 @@ class Canvas {
   }
 
   unclip() { this.page.pushOperators(popGraphicsState()); }
+
+  /** Anklickbarer Link (URI-Aktion) über einem Bereich. @param {number} x @param {number} top @param {number} w @param {number} h @param {string} url */
+  link(x, top, w, h, url) {
+    const context = this.doc.context;
+    const annotation = context.register(context.obj({
+      Type: 'Annot', Subtype: 'Link', Rect: [x, H - top - h, x + w, H - top], Border: [0, 0, 0],
+      A: { Type: 'Action', S: 'URI', URI: PDFString.of(url) },
+    }));
+    this.page.node.addAnnot(annotation);
+  }
 
   /** @param {number} x @param {number} top @param {number} r @param {{ fill?: Color, stroke?: Color, width?: number, dash?: number[] }} o */
   circle(x, top, r, o) {
@@ -625,30 +637,37 @@ function table(cv, flow, columns, rows, options = {}) {
  */
 function locationMapCard(cv, flow, map, tiles) {
   const f = cv.f;
-  const pad = 9.75;
+  // Maße der Detailkarte „02 / STANDORT“ im Prüfer (desktop/styles.css), 1 px = 0,75 pt
+  const pad = 13.5;
   const textW = CONTENT_W - 2 * pad;
+  const step = 12.375;
   const hint = cv.wrap(map.hint, f.sans, 8.25, textW, 0.12);
   const warning = map.warning ? cv.wrap(map.warning, f.sansBold, 8.25, textW, 0.12) : [];
   const shown = !!tiles && !map.unavailable;
   const note = shown ? cv.wrap(map.caption, f.sans, 7.2, textW, 0.1) : cv.wrap(map.unavailable ?? 'Kartenausschnitt nicht verfügbar.', f.sans, 8.25, textW, 0.12);
   const mapW = shown ? map.width * PX : 0;
   const mapH = shown ? map.height * PX : 0;
-  const textEnd = 53 + (hint.length + warning.length - 1) * 11.5;
-  const mapTopOffset = textEnd + 10;
-  const h = shown ? mapTopOffset + mapH + 13 + (note.length - 1) * 9.6 + 9 : textEnd + 8 + note.length * 11.5 + 4;
+  const titleY = pad + 6.5;
+  const coordinatesY = titleY + 24.75;
+  const firstLineY = coordinatesY + 19.7;
+  const lastTextY = firstLineY + (hint.length + warning.length - 1) * step;
+  const mapTopOffset = lastTextY + 12;
+  const h = shown
+    ? mapTopOffset + mapH + 12 + (note.length - 1) * 9.6 + 2.5 + pad
+    : lastTextY + 4 + note.length * step + 2.5 + pad;
   if (flow.y + h > 776) flow.y = flow.newPage();
   const top = flow.y;
-  cv.rect(M + 0.4, top, CONTENT_W - 0.8, h, { fill: C.white, stroke: C.line, width: 0.75, r: 9 });
-  const eyebrow = { font: f.sansBold, size: 7.5, color: C.mapTitle, spacing: 0.94 };
-  cv.text('KARTENAUSSCHNITT', M + pad, top + 17, eyebrow);
-  cv.text(shown ? `OPENSTREETMAP · ZOOMSTUFE ${map.zoom}` : 'OPENSTREETMAP', RIGHT - pad, top + 17, { ...eyebrow, align: 'right' });
-  cv.text(map.coordinates, M + pad, top + 37, { font: f.monoMedium, size: 12.75, color: C.mapCoordinates });
-  let y = top + 53;
-  for (const line of hint) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.text2, spacing: 0.12 }); y += 11.5; }
-  for (const line of warning) { cv.text(line, M + pad, y, { font: f.sansBold, size: 8.25, color: C.terra, spacing: 0.12 }); y += 11.5; }
+  cv.rect(M + 0.4, top, CONTENT_W - 0.8, h, { fill: C.white, stroke: C.mapCard, width: 0.75, r: 11.25 });
+  const eyebrow = { font: f.sansBold, size: 7.5, spacing: 0.94 };
+  cv.text('KARTENAUSSCHNITT', M + pad, top + titleY, { ...eyebrow, color: C.mapTitle });
+  cv.text(shown ? `OPENSTREETMAP · ZOOMSTUFE ${map.zoom}` : 'OPENSTREETMAP', RIGHT - pad, top + titleY, { ...eyebrow, color: C.mapTitleRight, align: 'right' });
+  cv.text(map.coordinates, M + pad, top + coordinatesY, { font: f.monoMedium, size: 12.75, color: C.mapCoordinates });
+  let y = top + firstLineY;
+  for (const line of hint) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.mapHint, spacing: 0.12 }); y += step; }
+  for (const line of warning) { cv.text(line, M + pad, y, { font: f.sansBold, size: 8.25, color: C.terra, spacing: 0.12 }); y += step; }
   if (!shown || !tiles) {
     y += 4;
-    for (const line of note) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.terra, spacing: 0.12 }); y += 11.5; }
+    for (const line of note) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.terra, spacing: 0.12 }); y += step; }
     flow.y = top + h + 14;
     return;
   }
@@ -658,20 +677,31 @@ function locationMapCard(cv, flow, map, tiles) {
   cv.rect(mapX, mapTop, mapW, mapH, { fill: C.mapBg, r: 8.25 });
   cv.clipRound(mapX, mapTop, mapW, mapH, 8.25);
   for (const t of tiles) cv.page.drawImage(t.image, { x: mapX + t.left * PX, y: H - mapTop - t.top * PX - tile, width: tile, height: tile });
-  // Markierung: 20 px Kreis mit 4 px weißem Rand und weichem Schatten (box-shadow 0 2px 11px)
+  // Markierung: 20 px Kreis mit 4 px weißem Rand; Schatten wie box-shadow 0 2px 11px rgba(21,58,61,.6),
+  // angenähert durch gestaffelte Kreise (Radius in pt, Deckkraft)
   const cx = mapX + mapW / 2;
   const cy = mapTop + mapH / 2;
-  for (let k = 6; k >= 1; k--) cv.page.drawCircle({ x: cx, y: H - cy - 1.5, size: 7.5 + k * 1.15, color: C.mapShadow, opacity: 0.045 });
+  for (const [r, opacity] of [[16.5, 0.008], [15.375, 0.007], [14.25, 0.012], [13.125, 0.019], [12, 0.027], [10.875, 0.038], [9.75, 0.049], [8.625, 0.061], [7.5, 0.071]]) {
+    cv.page.drawCircle({ x: cx, y: H - cy - 1.5, size: r, color: C.mapShadow, opacity });
+  }
   cv.circle(cx, cy, 7.5, { fill: C.white });
   cv.circle(cx, cy, 4.5, { fill: C.mapPin });
   // Quellenangabe unten rechts im Kartenbild (wie .map-attribution: 10 px, Innenabstand 3 px 5 px)
   const aw = cv.width(map.attribution, f.sans, 7.5) + 7.5;
-  const ah = 12.6;
-  cv.page.drawRectangle({ x: mapX + mapW - 3 - aw, y: H - (mapTop + mapH - 3), width: aw, height: ah, color: C.white, opacity: 0.87 });
-  cv.text(map.attribution, mapX + mapW - 3 - aw + 3.75, mapTop + mapH - 3 - 3.6, { font: f.sans, size: 7.5, color: C.mapAttribution });
+  const ah = 14.25;
+  const ax = mapX + mapW - 3 - aw;
+  const atop = mapTop + mapH - 3 - ah;
+  cv.page.drawRectangle({ x: ax, y: H - atop - ah, width: aw, height: ah, color: C.white, opacity: 0.87 });
+  cv.text(map.attribution, ax + 3.75, atop + ah - 4.31, { font: f.sans, size: 7.5, color: C.mapAttribution });
   cv.unclip();
-  y = mapTop + mapH + 13;
-  for (const line of note) { cv.text(line, M + pad, y, { font: f.sans, size: 7.2, color: C.text3, spacing: 0.1 }); y += 9.6; }
+  cv.link(ax, atop, aw, ah, MAP_COPYRIGHT_URL);
+  y = mapTop + mapH + 12;
+  for (const line of note) {
+    cv.text(line, M + pad, y, { font: f.sans, size: 7.2, color: C.text3, spacing: 0.1 });
+    const at = line.indexOf(MAP_COPYRIGHT_URL);
+    if (at >= 0) cv.link(M + pad + cv.width(line.slice(0, at), f.sans, 7.2, 0.1) + (at ? 0.1 : 0), y - 6.5, cv.width(MAP_COPYRIGHT_URL, f.sans, 7.2, 0.1), 8.6, MAP_COPYRIGHT_URL);
+    y += 9.6;
+  }
   flow.y = top + h + 14;
 }
 
@@ -781,10 +811,13 @@ export async function renderReportPdf(model, { fonts, onMapError }) {
   /** @type {Record<string, any>} */
   const images = {};
   if (model.photo) {
+    // PNG vorab vollständig prüfen: Der Decoder von pdf-lib hängt bei abgeschnittenen Bilddaten.
+    const png = model.photo.kind === 'jpeg' ? null : inspectPng(model.photo.bytes);
     try {
+      if (png && !png.ok) throw new Error(png.reason);
       images.photo = model.photo.kind === 'jpeg' ? await doc.embedJpg(model.photo.bytes) : await doc.embedPng(model.photo.bytes);
     } catch {
-      model = { ...model, photo: null, photoNote: 'Foto konnte nicht eingebettet werden (Bilddaten nicht lesbar)' };
+      model = { ...model, photo: null, photoNote: png && !png.ok ? `Foto nicht eingebettet (PNG: ${png.reason})` : 'Foto konnte nicht eingebettet werden (Bilddaten nicht lesbar)' };
     }
   }
   const map = model.locationMap;
@@ -795,7 +828,11 @@ export async function renderReportPdf(model, { fonts, onMapError }) {
       images.mapTiles = [];
       for (const tile of map.tiles) {
         let image = embedded.get(tile.key);
-        if (!image) { image = await doc.embedPng(tile.bytes); embedded.set(tile.key, image); }
+        if (!image) {
+          if (!inspectPng(tile.bytes, { width: 256, height: 256 }).ok) throw new Error('Kachel beschädigt');
+          image = await doc.embedPng(tile.bytes);
+          embedded.set(tile.key, image);
+        }
         images.mapTiles.push({ image, left: tile.left, top: tile.top });
       }
     } catch {

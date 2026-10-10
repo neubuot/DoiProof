@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import JSZip from 'jszip';
 import { evidenceDetails } from './details.mjs';
-import { tileGrid } from './core/map.mjs';
+import { VIEWER_MAP_SIZE, mapView } from './core/map.mjs';
 import { createDesktopPdf, defaultReportName, markdownReport, verifyForDesktop, VERSION } from './report.mjs';
 import { buildBundle, fakeChain, fakeTileServer } from '../scripts/fixtures/fixture.mjs';
 
@@ -87,11 +87,15 @@ test('Details sind an das geprüfte ZIP gebunden und enthalten das vollständige
   assert.equal((await evidenceDetails(v2.zipBytes, v2.evidence.evidenceSha256)).manifest.schema, 'org.doichain.doiproof.evidence/v2');
 });
 
-test('Karte nutzt gültige Web-Mercator-Kacheln und weist ungültige Koordinaten ab', () => {
-  const grid = tileGrid(48.19, 16.37);
-  assert.equal(grid.tiles.length, 9);
-  assert(grid.tiles.every(tile => tile.x >= 0 && tile.x < 16384 && tile.y >= 0 && tile.y < 16384));
-  assert(grid.centerX >= 256 && grid.centerX < 512);
-  assert(grid.centerY >= 256 && grid.centerY < 512);
-  assert.throws(() => tileGrid(91, 16.37), /gültigen Koordinaten/);
+test('Kartenansicht lädt einen lückenlosen Ausschnitt um die Koordinate und weist ungültige Koordinaten ab', async () => {
+  const view = mapView(48.19, 16.37, VIEWER_MAP_SIZE);
+  assert.ok(view.tiles.length >= 6 && view.tiles.length <= 12);
+  assert.ok(view.tiles.every(tile => tile.x >= 0 && tile.x < 16384 && tile.y >= 0 && tile.y < 16384));
+  // Jede Kartenbreite bis 768 px ist bei der Mitte als Bezugspunkt abgedeckt
+  for (const x of [0, 383.9, 767.9]) for (const y of [0, 339.9]) {
+    assert.equal(view.tiles.filter(t => x >= t.left && x < t.left + 256 && y >= t.top && y < t.top + 256).length, 1);
+  }
+  assert.throws(() => mapView(91, 16.37, VIEWER_MAP_SIZE), /gültigen Koordinaten/);
+  const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.ok(!pkg.build.files.includes('map.mjs'), 'desktop/map.mjs ist im gemeinsamen Kern aufgegangen');
 });

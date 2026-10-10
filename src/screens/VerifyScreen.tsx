@@ -61,7 +61,7 @@ export function VerifyScreen() {
       <View style={styles.hero}>
         <Text style={styles.brand}>DOIPROOF  /  PRÜFER</Text>
         <Text style={styles.title}>Beweispaket{'\n'}prüfen.</Text>
-        <Text style={styles.lead}>Dieselbe Prüfung wie das Kommandozeilenprogramm und der Windows-Prüfer. Das ZIP bleibt auf dem Gerät; online werden nur Hashwerte abgefragt.</Text>
+        <Text style={styles.lead}>Dieselbe Prüfung wie das Kommandozeilenprogramm und der Windows-Prüfer. Das ZIP bleibt auf dem Gerät; online werden nur Hashwerte abgefragt (für den optionalen Kartenausschnitt im PDF zusätzlich Kartenkacheln).</Text>
       </View>
       <Text style={styles.sectionEyebrow}>01  /  PAKET WÄHLEN</Text>
       <View style={styles.card}>
@@ -70,7 +70,7 @@ export function VerifyScreen() {
           ? <Text style={styles.muted}>{picked.name} · {(picked.size / (1024 * 1024)).toFixed(2)} MiB</Text>
           : <Text style={styles.muted}>Eigenes oder fremdes DoiProof-ZIP aus Dateien, Downloads oder einem Messenger wählen (Manifest v1, v2 oder v3).</Text>}
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Kettenstatus online abgleichen</Text><Switch value={online} onValueChange={value => { setOnline(value); setResult(null); }} /></View>
-        <Text style={styles.muted}>{online ? 'Paket-Hash und Vorabblock-Hashes werden beim Doichain-MCP-Dienst und bei Blockstream abgefragt. Foto, Standort und Manifest werden nicht gesendet.' : 'Vollständig offline: keine Netzwerkabfrage. Der Bericht belegt dann noch keinen Zeitpunkt.'}</Text>
+        <Text style={styles.muted}>{online ? 'Paket-Hash und Vorabblock-Hashes werden beim Doichain-MCP-Dienst und bei Blockstream abgefragt. Foto, Standort und Manifest werden nicht gesendet.' : 'Prüfung vollständig offline: keine Abfrage bei Doichain oder Blockstream. Der Bericht belegt dann noch keinen Zeitpunkt.'}</Text>
         <Pressable accessibilityRole="button" style={[styles.secondary, (!picked || !!busy) && styles.disabled]} disabled={!picked || !!busy} onPress={verify}><Text style={styles.secondaryText}>Paket prüfen</Text></Pressable>
       </View>
       {!!busy && <View style={styles.row}><ActivityIndicator color={colors.petrol} /><Text style={styles.message}>{busy}</Text></View>}
@@ -83,7 +83,7 @@ export function VerifyScreen() {
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={includePhoto} onValueChange={setIncludePhoto} /></View>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={includeLocation} onValueChange={setIncludeLocation} /></View>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={includeLocation && includeMap} onValueChange={setIncludeMap} disabled={!includeLocation} /></View>
-          {includeLocation && includeMap && <Text style={styles.muted}>Lädt Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei ungefähr den Standort und deine IP-Adresse. Die Karte ist nicht Teil des Beweispakets.</Text>}
+          {includeLocation && includeMap && <Text style={styles.muted}>Lädt beim Erstellen Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei den Standort auf etwa 1 km genau und deine IP-Adresse. Die Karte ist nicht Teil des Beweispakets.</Text>}
           <Text style={styles.muted}>Der Bericht folgt der DoiProof-Designvorlage und enthält im Anhang jeden im Manifest gebundenen Messwert. Ausgeblendete Angaben bleiben im ZIP unverändert enthalten.</Text>
           <Pressable accessibilityRole="button" style={[styles.button, !!busy && styles.disabled]} disabled={!!busy} onPress={share}><Text style={styles.buttonText}>PDF-Prüfbericht erstellen und teilen</Text></Pressable>
         </View>

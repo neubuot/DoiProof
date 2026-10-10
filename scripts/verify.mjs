@@ -9,7 +9,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { systemTimeZone } from '../core/format.mjs';
-import { ianaTimeZone, loadFonts, nodeSha256 } from '../core/node.mjs';
+import { fileTileCache, ianaTimeZone, loadFonts, nodeSha256, userCacheDirectory } from '../core/node.mjs';
 import { MAP_COPYRIGHT, mapUserAgent } from '../core/map.mjs';
 import { createPdfReport, verifyPackage, VERSION } from '../core/pipeline.mjs';
 import { reportText } from '../core/report-text.mjs';
@@ -77,7 +77,7 @@ export function parseArgs(args) {
 
 /**
  * @param {string[]} args
- * @param {{ fetchImpl?: typeof fetch, now?: () => Date, stdout?: (text: string) => void, stderr?: (text: string) => void }} [io]
+ * @param {{ fetchImpl?: typeof fetch, now?: () => Date, stdout?: (text: string) => void, stderr?: (text: string) => void, mapCacheDir?: string }} [io]
  * @returns {Promise<number>} Exitcode: 0 in Ordnung, 1 Fehler/Widerspruch, 2 Onlineprüfung unvollständig
  */
 export async function cli(args, io = {}) {
@@ -91,12 +91,15 @@ export async function cli(args, io = {}) {
   const { analysis, local, online } = await verifyPackage(zipBytes, { sha256: nodeSha256, online: options.online, fetchImpl: io.fetchImpl, now });
 
   if (options.pdfPath) {
-    // Kartenkacheln werden nur mit --karte geladen und nicht zwischengespeichert: Dateinamen im
-    // Cache würden den ungefähren Standort auf dem Rechner hinterlassen.
+    // Kartenkacheln nur mit --karte; zwischengespeichert für 7 Tage im privaten Cache des Benutzers,
+    // wie es die Nutzungsregeln des OSM-Kachelservers verlangen.
     const { pdf, mapStatus } = await createPdfReport({
       analysis, online, fileName: basename(path), fonts: await loadFonts(FONT_DIR), generatedAt: now(), timeZone,
       includePhoto: options.includePhoto, includeLocation: options.includeLocation, includeMap: options.includeMap,
-      mapLoader: { fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`) },
+      mapLoader: options.includeMap ? {
+        fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`),
+        cache: fileTileCache(io.mapCacheDir ?? join(userCacheDirectory(), 'map-cache')),
+      } : undefined,
       producer: `DoiProof-Prüfer ${VERSION} (Kommandozeile)`,
     });
     await writeNew(options.pdfPath, pdf);

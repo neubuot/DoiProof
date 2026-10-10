@@ -43,7 +43,8 @@ export async function prepareReportMap(input) {
     const map = await loadReportMap(coordinates.latitude, coordinates.longitude, { ...input.mapLoader, now: () => input.generatedAt ?? new Date() });
     return { status: { state: 'included' }, map };
   } catch (error) {
-    const reason = error instanceof Error ? error.message.slice(0, 160) : 'Kartendienst nicht erreichbar.';
+    const text = error instanceof Error ? error.message.slice(0, 160).trim() : '';
+    const reason = !text ? 'Kartendienst nicht erreichbar.' : /[.!?]$/.test(text) ? text : `${text}.`;
     return { status: { state: 'unavailable', reason }, map: { error: reason } };
   }
 }

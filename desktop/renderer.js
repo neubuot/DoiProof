@@ -274,17 +274,15 @@ ui.mapButton.addEventListener('click', async () => {
   ui.mapButton.disabled = true;
   ui.mapButton.textContent = 'Karte wird geladen …';
   try {
-    const grid = await window.doiproof.mapTiles(loc.latitude, loc.longitude);
+    const tiles = await window.doiproof.mapTiles(loc.latitude, loc.longitude);
     if (details?.manifest.location !== loc) return;
     ui.mapGrid.replaceChildren();
     ui.map.hidden = false;
-    ui.mapGrid.style.left = (ui.map.clientWidth / 2 - grid.centerX) + 'px';
-    ui.mapGrid.style.top = (ui.map.clientHeight / 2 - grid.centerY) + 'px';
-    for (const tile of grid.tiles) {
+    for (const tile of tiles) {
       const image = document.createElement('img');
       image.src = tile.data; image.alt = '';
-      image.style.left = tile.col * 256 + 'px';
-      image.style.top = tile.row * 256 + 'px';
+      image.style.left = 'calc(50% + ' + tile.dx + 'px)';
+      image.style.top = 'calc(50% + ' + tile.dy + 'px)';
       ui.mapGrid.append(image);
     }
     ui.mapButton.textContent = 'Karte geladen ✓';
@@ -313,12 +311,20 @@ ui.pdfLocation.addEventListener('change', () => {
   ui.pdfMap.disabled = !ui.pdfLocation.checked;
   if (!ui.pdfLocation.checked) ui.pdfMap.checked = false;
 });
+let saving = false;
 ui.save.addEventListener('click', async () => {
-  if (!result || busy) return;
+  if (!result || busy || saving) return;
+  // Nur die Speicher-Schaltfläche sperren: Mit Karte dauert das Sichern länger, ein zweiter Klick
+  // würde einen zweiten Dialog öffnen und die Kacheln erneut laden.
+  saving = true;
+  ui.save.disabled = true;
+  const withMap = ui.pdfMap.checked && ui.pdfLocation.checked;
+  if (withMap) say('Nach der Wahl des Speicherorts wird der Kartenausschnitt geladen und der Bericht erstellt …', 'info');
   try {
     const saved = await window.doiproof.saveReport({
       includePhoto: ui.pdfPhoto.checked, includeLocation: ui.pdfLocation.checked, includeMap: ui.pdfMap.checked,
     });
+    if (!saved && withMap) clearMessage();
     if (saved) {
       step('step-report', 'done');
       const map = saved.map;
@@ -327,6 +333,7 @@ ui.save.addEventListener('click', async () => {
       say('Bericht gespeichert: ' + saved.path + '.' + note, 'info');
     }
   } catch (error) { say('Bericht konnte nicht gespeichert werden: ' + error.message); }
+  finally { saving = false; ui.save.disabled = busy; }
 });
 ui.copy.addEventListener('click', async () => {
   if (!result) return;

@@ -139,3 +139,39 @@ export async function fetchWithTimeout(fetchImpl, url, options = {}, timeoutMs =
     clearTimeout(timer);
   }
 }
+
+/**
+ * fetch samt Antwortkörper unter einem gemeinsamen Zeitlimit. fetchWithTimeout begrenzt nur die Zeit
+ * bis zu den Kopfzeilen; ein stockender Datenstrom bliebe sonst unbegrenzt offen.
+ * @param {typeof fetch} fetchImpl
+ * @param {string} url
+ * @param {{ init?: RequestInit, timeoutMs?: number, maxBytes?: number, label?: string }} [options]
+ * @returns {Promise<{ ok: boolean, status: number, contentType: string, bytes: Uint8Array }>}
+ */
+export async function fetchBytesWithTimeout(fetchImpl, url, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 15000;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const expired = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller?.abort();
+      reject(new Error(`Zeitüberschreitung nach ${Math.round(timeoutMs / 1000)} s: ${options.label ?? url}`));
+    }, timeoutMs);
+  });
+  const work = (async () => {
+    const response = await fetchImpl(url, { ...options.init, ...(controller ? { signal: controller.signal } : {}) });
+    const contentType = response.headers?.get?.('content-type') ?? '';
+    const declared = Number(response.headers?.get?.('content-length') ?? NaN);
+    if (!response.ok || (options.maxBytes !== undefined && declared > options.maxBytes)) {
+      return { ok: false, status: response.status, contentType, bytes: new Uint8Array(0) };
+    }
+    return { ok: true, status: response.status, contentType, bytes: new Uint8Array(await response.arrayBuffer()) };
+  })();
+  work.catch(() => { /* Nach Zeitüberschreitung kommt der Fehler nicht mehr an. */ });
+  try {
+    return await Promise.race([work, /** @type {Promise<never>} */ (expired)]);
+  } finally {
+    clearTimeout(timer);
+  }
+}

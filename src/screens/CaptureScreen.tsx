@@ -375,7 +375,7 @@ export function CaptureScreen() {
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={reportPhoto} onValueChange={setReportPhoto} /></View>
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={reportLocation} onValueChange={setReportLocation} /></View>
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={reportLocation && reportMap} onValueChange={setReportMap} disabled={!reportLocation} /></View>
-        {reportLocation && reportMap && <Text style={styles.muted}>Lädt Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei ungefähr den Standort und deine IP-Adresse.</Text>}
+        {reportLocation && reportMap && <Text style={styles.muted}>Lädt beim Erstellen Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei den Standort auf etwa 1 km genau und deine IP-Adresse.</Text>}
         <Text style={styles.muted}>Der Prüfbericht entsteht mit derselben Prüflogik wie der Windows- und Kommandozeilen-Prüfer. Das vollständige ZIP-Beweispaket enthält immer Originalfoto und Manifest. Teile es nur bewusst mit vertrauenswürdigen Empfängern.</Text>
       </View>
       {!history.length && <Text style={styles.muted}>Noch keine Nachweise auf diesem Gerät gespeichert.</Text>}
