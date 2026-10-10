@@ -1,7 +1,8 @@
 /**
  * PDF-Prüfbericht nach docs/design/PRUEFBERICHT-DESIGN.md und der Mustervorlage.
  * Erzeugt das PDF vollständig in JavaScript (pdf-lib), mit eingebetteten Schriften und ohne
- * Netzwerkzugriff. Identischer Code für Kommandozeile, Windows-Prüfer und Handy-App.
+ * Netzwerkzugriff; einen Kartenausschnitt erhält der Renderer fertig geladen über das Modell.
+ * Identischer Code für Kommandozeile, Windows-Prüfer und Handy-App.
  */
 import fontkit from '@pdf-lib/fontkit';
 import qrcode from 'qrcode-generator';
@@ -30,7 +31,12 @@ const C = {
   boxText: c('#2c3a37'), darkHash: c('#c9d7d4'), white: c('#ffffff'), photoBg: c('#ece7dc'),
   red: c('#a52a1f'), redBg: c('#fbecea'), redBanner: c('#7e2a20'), redText: c('#f7ddd6'), redAccent: c('#f3bfae'),
   redRing: c('#d98a7a'), redInner: c('#9b3427'), warnBg: c('#fbf1ea'), gray: c('#9aa5a2'),
+  // Kartenansicht wie im Windows-Prüfer (desktop/styles.css: .evidence-card-title, .coordinates, .map, .map-pin, .map-attribution)
+  mapTitle: c('#66877b'), mapCoordinates: c('#205b58'), mapBg: c('#dfe6dd'), mapPin: c('#bb775b'),
+  mapShadow: c('#153a3d'), mapAttribution: c('#245a57'),
 };
+/** Ein CSS-Pixel des Windows-Prüfers entspricht 0,75 pt; so erscheint die Karte im selben Maßstab. */
+const PX = 0.75;
 
 /**
  * @typedef {{ serif: Uint8Array, serifItalic: Uint8Array, sans: Uint8Array, sansBold: Uint8Array, mono: Uint8Array, monoMedium: Uint8Array }} FontBytes
@@ -611,8 +617,66 @@ function table(cv, flow, columns, rows, options = {}) {
   }
 }
 
-/** @param {Canvas} cv @param {any} model */
-function appendix(cv, model) {
+/**
+ * Kartenausschnitt wie in der Detailkarte „02 / STANDORT“ des Windows-Prüfers: Koordinaten,
+ * Hinweis, OSM-Kacheln in Zoomstufe 14, Markierung in der Mitte und Quellenangabe.
+ * @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow @param {any} map
+ * @param {{ image: import('pdf-lib').PDFImage, left: number, top: number }[] | null} tiles
+ */
+function locationMapCard(cv, flow, map, tiles) {
+  const f = cv.f;
+  const pad = 9.75;
+  const textW = CONTENT_W - 2 * pad;
+  const hint = cv.wrap(map.hint, f.sans, 8.25, textW, 0.12);
+  const warning = map.warning ? cv.wrap(map.warning, f.sansBold, 8.25, textW, 0.12) : [];
+  const shown = !!tiles && !map.unavailable;
+  const note = shown ? cv.wrap(map.caption, f.sans, 7.2, textW, 0.1) : cv.wrap(map.unavailable ?? 'Kartenausschnitt nicht verfügbar.', f.sans, 8.25, textW, 0.12);
+  const mapW = shown ? map.width * PX : 0;
+  const mapH = shown ? map.height * PX : 0;
+  const textEnd = 53 + (hint.length + warning.length - 1) * 11.5;
+  const mapTopOffset = textEnd + 10;
+  const h = shown ? mapTopOffset + mapH + 13 + (note.length - 1) * 9.6 + 9 : textEnd + 8 + note.length * 11.5 + 4;
+  if (flow.y + h > 776) flow.y = flow.newPage();
+  const top = flow.y;
+  cv.rect(M + 0.4, top, CONTENT_W - 0.8, h, { fill: C.white, stroke: C.line, width: 0.75, r: 9 });
+  const eyebrow = { font: f.sansBold, size: 7.5, color: C.mapTitle, spacing: 0.94 };
+  cv.text('KARTENAUSSCHNITT', M + pad, top + 17, eyebrow);
+  cv.text(shown ? `OPENSTREETMAP · ZOOMSTUFE ${map.zoom}` : 'OPENSTREETMAP', RIGHT - pad, top + 17, { ...eyebrow, align: 'right' });
+  cv.text(map.coordinates, M + pad, top + 37, { font: f.monoMedium, size: 12.75, color: C.mapCoordinates });
+  let y = top + 53;
+  for (const line of hint) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.text2, spacing: 0.12 }); y += 11.5; }
+  for (const line of warning) { cv.text(line, M + pad, y, { font: f.sansBold, size: 8.25, color: C.terra, spacing: 0.12 }); y += 11.5; }
+  if (!shown || !tiles) {
+    y += 4;
+    for (const line of note) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.terra, spacing: 0.12 }); y += 11.5; }
+    flow.y = top + h + 14;
+    return;
+  }
+  const mapX = M + (CONTENT_W - mapW) / 2;
+  const mapTop = top + mapTopOffset;
+  const tile = 256 * PX;
+  cv.rect(mapX, mapTop, mapW, mapH, { fill: C.mapBg, r: 8.25 });
+  cv.clipRound(mapX, mapTop, mapW, mapH, 8.25);
+  for (const t of tiles) cv.page.drawImage(t.image, { x: mapX + t.left * PX, y: H - mapTop - t.top * PX - tile, width: tile, height: tile });
+  // Markierung: 20 px Kreis mit 4 px weißem Rand und weichem Schatten (box-shadow 0 2px 11px)
+  const cx = mapX + mapW / 2;
+  const cy = mapTop + mapH / 2;
+  for (let k = 6; k >= 1; k--) cv.page.drawCircle({ x: cx, y: H - cy - 1.5, size: 7.5 + k * 1.15, color: C.mapShadow, opacity: 0.045 });
+  cv.circle(cx, cy, 7.5, { fill: C.white });
+  cv.circle(cx, cy, 4.5, { fill: C.mapPin });
+  // Quellenangabe unten rechts im Kartenbild (wie .map-attribution: 10 px, Innenabstand 3 px 5 px)
+  const aw = cv.width(map.attribution, f.sans, 7.5) + 7.5;
+  const ah = 12.6;
+  cv.page.drawRectangle({ x: mapX + mapW - 3 - aw, y: H - (mapTop + mapH - 3), width: aw, height: ah, color: C.white, opacity: 0.87 });
+  cv.text(map.attribution, mapX + mapW - 3 - aw + 3.75, mapTop + mapH - 3 - 3.6, { font: f.sans, size: 7.5, color: C.mapAttribution });
+  cv.unclip();
+  y = mapTop + mapH + 13;
+  for (const line of note) { cv.text(line, M + pad, y, { font: f.sans, size: 7.2, color: C.text3, spacing: 0.1 }); y += 9.6; }
+  flow.y = top + h + 14;
+}
+
+/** @param {Canvas} cv @param {any} model @param {Record<string, any>} images */
+function appendix(cv, model, images) {
   const f = cv.f;
   const startPage = () => { cv.addPage(); header(cv, model, false); return 72; };
   const flow = { y: startPage(), newPage: startPage };
@@ -632,6 +696,7 @@ function appendix(cv, model) {
     if (flow.y + 60 > 776) flow.y = flow.newPage();
     cv.text(group.title, M, flow.y + 12, { font: f.serif, size: 12, color: C.banner });
     flow.y += 20;
+    if (group.key === 'location' && model.locationMap) locationMapCard(cv, flow, model.locationMap, images.mapTiles ?? null);
     table(cv, flow, columns, group.rows.map((/** @type {any} */ row) => [row.quantity, row.value, row.time, row.source, row.note]));
   }
 
@@ -675,7 +740,9 @@ function footers(cv, model) {
     const style = { font: f.sans, size: 8.25, color: C.text3, spacing: 0.12 };
     if (i === 0) {
       cv.hline(M, 799.5, RIGHT, C.line);
-      cv.text(total > 2 ? 'Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2, alle Messwerte ab Seite 3' : 'Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2', M, 816.8, style);
+      const more = model.locationMap?.tiles && !model.locationMap.unavailable ? 'Karte und alle Messwerte ab Seite 3' : 'alle Messwerte ab Seite 3';
+      const first = total > 2 ? `Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2, ${more}` : 'Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2';
+      cv.text(fit(cv, first, f.sans, 8.25, CONTENT_W - 70, 0.12), M, 816.8, style);
     } else {
       cv.hline(M, 786.8, RIGHT, C.line);
       const first = i === 1 ? model.footer[0] : `Anhang · alle im Manifest gebundenen Angaben · Manifest ${model.appendix.version} · Bericht Nr. ${model.number}`;
@@ -688,10 +755,10 @@ function footers(cv, model) {
 
 /**
  * @param {ReturnType<typeof import('./report-model.mjs').buildReportModel>} model
- * @param {{ fonts: FontBytes }} options
+ * @param {{ fonts: FontBytes, onMapError?: (reason: string) => void }} options
  * @returns {Promise<Uint8Array>}
  */
-export async function renderReportPdf(model, { fonts }) {
+export async function renderReportPdf(model, { fonts, onMapError }) {
   const doc = await PDFDocument.create({ updateMetadata: false });
   doc.registerFontkit(fontkit);
   const embed = (/** @type {Uint8Array} */ bytes) => doc.embedFont(bytes, { subset: true });
@@ -720,10 +787,28 @@ export async function renderReportPdf(model, { fonts }) {
       model = { ...model, photo: null, photoNote: 'Foto konnte nicht eingebettet werden (Bilddaten nicht lesbar)' };
     }
   }
+  const map = model.locationMap;
+  if (map?.tiles && !map.unavailable) {
+    try {
+      /** @type {Map<string, import('pdf-lib').PDFImage>} */
+      const embedded = new Map();
+      images.mapTiles = [];
+      for (const tile of map.tiles) {
+        let image = embedded.get(tile.key);
+        if (!image) { image = await doc.embedPng(tile.bytes); embedded.set(tile.key, image); }
+        images.mapTiles.push({ image, left: tile.left, top: tile.top });
+      }
+    } catch {
+      const reason = 'Kartenkacheln konnten nicht eingebettet werden.';
+      images.mapTiles = null;
+      model = { ...model, locationMap: { ...map, tiles: null, unavailable: `Kartenausschnitt nicht verfügbar: ${reason} Die Koordinaten stehen in der Tabelle.` } };
+      onMapError?.(reason);
+    }
+  }
   const cv = new Canvas(doc, f);
   pageOne(cv, model, images);
   pageTwo(cv, model);
-  appendix(cv, model);
+  appendix(cv, model, images);
   footers(cv, model);
   return doc.save({ useObjectStreams: true });
 }

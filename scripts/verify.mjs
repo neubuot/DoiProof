@@ -10,6 +10,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { systemTimeZone } from '../core/format.mjs';
 import { ianaTimeZone, loadFonts, nodeSha256 } from '../core/node.mjs';
+import { MAP_COPYRIGHT, mapUserAgent } from '../core/map.mjs';
 import { createPdfReport, verifyPackage, VERSION } from '../core/pipeline.mjs';
 import { reportText } from '../core/report-text.mjs';
 import { checkOnline, verifyLocal as coreVerifyLocal } from '../core/verify.mjs';
@@ -24,7 +25,7 @@ async function writeNew(path, data) {
     throw error;
   }
 }
-const USAGE = 'Aufruf: npm run verify -- <paket.zip> [--online] [--json] [--report bericht.md|bericht.json] [--pdf bericht.pdf] [--ohne-foto] [--ohne-standort] [--zeitzone Europe/Berlin]';
+const USAGE = 'Aufruf: npm run verify -- <paket.zip> [--online] [--json] [--report bericht.md|bericht.json] [--pdf bericht.pdf] [--karte] [--ohne-foto] [--ohne-standort] [--zeitzone Europe/Berlin]';
 
 /** Lokale Prüfung (wirft bei jedem Fehler). @param {Uint8Array} zipBytes */
 export function verifyLocal(zipBytes) {
@@ -47,8 +48,8 @@ export async function verifyBundle(path, withOnline = false, options = {}) {
 
 /** @param {string[]} args */
 export function parseArgs(args) {
-  /** @type {{ path?: string, reportPath?: string, pdfPath?: string, json: boolean, online: boolean, includePhoto: boolean, includeLocation: boolean, timeZone?: string }} */
-  const options = { json: false, online: false, includePhoto: true, includeLocation: true };
+  /** @type {{ path?: string, reportPath?: string, pdfPath?: string, json: boolean, online: boolean, includePhoto: boolean, includeLocation: boolean, includeMap: boolean, timeZone?: string }} */
+  const options = { json: false, online: false, includePhoto: true, includeLocation: true, includeMap: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const value = () => {
@@ -62,22 +63,26 @@ export function parseArgs(args) {
     else if (arg === '--pdf') options.pdfPath = value();
     else if (arg === '--ohne-foto') options.includePhoto = false;
     else if (arg === '--ohne-standort') options.includeLocation = false;
+    else if (arg === '--karte') options.includeMap = true;
     else if (arg === '--zeitzone') options.timeZone = value();
     else if (!arg.startsWith('-') && !options.path) options.path = arg;
     else throw new Error(`Unbekanntes Argument: ${arg}. ${USAGE}`);
   }
   if (!options.path) throw new Error(USAGE);
   if (options.pdfPath && !options.pdfPath.toLowerCase().endsWith('.pdf')) throw new Error('Der PDF-Bericht braucht die Endung .pdf.');
+  if (options.includeMap && !options.pdfPath) throw new Error('--karte gilt nur zusammen mit --pdf.');
+  if (options.includeMap && !options.includeLocation) throw new Error('--karte zeigt den Standort und passt nicht zu --ohne-standort.');
   return options;
 }
 
 /**
  * @param {string[]} args
- * @param {{ fetchImpl?: typeof fetch, now?: () => Date, stdout?: (text: string) => void }} [io]
+ * @param {{ fetchImpl?: typeof fetch, now?: () => Date, stdout?: (text: string) => void, stderr?: (text: string) => void }} [io]
  * @returns {Promise<number>} Exitcode: 0 in Ordnung, 1 Fehler/Widerspruch, 2 Onlineprüfung unvollständig
  */
 export async function cli(args, io = {}) {
   const out = io.stdout ?? (text => process.stdout.write(text));
+  const err = io.stderr ?? (text => process.stderr.write(text));
   const options = parseArgs(args);
   const path = /** @type {string} */ (options.path);
   const zipBytes = new Uint8Array(await readFile(path));
@@ -86,16 +91,22 @@ export async function cli(args, io = {}) {
   const { analysis, local, online } = await verifyPackage(zipBytes, { sha256: nodeSha256, online: options.online, fetchImpl: io.fetchImpl, now });
 
   if (options.pdfPath) {
-    const { pdf } = await createPdfReport({
+    // Kartenkacheln werden nur mit --karte geladen und nicht zwischengespeichert: Dateinamen im
+    // Cache würden den ungefähren Standort auf dem Rechner hinterlassen.
+    const { pdf, mapStatus } = await createPdfReport({
       analysis, online, fileName: basename(path), fonts: await loadFonts(FONT_DIR), generatedAt: now(), timeZone,
-      includePhoto: options.includePhoto, includeLocation: options.includeLocation,
+      includePhoto: options.includePhoto, includeLocation: options.includeLocation, includeMap: options.includeMap,
+      mapLoader: { fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`) },
       producer: `DoiProof-Prüfer ${VERSION} (Kommandozeile)`,
     });
     await writeNew(options.pdfPath, pdf);
+    if (mapStatus.state === 'included') err(`Kartenausschnitt eingebunden (${MAP_COPYRIGHT}).\n`);
+    else if (mapStatus.state === 'unavailable') err(`Hinweis: ${mapStatus.reason ?? 'Kartenausschnitt nicht verfügbar.'} Der Bericht enthält die Koordinaten ohne Karte.\n`);
+    else if (mapStatus.state === 'no_location') err('Hinweis: Kein gemessener Standort in einem bestandenen Paket – Bericht ohne Kartenausschnitt.\n');
   }
   if (!local) {
-    process.stderr.write(`DoiProof-Prüfung fehlgeschlagen: ${analysis.error}\n`);
-    if (options.pdfPath) process.stderr.write(`PDF-Bericht mit negativem Ergebnis gespeichert: ${options.pdfPath}\n`);
+    err(`DoiProof-Prüfung fehlgeschlagen: ${analysis.error}\n`);
+    if (options.pdfPath) err(`PDF-Bericht mit negativem Ergebnis gespeichert: ${options.pdfPath}\n`);
     return 1;
   }
   const result = { generatedAtUtc: now().toISOString(), file: resolve(path), local, online };

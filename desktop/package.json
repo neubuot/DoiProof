@@ -38,7 +38,6 @@
       "styles.css",
       "report.mjs",
       "details.mjs",
-      "map.mjs",
       "core/**/*.mjs",
       "fonts/**/*",
       "assets/icon.ico",

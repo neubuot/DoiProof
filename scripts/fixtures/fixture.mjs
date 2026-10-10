@@ -5,10 +5,12 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deflateSync } from 'node:zlib';
 import { createBundleZip } from '../../core/bundle.mjs';
 import { computeEvidence } from '../../core/manifest.mjs';
 import { notRequestedSensors, SensorCollector } from '../../core/sensors.mjs';
 import { nodeSha256 } from '../../core/node.mjs';
+import { crc32 } from '../../core/verify.mjs';
 
 export const SYNTHETIC_JPEG = join(dirname(fileURLToPath(import.meta.url)), 'synthetic-orientation6.jpg');
 export const CAPTURE_MS = Date.parse('2026-10-01T07:31:35.000Z');
@@ -110,4 +112,80 @@ export function fakeChain({ evidence, status = 'confirmed' }) {
     return { ok: true, status: 200, json: async () => ({ result: { structuredContent: value } }) };
   });
   return { fetchImpl, calls, txid, blockHash };
+}
+
+/** @param {string} type @param {Uint8Array} data */
+function pngChunk(type, data) {
+  const out = new Uint8Array(12 + data.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, data.length);
+  for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+  out.set(data, 8);
+  view.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+  return out;
+}
+
+/**
+ * Synthetische Kartenkachel (256 × 256, palettiertes PNG wie bei OpenStreetMap) mit Straßen,
+ * Grünflächen, Gebäuden und einem Fluss in Weltkoordinaten, damit benachbarte Kacheln
+ * nahtlos aneinanderpassen. Kein echtes Kartenbild.
+ * @param {{ x: number, y: number }} tile
+ */
+export function syntheticTile({ x, y }) {
+  const palette = [[242, 239, 233], [255, 255, 255], [214, 208, 196], [205, 235, 176], [170, 211, 223], [217, 208, 201], [247, 250, 191]];
+  const hash = (/** @type {number} */ a, /** @type {number} */ b) => ((a * 73856093) ^ (b * 19349663)) >>> 0;
+  const raw = new Uint8Array(256 * 257);
+  for (let j = 0; j < 256; j++) {
+    raw[j * 257] = 0;
+    for (let i = 0; i < 256; i++) {
+      const gx = x * 256 + i; const gy = y * 256 + j;
+      const rx = gx % 160; const ry = gy % 120;
+      const block = hash(Math.floor(gx / 160), Math.floor(gy / 120)) % 7;
+      const major = Math.floor(gy / 120) % 4 === 0;
+      const river = Math.abs((gy % 1800) - (900 + 60 * Math.sin(gx / 190))) < 13;
+      let color = 0;
+      if (river) color = 4;
+      else if (rx < 7 || ry < (major ? 9 : 6)) color = (rx === 0 || rx === 6 || ry === 0 || ry === (major ? 8 : 5)) ? 2 : (major && ry < 9 ? 6 : 1);
+      else if (block === 0) color = 3;
+      else if (block <= 3 && rx % 38 > 12 && rx % 38 < 33 && ry % 28 > 11 && ry % 28 < 25) color = 5;
+      raw[j * 257 + 1 + i] = color;
+    }
+  }
+  const header = new Uint8Array(13);
+  new DataView(header.buffer).setUint32(0, 256);
+  new DataView(header.buffer).setUint32(4, 256);
+  header.set([8, 3, 0, 0, 0], 8);
+  const parts = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', header),
+    pngChunk('PLTE', new Uint8Array(palette.flat())),
+    pngChunk('IDAT', new Uint8Array(deflateSync(raw))),
+    pngChunk('IEND', new Uint8Array(0)),
+  ];
+  const png = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { png.set(part, offset); offset += part.length; }
+  return png;
+}
+
+/**
+ * Fake-fetch für den Kachelserver: liefert synthetische Kacheln und merkt sich Abrufe und Header.
+ * @param {{ status?: number, contentType?: string }} [options]
+ */
+export function fakeTileServer(options = {}) {
+  /** @type {{ url: string, userAgent: string | undefined }[]} */
+  const calls = [];
+  /** @type {typeof fetch} */
+  const fetchImpl = /** @type {any} */ (async (/** @type {string} */ url, /** @type {any} */ request) => {
+    calls.push({ url: String(url), userAgent: request?.headers?.['User-Agent'] });
+    const match = /\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(String(url));
+    if (!match) throw new Error(`Unerwartete URL: ${url}`);
+    const bytes = syntheticTile({ x: Number(match[2]), y: Number(match[3]) });
+    return {
+      ok: (options.status ?? 200) === 200, status: options.status ?? 200,
+      headers: { get: (/** @type {string} */ name) => (name.toLowerCase() === 'content-type' ? options.contentType ?? 'image/png' : null) },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    };
+  });
+  return { fetchImpl, calls };
 }

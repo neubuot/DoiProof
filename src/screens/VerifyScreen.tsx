@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { ResultCard } from '../components/ResultCard';
-import { pickZip, shareReport, verifyZip, type PickedZip, type VerificationResult } from '../verifier';
+import { mapNote, pickZip, shareReport, verifyZip, type PickedZip, type VerificationResult } from '../verifier';
 import { colors, styles } from '../ui/styles';
 
 /**
@@ -16,6 +16,7 @@ export function VerifyScreen() {
   const [message, setMessage] = useState('');
   const [includePhoto, setIncludePhoto] = useState(true);
   const [includeLocation, setIncludeLocation] = useState(true);
+  const [includeMap, setIncludeMap] = useState(false);
 
   async function choose() {
     setMessage('');
@@ -44,10 +45,10 @@ export function VerifyScreen() {
 
   async function share() {
     if (!result) return;
-    setBusy('PDF-Prüfbericht wird erstellt …');
+    setBusy(includeLocation && includeMap ? 'Kartenausschnitt wird geladen und PDF-Prüfbericht erstellt …' : 'PDF-Prüfbericht wird erstellt …');
     try {
-      await shareReport(result, { includePhoto, includeLocation });
-      setMessage('PDF-Prüfbericht wurde gespeichert und im Teilen-Dialog angeboten.');
+      const { mapStatus } = await shareReport(result, { includePhoto, includeLocation, includeMap });
+      setMessage(`PDF-Prüfbericht wurde gespeichert und im Teilen-Dialog angeboten.${mapNote(mapStatus)}`);
     } catch (error) {
       Alert.alert('Prüfbericht konnte nicht erstellt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
     } finally {
@@ -81,6 +82,8 @@ export function VerifyScreen() {
         <View style={styles.card}>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={includePhoto} onValueChange={setIncludePhoto} /></View>
           <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={includeLocation} onValueChange={setIncludeLocation} /></View>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={includeLocation && includeMap} onValueChange={setIncludeMap} disabled={!includeLocation} /></View>
+          {includeLocation && includeMap && <Text style={styles.muted}>Lädt Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei ungefähr den Standort und deine IP-Adresse. Die Karte ist nicht Teil des Beweispakets.</Text>}
           <Text style={styles.muted}>Der Bericht folgt der DoiProof-Designvorlage und enthält im Anhang jeden im Manifest gebundenen Messwert. Ausgeblendete Angaben bleiben im ZIP unverändert enthalten.</Text>
           <Pressable accessibilityRole="button" style={[styles.button, !!busy && styles.disabled]} disabled={!!busy} onPress={share}><Text style={styles.buttonText}>PDF-Prüfbericht erstellen und teilen</Text></Pressable>
         </View>

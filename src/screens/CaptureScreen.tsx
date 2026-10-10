@@ -11,7 +11,7 @@ import { createEvidence, LOCATION_SETTINGS, MetadataSettings, prepareCapture, PR
 import { bundleFileName, buildEvidenceBundle, preserveEvidencePhoto, shareEvidenceBundle } from '../bundle';
 import { getPreCaptureAnchors } from '../chainAnchors';
 import { appSha256 } from '../platform';
-import { shareReport, verifyZip } from '../verifier';
+import { mapNote, shareReport, verifyZip } from '../verifier';
 import { AboutCard } from '../components/AboutCard';
 import { colors, styles } from '../ui/styles';
 
@@ -58,6 +58,7 @@ export function CaptureScreen() {
   const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
   const [reportPhoto, setReportPhoto] = useState(true);
   const [reportLocation, setReportLocation] = useState(false);
+  const [reportMap, setReportMap] = useState(false);
   const [reportOnline, setReportOnline] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const historyRef = useRef<ProofRecord[]>([]);
@@ -257,8 +258,9 @@ export function CaptureScreen() {
       setMessage(reportOnline ? 'Beweispaket wird geprüft und online abgeglichen …' : 'Beweispaket wird geprüft …');
       const bytes = await buildEvidenceBundle(record);
       const verification = await verifyZip(bytes, bundleFileName(record), reportOnline);
-      await shareReport(verification, { includePhoto: reportPhoto, includeLocation: reportLocation });
-      setMessage('PDF-Prüfbericht wurde lokal gespeichert und im Teilen-Dialog angeboten.');
+      if (reportLocation && reportMap) setMessage('Kartenausschnitt wird geladen und PDF-Prüfbericht erstellt …');
+      const { mapStatus } = await shareReport(verification, { includePhoto: reportPhoto, includeLocation: reportLocation, includeMap: reportMap });
+      setMessage(`PDF-Prüfbericht wurde lokal gespeichert und im Teilen-Dialog angeboten.${mapNote(mapStatus)}`);
     } catch (error) {
       Alert.alert('Prüfbericht konnte nicht erstellt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
     } finally {
@@ -372,6 +374,8 @@ export function CaptureScreen() {
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Kettenstatus online abgleichen</Text><Switch value={reportOnline} onValueChange={setReportOnline} /></View>
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={reportPhoto} onValueChange={setReportPhoto} /></View>
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={reportLocation} onValueChange={setReportLocation} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={reportLocation && reportMap} onValueChange={setReportMap} disabled={!reportLocation} /></View>
+        {reportLocation && reportMap && <Text style={styles.muted}>Lädt Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei ungefähr den Standort und deine IP-Adresse.</Text>}
         <Text style={styles.muted}>Der Prüfbericht entsteht mit derselben Prüflogik wie der Windows- und Kommandozeilen-Prüfer. Das vollständige ZIP-Beweispaket enthält immer Originalfoto und Manifest. Teile es nur bewusst mit vertrauenswürdigen Empfängern.</Text>
       </View>
       {!history.length && <Text style={styles.muted}>Noch keine Nachweise auf diesem Gerät gespeichert.</Text>}

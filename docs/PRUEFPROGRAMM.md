@@ -32,6 +32,7 @@ npm run verify -- "C:\Pfad\zum\DoiProof-paket.zip"
 | `--pdf bericht.pdf` | PDF-Prüfbericht nach der DoiProof-Designvorlage speichern (auch bei fehlgeschlagener Prüfung) |
 | `--ohne-foto` | Foto nicht in den PDF-Bericht einbetten |
 | `--ohne-standort` | Koordinaten im PDF-Bericht ausblenden |
+| `--karte` | Kartenausschnitt (OpenStreetMap, Zoomstufe 14) in den PDF-Bericht aufnehmen; nur mit `--pdf` und ohne `--ohne-standort`. Lädt Kartenkacheln aus dem Netz |
 | `--zeitzone Europe/Berlin` | Zeitzone für Ortszeiten im PDF (Standard: Zeitzone des Rechners) |
 | `--report bericht.md` | kurzer Textbericht (Markdown); `bericht.json` für maschinenlesbare Ausgabe |
 | `--json` | Ergebnis als JSON auf der Konsole |
@@ -48,9 +49,10 @@ Gestaltung nach [docs/design/PRUEFBERICHT-DESIGN.md](design/PRUEFBERICHT-DESIGN.
 
 - **Seite 1 – Ergebnis:** Banner *bestanden* (Paket unverändert und online im Doichain-Block bestätigt), *unvollständig* (unverändert, aber nicht online abgefragt, ausstehend oder Dienst nicht erreichbar) oder *fehlgeschlagen* (Hash-Widerspruch, beschädigtes ZIP oder Widerspruch zur Kette). Das Wort „echt“ erscheint nur bei *bestanden*. Dazu Foto, „Auf einen Blick“, Zeitstrahl (frühestens Vorabblock, Aufnahme laut Gerät, spätestens Doichain-Block) und Kacheln: gefüllt = mathematisch belegt, umrandet = stimmiges Indiz.
 - **Seite 2 – Beweiskette:** Foto-, Manifest- und Paket-Hash, Transaktion, Block mit Bestätigungen, Tabelle der Zeitanker, QR-Code zu `https://verifile.it/#<Paket-Hash>`, „Dieser Bericht belegt / belegt nicht“.
+- **Optional: Kartenausschnitt** (mit `--karte`) am Anfang des Anhangs in der Gruppe „Standort / GNSS“, gestaltet wie die Kartenansicht des Windows-Prüfers: Koordinaten, OSM-Karte mit Markierung in der Mitte, Quellenangabe „© OpenStreetMap-Mitwirkende“ und Abrufzeit. Die Karte veranschaulicht nur die gebundenen Koordinaten; sie ist nicht Teil des Beweispakets und erscheint nur bei bestandener lokaler Prüfung. Ist der Kartendienst nicht erreichbar, enthält der Bericht einen Hinweis statt der Karte und die Kommandozeile meldet es; der Exitcode ändert sich dadurch nicht.
 - **Anhang ab Seite 3 – alle erhobenen Messwerte:** jede im Manifest gebundene Angabe nach Quelle gruppiert (Standort/GNSS, Bewegungssensoren, Magnetfeld/Kompass, Luftdruck, Licht, Kamera/EXIF, Gerät/App, Netz/Zeitanker, weitere Angaben, Exportstatus) mit Messgröße, Wert und Einheit, Messzeitpunkt, Quelle und Hinweis. Nicht erhobene Sensoren stehen ausdrücklich als „nicht erfasst“ mit Grund in der Tabelle. Messreihen sind mit Minimum, Maximum, Mittelwert und Anzahl zusammengefasst; **Anhang B** listet jede Einzelmessung mit Zeit und Phase (vor der Kamera, Kamera offen, nach der Rückkehr).
 
-**Datenschutz:** Der PDF-Bericht enthält – anders als der Text- oder JSON-Bericht – das Foto, die Koordinaten und alle Sensorwerte. Mit `--ohne-foto` und `--ohne-standort` lassen sie sich ausblenden. Schriften sind eingebettet; beim Erzeugen gibt es keinen Netzwerkzugriff. EXIF-Ortsangaben der Bilddatei werden nicht ausgelesen, nur ihr Vorhandensein vermerkt.
+**Datenschutz:** Der PDF-Bericht enthält – anders als der Text- oder JSON-Bericht – das Foto, die Koordinaten und alle Sensorwerte. Mit `--ohne-foto` und `--ohne-standort` lassen sie sich ausblenden. Schriften sind eingebettet; ohne `--karte` gibt es beim Erzeugen keinen Netzwerkzugriff. Mit `--karte` werden 6 bis 12 Kartenkacheln von `tile.openstreetmap.org` geladen; der Kartendienst sieht dabei den ungefähren Standort (Kachelraster von rund 2,4 km bei Zoomstufe 14) und die IP-Adresse. Die Kommandozeile speichert die Kacheln nicht zwischen, damit keine Spur des Standorts auf dem Rechner bleibt. EXIF-Ortsangaben der Bilddatei werden nicht ausgelesen, nur ihr Vorhandensein vermerkt.
 
 ## Was wird geprüft?
 

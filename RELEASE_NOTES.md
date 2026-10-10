@@ -6,9 +6,10 @@ Erste auslieferungsreife Version von App, Kommandozeilen-Prüfer und Windows-Pr�
 
 - **Sensoren im Beweispaket (Manifest v3):** Während der Kameraaufnahme erfasst die App Beschleunigungssensor, Gyroskop, Magnetometer und Kompass, Barometer (Luftdruck, auf iOS relative Höhe) und – wo verfügbar – den Lichtsensor. Jeder Sensor liefert einen Einzelwert mit Zeitstempel und eine kurze Messreihe. Nicht verfügbare, verweigerte oder fehlerhafte Sensoren werden ausdrücklich mit Begründung vermerkt. Alles ist über den Manifest-Hash kryptografisch gebunden.
 - **PDF-Prüfbericht** nach der DoiProof-Designvorlage: Ergebnisbanner (bestanden, unvollständig, fehlgeschlagen), Foto, „Auf einen Blick“, Zeitstrahl, Beweiskette, Zeitanker, QR-Code zu verifile.it und ein Anhang mit jedem einzelnen erhobenen Messwert. Schriften sind eingebettet; beim Erzeugen gibt es keinen Netzwerkzugriff.
+- **Kartenausschnitt im PDF (optional):** Auf Wunsch zeigt der Anhang den Standort auf einer OpenStreetMap-Karte, gestaltet wie die Kartenansicht des Windows-Prüfers (Zoomstufe 14, Markierung in der Mitte, Quellenangabe). Die Kacheln werden nur dann und vor dem Erzeugen geladen; der Kartendienst sieht dabei den ungefähren Standort und die IP-Adresse.
 - **Prüfer auf dem Handy:** Eigene oder fremde ZIP-Beweispakete importieren, offline prüfen, optional online abgleichen und den PDF-Bericht teilen.
-- **Kommandozeile:** `npm run verify -- paket.zip --pdf bericht.pdf` (optional `--online`, `--ohne-foto`, `--ohne-standort`, `--zeitzone`). Auch eine fehlgeschlagene Prüfung ergibt einen PDF-Bericht mit klarem negativem Ergebnis.
-- **Windows-Prüfer 1.0.0:** PDF-Bericht, Manifest v3 und Sensorangaben; Foto und Standort im PDF abwählbar.
+- **Kommandozeile:** `npm run verify -- paket.zip --pdf bericht.pdf` (optional `--online`, `--karte`, `--ohne-foto`, `--ohne-standort`, `--zeitzone`). Auch eine fehlgeschlagene Prüfung ergibt einen PDF-Bericht mit klarem negativem Ergebnis.
+- **Windows-Prüfer 1.0.0:** PDF-Bericht, Manifest v3 und Sensorangaben; Foto und Standort im PDF abwählbar, Kartenausschnitt mit „Karte im PDF“.
 - **Verteilung an Tester:** Android-APK (EAS Build, Profil `preview`) bei jedem Release-Tag, EAS Update für JavaScript-Änderungen ohne Neuinstallation, iOS-Profil für TestFlight vorbereitet.
 
 ## Verbessert und behoben

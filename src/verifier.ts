@@ -2,9 +2,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { systemTimeZone } from '../core/format.mjs';
-import { createPdfReport, pdfFileName, verifyPackage, VERSION } from '../core/pipeline.mjs';
+import { createPdfReport, pdfFileName, verifyPackage, VERSION, type MapStatus } from '../core/pipeline.mjs';
 import { LIMITS } from '../core/verify.mjs';
-import { appSha256, loadReportFonts } from './platform';
+import { appSha256, appTileLoader, loadReportFonts } from './platform';
 
 export type PickedZip = { name: string; size: number; bytes: Uint8Array };
 export type VerificationResult = Awaited<ReturnType<typeof verifyPackage>> & { fileName: string; checkedAt: string };
@@ -31,9 +31,23 @@ export async function verifyZip(bytes: Uint8Array, fileName: string, online: boo
   return { ...result, fileName, checkedAt: new Date().toISOString() };
 }
 
-/** Erzeugt den PDF-Prüfbericht mit dem gemeinsamen Berichtskern und öffnet den Teilen-Dialog. */
-export async function shareReport(result: VerificationResult, options: { includePhoto: boolean; includeLocation: boolean }): Promise<string> {
-  const { pdf, model } = await createPdfReport({
+export type ReportOptions = { includePhoto: boolean; includeLocation: boolean; includeMap: boolean };
+
+/** Kurzer Hinweis zum Kartenausschnitt für die Statuszeile, leer wenn nichts zu sagen ist. */
+export function mapNote(status: MapStatus): string {
+  if (status.state === 'included') return ' Kartenausschnitt: © OpenStreetMap-Mitwirkende.';
+  if (status.state === 'unavailable') return ` Kartenausschnitt nicht verfügbar: ${status.reason ?? 'Kartendienst nicht erreichbar.'}`;
+  if (status.state === 'no_location') return ' Ohne Kartenausschnitt: kein gemessener Standort in einem bestandenen Paket.';
+  return '';
+}
+
+/**
+ * Erzeugt den PDF-Prüfbericht mit dem gemeinsamen Berichtskern und öffnet den Teilen-Dialog.
+ * Kartenkacheln werden nur bei includeMap (und eingeblendetem Standort) von OpenStreetMap geladen.
+ */
+export async function shareReport(result: VerificationResult, options: ReportOptions): Promise<{ uri: string; mapStatus: MapStatus }> {
+  const includeMap = options.includeLocation && options.includeMap;
+  const { pdf, model, mapStatus } = await createPdfReport({
     analysis: result.analysis,
     online: result.online,
     fileName: result.fileName,
@@ -41,6 +55,8 @@ export async function shareReport(result: VerificationResult, options: { include
     timeZone: systemTimeZone(),
     includePhoto: options.includePhoto,
     includeLocation: options.includeLocation,
+    includeMap,
+    mapLoader: includeMap ? appTileLoader() : undefined,
     producer: `DoiProof ${VERSION} (App)`,
   });
   const directory = new Directory(Paths.document, 'reports');
@@ -50,5 +66,5 @@ export async function shareReport(result: VerificationResult, options: { include
   output.write(pdf);
   if (!await Sharing.isAvailableAsync()) throw new Error('PDF wurde lokal gespeichert, aber der Teilen-Dialog ist auf diesem Gerät nicht verfügbar.');
   await Sharing.shareAsync(output.uri, { mimeType: 'application/pdf', dialogTitle: 'DoiProof-Prüfbericht teilen', UTI: 'com.adobe.pdf' });
-  return output.uri;
+  return { uri: output.uri, mapStatus };
 }

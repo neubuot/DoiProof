@@ -53,7 +53,7 @@ Das GitHub-Repository ist **öffentlich**. Lade dort keine echten Fotos, Beweisp
 ## Datenschutz in Kürze
 
 - Foto, Standort und Sensorwerte bleiben auf dem Gerät und im exportierten ZIP. Gesendet werden nur der Paket-Hash und eine kurze Notiz mit der Gerätezeit (öffentlich auf der Doichain) sowie öffentliche Blockabfragen.
-- Der PDF-Prüfbericht kann das Foto und den Standort enthalten; beides lässt sich vor dem Erstellen ausschalten.
+- Der PDF-Prüfbericht kann das Foto und den Standort enthalten; beides lässt sich vor dem Erstellen ausschalten. Ein Kartenausschnitt kommt nur dazu, wenn du „Kartenausschnitt (OpenStreetMap)“ einschaltest; dann sieht der Kartendienst ungefähr den Standort und deine IP-Adresse.
 - Gerätezeit, Ort und Sensorwerte sind Angaben deines Geräts. Der Bericht belegt, dass genau dieses Foto mit genau diesen Angaben seit dem Block unverändert ist – nicht, wer fotografiert hat oder ob das Motiv echt ist.
 
 ## Bekannte Einschränkungen

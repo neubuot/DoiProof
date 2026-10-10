@@ -8,6 +8,7 @@ import {
   systemTimeZone, UTC, zoneLabel,
 } from './format.mjs';
 import { ORIENTATION_TEXT } from './image.mjs';
+import { MAP_ATTRIBUTION, MAP_COPYRIGHT, validCoordinates } from './map.mjs';
 import { SENSORS, SENSOR_KEYS, STATUS_TEXT, barometricAltitude, sensorOverview, seriesStats } from './sensors.mjs';
 import { isPlainObject } from './util.mjs';
 
@@ -20,6 +21,11 @@ const STEP_TEXT = { ok: 'stimmt', failed: 'stimmt nicht', skipped: 'nicht geprü
  * @typedef {'proof'|'hint'|'neutral'|'warning'|'failed'} TileKind
  * @typedef {{ kind: TileKind, icon: 'check'|'camera'|'pin'|'clock'|'cross'|'minus', title: string, text: string }} Tile
  * @typedef {{ quantity: string, value: string, time: string, source: string, note: string }} AppendixRow
+ * @typedef {{
+ *   coordinates: string, hint: string, warning: string | null, unavailable: string | null,
+ *   zoom?: number, width?: number, height?: number, attribution?: string, caption?: string,
+ *   tiles?: { key: string, left: number, top: number, bytes: Uint8Array }[] | null,
+ * }} LocationMap
  */
 
 /** @param {unknown} value */
@@ -40,6 +46,17 @@ function locationState(manifest) {
   if (!isPlainObject(location)) return { status: 'absent', location: null };
   const status = location.status ?? 'recorded';
   return { status, location: status === 'recorded' ? location : null, reason: location.reason };
+}
+
+/**
+ * Gemessene Koordinaten eines lokal bestandenen Pakets, sonst null. Nur dafür darf eine Karte geladen werden.
+ * @param {import('./verify.mjs').BundleAnalysis} analysis
+ * @returns {{ latitude: number, longitude: number } | null}
+ */
+export function mapCoordinates(analysis) {
+  if (!analysis.ok || !isPlainObject(analysis.manifest)) return null;
+  const { location } = locationState(analysis.manifest);
+  return location && validCoordinates(location.latitude, location.longitude) ? { latitude: location.latitude, longitude: location.longitude } : null;
 }
 
 /**
@@ -87,6 +104,7 @@ function plain(value) {
  *   timeZone?: import('./format.mjs').TimeZone,
  *   includePhoto?: boolean,
  *   includeLocation?: boolean,
+ *   map?: import('./map.mjs').LoadedMap | { error: string } | null,
  *   producer?: string,
  * }} input
  */
@@ -375,7 +393,39 @@ export function buildReportModel(input) {
     provesNot,
     footer,
     appendix: buildAppendix({ analysis, manifest, verification, includeLocation, version }),
+    locationMap: buildLocationMap(input.map ?? null, analysis, includeLocation, tz),
     meta: { evidenceSha256: evidenceHash, zipSha256: analysis.zip.sha256, version, generatedAtUtc: generatedAt.toISOString(), online: !!online },
+  };
+}
+
+/**
+ * Kartenausschnitt für den Anhang (wie im Windows-Prüfer): nur bei bestandener lokaler Prüfung,
+ * gemessenem Standort und eingeblendeten Koordinaten.
+ * @param {import('./map.mjs').LoadedMap | { error: string } | null} map
+ * @param {import('./verify.mjs').BundleAnalysis} analysis @param {boolean} includeLocation
+ * @param {import('./format.mjs').TimeZone} tz
+ * @returns {LocationMap | null}
+ */
+function buildLocationMap(map, analysis, includeLocation, tz) {
+  const coordinates = mapCoordinates(analysis);
+  if (!map || !coordinates || !includeLocation) return null;
+  const location = /** @type {Record<string, any>} */ (analysis.manifest).location;
+  const base = {
+    coordinates: `${coordinates.latitude.toFixed(6)}°, ${coordinates.longitude.toFixed(6)}°`,
+    hint: 'Koordinaten sind Selbstauskünfte des Geräts; eine Kartenmarkierung attestiert keinen Aufnahmeort.',
+    warning: location.mocked === true ? 'Das Gerät meldet einen simulierten Standort.' : null,
+  };
+  if ('error' in map) return { ...base, unavailable: `Kartenausschnitt nicht verfügbar: ${map.error} Die Koordinaten stehen in der Tabelle.` };
+  const loadedAt = iso(map.loadedAt);
+  return {
+    ...base,
+    unavailable: null,
+    zoom: map.view.zoom,
+    width: map.view.width,
+    height: map.view.height,
+    tiles: map.tiles.map(tile => ({ key: `${tile.zoom}-${tile.x}-${tile.y}`, left: tile.left, top: tile.top, bytes: tile.bytes })),
+    attribution: MAP_ATTRIBUTION,
+    caption: `${MAP_COPYRIGHT} · Zoomstufe ${map.view.zoom}${loadedAt ? ` · Kacheln abgerufen am ${formatDateTimeMinutes(loadedAt, tz)}` : ''} · Die Karte ist nicht Teil des Beweispakets.`,
   };
 }
 
@@ -388,16 +438,16 @@ export function buildAppendix({ analysis, manifest, verification, includeLocatio
   const used = new Set();
   /** @param {string} prefix */
   const use = prefix => { for (const path of all.keys()) if (path === prefix || path.startsWith(`${prefix}.`) || path.startsWith(`${prefix}[`)) used.add(path); };
-  /** @type {{ title: string, rows: AppendixRow[] }[]} */
+  /** @type {{ title: string, key?: string, rows: AppendixRow[] }[]} */
   const groups = [];
-  /** @param {string} title @returns {AppendixRow[]} */
-  const group = title => { const rows = /** @type {AppendixRow[]} */ ([]); groups.push({ title, rows }); return rows; };
+  /** @param {string} title @param {string} [key] @returns {AppendixRow[]} */
+  const group = (title, key) => { const rows = /** @type {AppendixRow[]} */ ([]); groups.push({ title, key, rows }); return rows; };
   /** @param {string} path */
   const get = path => all.get(path);
 
   // Standort / GNSS
   {
-    const rows = group('Standort / GNSS');
+    const rows = group('Standort / GNSS', 'location');
     const { status, location, reason } = locationState(manifest);
     use('location');
     if (location) {

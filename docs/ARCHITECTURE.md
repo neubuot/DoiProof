@@ -17,6 +17,7 @@ core/                    Plattformneutraler Kern (ESM-JavaScript, JSDoc-typisier
   image.mjs              Bildformat, Abmessungen, ausgewählte EXIF-Felder
   mcp.mjs                Doichain-MCP-Client (JSON und Server-Sent Events)
   verify.mjs             ZIP-Analyse mit Entpackgrenzen, Online-Abgleich
+  map.mjs                Kartenausschnitt: Web-Mercator-Kacheln, Laden mit User-Agent und Cache
   bundle.mjs             Erzeugung des ZIP-Beweispakets
   report-model.mjs       Berichtsmodell (alle Aussagen und Tabellen)
   report-pdf.mjs         PDF nach Designvorlage (pdf-lib, fontkit, QR)
@@ -86,7 +87,8 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 - Entpackt wird schrittweise mit harten Grenzen; CRC32 wird auf den begrenzten Daten geprüft.
 - `checkOnline` fragt Transaktion, Block und Vorabblöcke ab; jeder Aufruf hat ein Zeitlimit.
 - `buildReportModel` erzeugt alle Aussagen (Ergebnis, „Auf einen Blick“, Zeitstrahl, Kacheln, Beweiskette, Anhang). Die App zeigt dieselben Aussagen in der Ergebniskarte an.
-- `renderReportPdf` setzt das Modell mit pdf-lib nach den Koordinaten der Mustervorlage um. Fotos (JPEG, PNG) werden unverändert eingebettet und gemäß EXIF-Ausrichtung gedreht; andere Formate erhalten einen Platzhalter.
+- `prepareReportMap` lädt den optionalen Kartenausschnitt nur bei `includeMap`, eingeblendetem Standort und lokal bestandenem Paket (6 bis 12 OSM-Kacheln, Zoomstufe 14, nacheinander, mit eindeutigem User-Agent; Cache im Windows-Prüfer und in der App für 7 Tage, in der Kommandozeile keiner). Fehler führen zu einem Hinweis im Bericht statt zum Abbruch.
+- `renderReportPdf` setzt das Modell mit pdf-lib nach den Koordinaten der Mustervorlage um; den Kartenausschnitt zeichnet es wie die Kartenansicht des Windows-Prüfers, ohne selbst auf das Netz zuzugreifen. Fotos (JPEG, PNG) werden unverändert eingebettet und gemäß EXIF-Ausrichtung gedreht; andere Formate erhalten einen Platzhalter.
 
 ## Build, Updates und Releases
 
@@ -102,6 +104,7 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 - Gerätezeit, Abfragezeiten, Standort, Sensorwerte, App-Version und Commit sind **nicht attestierte Selbstauskünfte**. Ein manipuliertes Gerät kann sie fälschen; ein altes Foto kann erneut verwendet werden. Vorabblöcke belegen nur, dass das **Paket** nach ihrer Entstehung erzeugt wurde. BTC und Doichain sind wegen Merged Mining nicht vollständig unabhängig.
 - API-Schlüssel bleiben nur im flüchtigen App-Zustand. Signaturschlüssel und Tokens liegen ausschließlich in Expo bzw. GitHub-Secrets.
 - Der Windows-Prüfer lädt keine Webseiten, isoliert den Renderer und erzeugt Berichte im Hauptprozess aus der erneut gehashten Datei.
+- Kartenkacheln (Windows-Prüfer „Karte laden“ bzw. „Karte im PDF“, App „Kartenausschnitt (OpenStreetMap)“, Kommandozeile `--karte`) werden nur auf ausdrücklichen Wunsch bei `tile.openstreetmap.org` geladen. Der Dienst sieht dabei den ungefähren Standort und die IP-Adresse; die Cache-Dateinamen verraten ebenfalls den ungefähren Ort und liegen deshalb nur in privaten Verzeichnissen.
 
 ## Aktuelle Einschränkungen
 

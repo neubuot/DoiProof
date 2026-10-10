@@ -3,12 +3,35 @@
  * Darf nicht in der App importiert werden (node:crypto, node:fs).
  */
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { TILE_MAX_AGE_MS } from './map.mjs';
 
 /** @param {Uint8Array} bytes */
 export async function nodeSha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+/**
+ * Kachel-Cache im Dateisystem (Windows-Prüfer: Benutzerprofil). Die Dateinamen verraten den
+ * ungefähren Standort; deshalb nur in einem privaten Verzeichnis verwenden.
+ * @param {string} directory @param {number} [maxAgeMs]
+ * @returns {import('./map.mjs').TileCache}
+ */
+export function fileTileCache(directory, maxAgeMs = TILE_MAX_AGE_MS) {
+  const path = (/** @type {string} */ key) => join(directory, `${key.replace(/[^0-9-]/g, '')}.png`);
+  return {
+    async get(key) {
+      try {
+        if (Date.now() - (await stat(path(key))).mtimeMs >= maxAgeMs) return null;
+        return new Uint8Array(await readFile(path(key)));
+      } catch { return null; }
+    },
+    async put(key, bytes) {
+      await mkdir(directory, { recursive: true });
+      await writeFile(path(key), bytes);
+    },
+  };
 }
 
 export const FONT_FILES = {

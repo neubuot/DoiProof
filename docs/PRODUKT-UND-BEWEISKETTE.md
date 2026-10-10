@@ -62,7 +62,7 @@ Das [eigenständige ZIP-Prüfprogramm](PRUEFPROGRAMM.md), der [Windows-Prüfer](
 
 ## Datenschutz, rechtliche Einordnung und Entwicklungsstand
 
-Das Profil „Privat“ fordert keinen Standort an. Andere Profile können präzise Koordinaten und weitere Angaben in das **lokale vollständige ZIP** aufnehmen; die Schalter „Foto im Bericht“ und „Standort im Bericht“ ändern nur den PDF-Bericht, nicht das Manifest oder ZIP. Fotos können selbst sensible Daten enthalten. Vor einer Weitergabe Empfänger und notwendige Einwilligungen prüfen.
+Das Profil „Privat“ fordert keinen Standort an. Andere Profile können präzise Koordinaten und weitere Angaben in das **lokale vollständige ZIP** aufnehmen; die Schalter „Foto im Bericht“ und „Standort im Bericht“ ändern nur den PDF-Bericht, nicht das Manifest oder ZIP. Ein Kartenausschnitt im Bericht veranschaulicht nur die gebundenen Koordinaten; er wird auf Wunsch bei OpenStreetMap geladen, ist nicht Teil des Beweispakets und belegt keinen Aufnahmeort. Fotos können selbst sensible Daten enthalten. Vor einer Weitergabe Empfänger und notwendige Einwilligungen prüfen.
 
 DoiProof stellt **keinen qualifizierten elektronischen Zeitstempel** aus und beansprucht keine gesetzliche Vermutung wie ein solcher. Nach [Art. 41 eIDAS-Verordnung](https://eur-lex.europa.eu/eli/reg/2014/910/oj?locale=de) sind die Wirkungen eines elektronischen Zeitstempels und die besondere Vermutung für qualifizierte Zeitstempel zu unterscheiden. Die rechtliche Würdigung bleibt eine Frage des konkreten Verfahrens, der überprüften Tatsachen und aller weiteren Beweismittel. Diese Dokumentation ist keine Rechtsberatung.
 

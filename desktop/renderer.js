@@ -16,7 +16,7 @@ const ui = {
   metadata: $('metadata-list'), metadataCount: $('metadata-count'), manifestJson: $('manifest-json'),
   verificationJson: $('verification-json'), hashLabel: $('hash-label'),
   localCard: $('local-card'), localIcon: $('local-icon'), localTitle: $('local-title'),
-  localDescription: $('local-description'), pdfPhoto: $('pdf-photo'), pdfLocation: $('pdf-location'),
+  localDescription: $('local-description'), pdfPhoto: $('pdf-photo'), pdfLocation: $('pdf-location'), pdfMap: $('pdf-map'),
 };
 let file = null;
 let result = null;
@@ -41,6 +41,7 @@ function resetResult() {
   ui.photoLarge.src = '';
   ui.mapGrid.replaceChildren();
   ui.map.hidden = true;
+  ui.pdfMap.checked = false;
   ui.evidence.hidden = true;
   ui.reveal.disabled = false;
   ui.reveal.textContent = 'Details anzeigen ↗';
@@ -287,6 +288,8 @@ ui.mapButton.addEventListener('click', async () => {
       ui.mapGrid.append(image);
     }
     ui.mapButton.textContent = 'Karte geladen ✓';
+    // Wer die Karte hier geladen hat, bekommt sie standardmäßig auch im PDF (Kacheln liegen im Cache).
+    if (ui.pdfLocation.checked) ui.pdfMap.checked = true;
   } catch (error) {
     say('Karte nicht verfügbar: ' + error.message + '. Die Koordinaten bleiben oben sichtbar.');
     ui.mapButton.disabled = false; ui.mapButton.textContent = 'Karte erneut laden ↗';
@@ -306,13 +309,22 @@ ui.verify.addEventListener('click', async () => {
     step('step-local', 'active');
   } finally { setBusy(false); }
 });
+ui.pdfLocation.addEventListener('change', () => {
+  ui.pdfMap.disabled = !ui.pdfLocation.checked;
+  if (!ui.pdfLocation.checked) ui.pdfMap.checked = false;
+});
 ui.save.addEventListener('click', async () => {
   if (!result || busy) return;
   try {
-    const path = await window.doiproof.saveReport({ includePhoto: ui.pdfPhoto.checked, includeLocation: ui.pdfLocation.checked });
-    if (path) {
+    const saved = await window.doiproof.saveReport({
+      includePhoto: ui.pdfPhoto.checked, includeLocation: ui.pdfLocation.checked, includeMap: ui.pdfMap.checked,
+    });
+    if (saved) {
       step('step-report', 'done');
-      say('Bericht gespeichert: ' + path, 'info');
+      const map = saved.map;
+      const note = map?.state === 'unavailable' ? ' Kartenausschnitt nicht verfügbar: ' + (map.reason || 'Kartendienst nicht erreichbar.')
+        : map?.state === 'no_location' ? ' Ohne Kartenausschnitt: kein gemessener Standort in einem bestandenen Paket.' : '';
+      say('Bericht gespeichert: ' + saved.path + '.' + note, 'info');
     }
   } catch (error) { say('Bericht konnte nicht gespeichert werden: ' + error.message); }
 });

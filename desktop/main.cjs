@@ -8,9 +8,17 @@ const report = async () => {
   reportModule ??= import(pathToFileURL(join(__dirname, 'report.mjs')).href);
   return reportModule;
 };
+let mapModules;
+const maps = async () => {
+  mapModules ??= Promise.all([
+    import(pathToFileURL(join(__dirname, 'core', 'map.mjs')).href),
+    import(pathToFileURL(join(__dirname, 'core', 'node.mjs')).href),
+  ]);
+  const [map, node] = await mapModules;
+  return { map, node };
+};
 const SIZE_LIMIT = 200 * 1024 * 1024;
 const smoke = process.argv.includes('--smoke');
-const TILE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 // Letztes vollständiges Prüfergebnis. Bleibt im Hauptprozess; die Oberfläche erhält nur eine Zusammenfassung.
 let lastResult = null;
 
@@ -25,24 +33,14 @@ async function checkedZip(path) {
   return { path: resolve(path), name: basename(path), bytes: file.size };
 }
 
-async function mapTile(tile) {
-  const cache = join(app.getPath('userData'), 'map-cache');
-  const path = join(cache, `${tile.zoom}-${tile.x}-${tile.y}.png`);
-  try {
-    if (Date.now() - (await stat(path)).mtimeMs < TILE_MAX_AGE) return (await readFile(path)).toString('base64');
-  } catch { /* No cached tile. */ }
-  const response = await fetch(`https://tile.openstreetmap.org/${tile.zoom}/${tile.x}/${tile.y}.png`, {
-    headers: { 'User-Agent': `DoiProof-Pruefer/${app.getVersion()} (+https://github.com/neubuot/DoiProof)` },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!response.ok || !response.headers.get('content-type')?.startsWith('image/png')) {
-    throw new Error('Kartenkachel nicht verfügbar.');
-  }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 1024 * 1024) throw new Error('Kartenkachel ist zu groß.');
-  await mkdir(cache, { recursive: true });
-  await writeFile(path, bytes);
-  return bytes.toString('base64');
+/** Kachelzugriff wie bisher: User-Agent des Prüfers, Cache im Benutzerprofil (7 Tage). */
+async function tileLoader() {
+  const { map, node } = await maps();
+  return {
+    fetchImpl: fetch,
+    userAgent: map.mapUserAgent(`DoiProof-Pruefer/${app.getVersion()}`),
+    cache: node.fileTileCache(join(app.getPath('userData'), 'map-cache')),
+  };
 }
 
 function createWindow() {
@@ -64,7 +62,7 @@ function createWindow() {
   if (smoke) window.webContents.once('did-finish-load', async () => {
     try {
       const ready = await window.webContents.executeJavaScript(
-        "Boolean(document.getElementById('verify-button') && document.getElementById('drop-zone') && document.getElementById('reveal-button') && document.getElementById('photo-dialog') && document.getElementById('map-button') && document.getElementById('pdf-photo') && document.getElementById('pdf-location') && window.doiproof?.showDetails && window.doiproof?.mapTiles && window.doiproof?.saveReport)"
+        "Boolean(document.getElementById('verify-button') && document.getElementById('drop-zone') && document.getElementById('reveal-button') && document.getElementById('photo-dialog') && document.getElementById('map-button') && document.getElementById('pdf-photo') && document.getElementById('pdf-location') && document.getElementById('pdf-map') && window.doiproof?.showDetails && window.doiproof?.mapTiles && window.doiproof?.saveReport)"
       );
       if (!ready) throw new Error('GUI oder sichere Preload-Brücke fehlen.');
       const { verifyForDesktop, createDesktopPdf } = await report();
@@ -103,18 +101,19 @@ app.whenReady().then(() => {
     return evidenceDetails(new Uint8Array(await readFile(file.path)), expectedHash);
   });
   ipcMain.handle('map-tiles', async (_event, latitude, longitude) => {
-    const { tileGrid } = await import(pathToFileURL(join(__dirname, 'map.mjs')).href);
-    const grid = tileGrid(latitude, longitude);
-    const tiles = await Promise.all(grid.tiles.map(async tile => ({
-      col: tile.col, row: tile.row,
-      data: `data:image/png;base64,${await mapTile(tile)}`,
-    })));
-    return { ...grid, tiles };
+    const { map } = await maps();
+    const grid = map.tileGrid(latitude, longitude);
+    const tiles = await map.loadMapTiles({ tiles: grid.tiles }, await tileLoader());
+    return {
+      ...grid,
+      tiles: tiles.map(tile => ({ col: tile.col, row: tile.row, data: `data:image/png;base64,${Buffer.from(tile.bytes).toString('base64')}` })),
+    };
   });
   ipcMain.handle('save-report', async (_event, options) => {
     if (!lastResult) throw new Error('Kein Prüfergebnis vorhanden. Bitte das Paket zuerst prüfen.');
     const includePhoto = options?.includePhoto !== false;
     const includeLocation = options?.includeLocation !== false;
+    const includeMap = includeLocation && options?.includeMap === true;
     const cached = lastResult;
     const module = await report();
     const answer = await dialog.showSaveDialog({
@@ -130,13 +129,20 @@ app.whenReady().then(() => {
       generatedAtUtc: cached.generatedAtUtc, file: cached.path, local: cached.local, online: cached.online,
     };
     let content;
+    let map = null;
     if (extension === '.json') {
       if (!cached.local) throw new Error('JSON gibt es nur nach bestandener lokaler Prüfung. Bitte den PDF-Bericht wählen.');
       content = JSON.stringify(summary, null, 2) + '\n';
     } else if (extension === '.md') content = module.markdownReport(summary);
-    else content = (await module.createDesktopPdf(cached, { includePhoto, includeLocation })).pdf;
+    else {
+      const created = await module.createDesktopPdf(cached, {
+        includePhoto, includeLocation, includeMap, mapLoader: includeMap ? await tileLoader() : undefined,
+      });
+      content = created.pdf;
+      map = created.mapStatus;
+    }
     await writeFile(answer.filePath, content);
-    return answer.filePath;
+    return { path: answer.filePath, map };
   });
   ipcMain.handle('copy-hash', (_event, hash) => {
     if (typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash)) {

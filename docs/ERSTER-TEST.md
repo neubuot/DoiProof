@@ -175,6 +175,7 @@ Jede Einreichung zählt zum kostenlosen Tageskontingent (10 je IP-Adresse und UT
 2. **Prüfbericht aus dem Verlauf.** In der Karte **„PDF-Prüfbericht“** über dem Verlauf **„Kettenstatus online abgleichen“** und **„Foto im Bericht“** an lassen und **„Standort im Bericht“ einschalten** (standardmäßig aus; sonst steht beim Ort „ausgeblendet“). Dann beim Eintrag aus E5 **„Prüfbericht PDF“** antippen. Die App bietet das PDF nur im Teilen-Dialog an. Zum Ansehen z. B. „Drive“ wählen und das PDF in der Drive-App öffnen; eine installierte PDF-App steht oft direkt im Dialog. Seite 1 muss **„Echt versiegelt und unverändert.“** zeigen; der Anhang auf den letzten Seiten listet alle Sensorwerte.
 3. **Tab „Prüfen“** → **„ZIP-Beweispaket importieren“** → die ZIP aus Schritt 1 wählen (im Auswahldialog unter „Zuletzt verwendet“, „Downloads“ oder über das Menü ☰ → „Drive“). **„Kettenstatus online abgleichen“** an lassen → **„Paket prüfen“**. Die Ergebniskarte zeigt dasselbe Ergebnis wie das PDF.
 4. **„PDF-Prüfbericht erstellen und teilen“** antippen. Das ist der Bericht des Handy-Prüfers; hier ist „Standort im Bericht“ standardmäßig an.
+5. *Optional, Kartenausschnitt:* **„Kartenausschnitt (OpenStreetMap)“** einschalten und den Bericht noch einmal erstellen. Auf Seite 3 steht dann über der Standorttabelle die Karte wie im Windows-Prüfer: Koordinaten, Kartenbild mit Markierung in der Mitte, „© OpenStreetMap contributors“. Die Statuszeile meldet „Kartenausschnitt: © OpenStreetMap-Mitwirkende.“ Dabei sieht der Kartendienst ungefähr den Standort und deine IP-Adresse.
 
 ## G. Gegenprüfung auf dem Windows-PC
 
@@ -191,6 +192,7 @@ Jede Einreichung zählt zum kostenlosen Tageskontingent (10 je IP-Adresse und UT
 2. **„Kettenstatus zusätzlich abfragen“** einschalten → **„Paket prüfen“**. Erwartet: „KETTENABFRAGE ERFOLGREICH“.
 3. **„Details anzeigen“**: Foto und alle Manifest- und Sensorangaben.
 4. **„Foto im PDF“** und **„Standort im PDF“** an lassen → **„Bericht sichern“** → Dateityp **PDF** → in „Downloads“ speichern und öffnen.
+5. *Optional, Kartenausschnitt:* In den Details **„Karte laden“** anklicken; danach ist **„Karte im PDF“** gesetzt. Einen zweiten Bericht sichern: Seite 3 zeigt dieselbe Karte wie die Detailansicht.
 
 **Kommandozeile** (PowerShell im Ordner `DoiProof`):
 
@@ -198,14 +200,14 @@ Jede Einreichung zählt zum kostenlosen Tageskontingent (10 je IP-Adresse und UT
 npm run verify -- "$HOME\Downloads\DoiProof-<Tab-Taste>" --online --pdf "$HOME\Downloads\bericht-cli.pdf" --zeitzone Europe/Berlin
 ```
 
-Nach `DoiProof-` die Tab-Taste drücken; PowerShell ergänzt den Dateinamen. Du kannst die ZIP auch aus dem Explorer ins PowerShell-Fenster ziehen. Erwartet sind die Zeilen „Ergebnis: **Byteintegrität der Datei und der Hashbindung bestätigt.**“, unter „Online-Abfragen“ „Ergebnis: **matched**“ und am Ende „PDF-Bericht gespeichert: …“.
+Nach `DoiProof-` die Tab-Taste drücken; PowerShell ergänzt den Dateinamen. Du kannst die ZIP auch aus dem Explorer ins PowerShell-Fenster ziehen. Erwartet sind die Zeilen „Ergebnis: **Byteintegrität der Datei und der Hashbindung bestätigt.**“, unter „Online-Abfragen“ „Ergebnis: **matched**“ und am Ende „PDF-Bericht gespeichert: …“. Mit `--karte` (zusätzlich, neuer PDF-Name) kommt der Kartenausschnitt dazu; die Kommandozeile meldet dann „Kartenausschnitt eingebunden …“.
 
 - Den Bericht in „Downloads“ speichern, nicht auf dem Desktop: Bei aktiver OneDrive-Sicherung gibt es `$HOME\Desktop` nicht.
 - Vorhandene Dateien werden nicht überschrieben. Für einen zweiten Lauf einen neuen Namen wählen, z. B. `bericht-cli-2.pdf`.
 - „DoiProof-Prüfung fehlgeschlagen: ENOENT …“ heißt: Datei oder Ordner nicht gefunden. Endet der Pfad in der Meldung auf `.zip`, stimmt der ZIP-Pfad nicht: mit `dir $HOME\Downloads\DoiProof-*` den Namen prüfen oder die ZIP aus dem Explorer ins Fenster ziehen. Endet er auf `.pdf`, gibt es den Zielordner nicht: den Bericht in „Downloads“ speichern.
 - „… Datei existiert bereits und wird nicht überschrieben“ betrifft nur den PDF-Namen, nicht das Paket.
 
-**Vergleich:** Alle PDF-Berichte (Verlauf, Tab „Prüfen“, Windows-Prüfer, Kommandozeile) zeigen dieselbe Berichtsnummer (die ersten 12 Zeichen des Beweispaket-Hashs) und dasselbe Ergebnis. Unterschiede bei Ort oder Foto entstehen nur durch die Schalter „… im Bericht“ bzw. „… im PDF“ und die Optionen `--ohne-standort`/`--ohne-foto`.
+**Vergleich:** Alle PDF-Berichte (Verlauf, Tab „Prüfen“, Windows-Prüfer, Kommandozeile) zeigen dieselbe Berichtsnummer (die ersten 12 Zeichen des Beweispaket-Hashs) und dasselbe Ergebnis. Unterschiede bei Ort, Foto oder Karte entstehen nur durch die Schalter „… im Bericht“ bzw. „… im PDF“, „Kartenausschnitt (OpenStreetMap)“ bzw. „Karte im PDF“ und die Optionen `--ohne-standort`/`--ohne-foto`/`--karte`.
 
 ## H. Negativtest: verändertes Paket
 

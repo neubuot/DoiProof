@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import JSZip from 'jszip';
 import { evidenceDetails } from './details.mjs';
-import { tileGrid } from './map.mjs';
+import { tileGrid } from './core/map.mjs';
 import { createDesktopPdf, defaultReportName, markdownReport, verifyForDesktop, VERSION } from './report.mjs';
-import { buildBundle, fakeChain } from '../scripts/fixtures/fixture.mjs';
+import { buildBundle, fakeChain, fakeTileServer } from '../scripts/fixtures/fixture.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -44,6 +44,14 @@ test('Prüfung, Online-Abgleich und PDF-Bericht im Hauptprozess (Manifest v3)', 
     assert.equal(new TextDecoder().decode(pdf.subarray(0, 5)), '%PDF-');
     assert.equal(model.outcome, 'passed');
     assert.match(model.producer, /Windows/);
+    // „Karte im PDF“: Kacheln über den Lader des Hauptprozesses, ohne Standort keine Abfrage
+    const tiles = fakeTileServer();
+    const loader = { fetchImpl: tiles.fetchImpl, userAgent: 'DoiProof-Pruefer/test (+https://github.com/neubuot/DoiProof)' };
+    assert.equal((await createDesktopPdf(full, { includeLocation: false, includeMap: true, mapLoader: loader })).mapStatus.state, 'location_hidden');
+    assert.equal(tiles.calls.length, 0);
+    const withMap = await createDesktopPdf(full, { includeMap: true, mapLoader: loader });
+    assert.equal(withMap.mapStatus.state, 'included');
+    assert.equal(withMap.model.locationMap?.tiles?.length, tiles.calls.length);
     await appendFile(path, 'x');
     await assert.rejects(createDesktopPdf(full), /seit der Prüfung geändert/);
   } finally { await rm(dir, { recursive: true, force: true }); }
