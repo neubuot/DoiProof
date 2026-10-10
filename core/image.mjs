@@ -138,6 +138,42 @@ export function readImageInfo(bytes) {
   return info;
 }
 
+/**
+ * JPEG ohne Metadaten-Segmente für die Einbettung ins PDF. Entfernt EXIF/XMP (APP1, darin auch
+ * GPS-Angaben der Kamera), IPTC (APP13), Kommentare und alle übrigen APPn-Segmente; behalten werden
+ * JFIF (APP0), das Farbprofil (APP2 „ICC_PROFILE“) und Adobe (APP14, nötig für die Farbumrechnung).
+ * Die Bilddaten ab SOS bleiben Byte für Byte erhalten. Das Original im Beweispaket bleibt unberührt;
+ * die Ausrichtung kommt aus der vorher gelesenen EXIF-Angabe.
+ * @param {Uint8Array} bytes
+ * @returns {Uint8Array | null} null bei unbekannter Segmentstruktur
+ */
+export function stripJpegMetadata(bytes) {
+  if (!startsWith(bytes, [0xff, 0xd8])) return null;
+  /** @type {Uint8Array[]} */
+  const parts = [bytes.subarray(0, 2)];
+  let offset = 2;
+  while (offset + 4 <= bytes.length) {
+    if (bytes[offset] !== 0xff) return null;
+    const marker = bytes[offset + 1];
+    if (marker === 0xff) { offset++; continue; }
+    if (marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) return null;
+    const length = (bytes[offset + 2] << 8) | bytes[offset + 3];
+    if (length < 2 || offset + 2 + length > bytes.length) return null;
+    if (marker === 0xda) {
+      parts.push(bytes.subarray(offset));
+      const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+      let at = 0;
+      for (const part of parts) { out.set(part, at); at += part.length; }
+      return out;
+    }
+    const icc = marker === 0xe2 && startsWith(bytes, [0x49, 0x43, 0x43, 0x5f, 0x50, 0x52, 0x4f, 0x46, 0x49, 0x4c, 0x45, 0], offset + 4);
+    const keep = !((marker >= 0xe0 && marker <= 0xef) || marker === 0xfe) || marker === 0xe0 || marker === 0xee || icc;
+    if (keep) parts.push(bytes.subarray(offset, offset + 2 + length));
+    offset += 2 + length;
+  }
+  return null;
+}
+
 export const ORIENTATION_TEXT = {
   1: 'normal', 2: 'gespiegelt', 3: 'um 180° gedreht', 4: 'vertikal gespiegelt',
   5: 'gespiegelt und um 90° gedreht', 6: 'um 90° im Uhrzeigersinn gedreht',

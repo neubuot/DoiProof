@@ -11,6 +11,7 @@ import { createEvidence, LOCATION_SETTINGS, MetadataSettings, prepareCapture, PR
 import { bundleFileName, buildEvidenceBundle, preserveEvidencePhoto, shareEvidenceBundle } from '../bundle';
 import { getPreCaptureAnchors } from '../chainAnchors';
 import { appSha256 } from '../platform';
+import { loadSettings, saveSettings } from '../settings';
 import { mapNote, shareReport, verifyZip } from '../verifier';
 import { AboutCard } from '../components/AboutCard';
 import { colors, styles } from '../ui/styles';
@@ -116,6 +117,16 @@ export function CaptureScreen() {
     });
     return () => { clearInterval(timer); subscription.remove(); };
   }, [refreshPending]);
+
+  useEffect(() => {
+    loadSettings().then(settings => setAutoSend(settings.autoSend)).catch(() => { /* Voreinstellung bleibt */ });
+  }, []);
+
+  function changeAutoSend(value: boolean) {
+    setAutoSend(value);
+    try { saveSettings({ autoSend: value }); }
+    catch { setMessage('Die Einstellung gilt nur bis zum Schließen der App; sie konnte nicht gespeichert werden.'); }
+  }
 
   async function refreshQuota() {
     try { setQuota(await getQuota(key)); }
@@ -307,7 +318,7 @@ export function CaptureScreen() {
         </>}
         <Text style={styles.muted}>{metadata.includeLocation || metadata.includeSensors
           ? 'Standort und Sensorwerte (Beschleunigung, Gyroskop, Magnetfeld/Kompass, Luftdruck, Licht) werden während der Aufnahme lokal gemessen und durch den Hash gebunden. Nicht verfügbare oder verweigerte Sensoren werden ausdrücklich vermerkt. Auf der Blockchain stehen nur Hash und kurze Notiz (öffentlich, nicht löschbar).'
-          : 'Keine Standort- oder Sensordaten. Auf der Blockchain stehen nur Beweispaket-Hash und kurze Notiz (öffentlich, nicht löschbar).'}</Text>
+          : 'Keine Standort- oder Sensordaten im Manifest. Ortsangaben, die deine Kamera-App selbst ins Foto schreibt, bleiben im Originalfoto (ZIP) erhalten; im PDF-Bericht werden sie entfernt. Auf der Blockchain stehen nur Beweispaket-Hash und kurze Notiz (öffentlich, nicht löschbar).'}</Text>
       </View>
       <View style={styles.row}>
         <Pressable accessibilityRole="button" style={styles.button} onPress={() => choose('camera')} disabled={busy}><Text style={styles.buttonText}>Foto aufnehmen</Text></Pressable>
@@ -351,7 +362,7 @@ export function CaptureScreen() {
         <Text style={styles.label}>Eigener PoE- oder Write-Schlüssel (optional)</Text>
         <TextInput value={key} onChangeText={setKey} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="Ohne Schlüssel: kostenloses Kontingent" style={styles.input} accessibilityLabel="Doichain API-Schlüssel" />
         <Text style={styles.muted}>Ohne Schlüssel: bis zu 10 Nachweise je IP und UTC-Tag, insgesamt höchstens 200 pro Tag. Ein eigener Schlüssel bleibt nur in dieser App-Sitzung im Speicher und wird an den MCP-Server gesendet.</Text>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>Nach Aufnahme sofort senden</Text><Switch value={autoSend} onValueChange={setAutoSend} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Nach Aufnahme sofort senden</Text><Switch value={autoSend} onValueChange={changeAutoSend} /></View>
         {selected && <View style={styles.row}>
           <Pressable accessibilityRole="button" style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={() => submit(selected)}><Text style={styles.buttonText}>Nachweis anlegen</Text></Pressable>
           <Pressable accessibilityRole="button" style={styles.secondary} disabled={busy} onPress={checkSelected}><Text style={styles.secondaryText}>Status prüfen</Text></Pressable>

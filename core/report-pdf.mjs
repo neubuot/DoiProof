@@ -11,6 +11,7 @@ import {
   endPath, lineTo, moveTo, popGraphicsState, pushGraphicsState, rgb, setCharacterSpacing,
 } from 'pdf-lib';
 import { formatInt, formatMeasure, formatTime, UTC } from './format.mjs';
+import { stripJpegMetadata } from './image.mjs';
 import { MAP_COPYRIGHT_URL } from './map.mjs';
 import { inspectPng } from './png.mjs';
 import { samplePhase } from './report-model.mjs';
@@ -815,7 +816,13 @@ export async function renderReportPdf(model, { fonts, onMapError }) {
     const png = model.photo.kind === 'jpeg' ? null : inspectPng(model.photo.bytes);
     try {
       if (png && !png.ok) throw new Error(png.reason);
-      images.photo = model.photo.kind === 'jpeg' ? await doc.embedJpg(model.photo.bytes) : await doc.embedPng(model.photo.bytes);
+      // JPEG ohne EXIF/XMP einbetten: Ortsangaben der Kamera gehören nicht ungefragt in den Bericht.
+      // PNG-Metadaten entfallen ohnehin, weil pdf-lib die Pixel neu kodiert.
+      if (model.photo.kind === 'jpeg') {
+        const jpeg = stripJpegMetadata(model.photo.bytes);
+        if (!jpeg) throw new Error('JPEG-Struktur');
+        images.photo = await doc.embedJpg(jpeg);
+      } else images.photo = await doc.embedPng(model.photo.bytes);
     } catch {
       model = { ...model, photo: null, photoNote: png && !png.ok ? `Foto nicht eingebettet (PNG: ${png.reason})` : 'Foto konnte nicht eingebettet werden (Bilddaten nicht lesbar)' };
     }

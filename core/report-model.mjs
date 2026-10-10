@@ -606,7 +606,7 @@ export function buildAppendix({ analysis, manifest, verification, includeLocatio
       if (exif.iso) rows.push({ quantity: 'ISO', value: formatInt(exif.iso), time: '–', source: exifSource, note: exifNote });
       if (exif.focalLength) rows.push({ quantity: 'Brennweite', value: `${formatMeasure(exif.focalLength, 2)} mm${exif.focalLength35mm ? ` (KB ${exif.focalLength35mm} mm)` : ''}`, time: '–', source: exifSource, note: exifNote });
       if (exif.software) rows.push({ quantity: 'Software', value: exif.software, time: '–', source: exifSource, note: exifNote });
-      rows.push({ quantity: 'GPS-Angaben im EXIF', value: exif.hasGps ? 'vorhanden (nicht ausgewertet)' : 'keine', time: '–', source: exifSource, note: exif.hasGps ? 'Bilddatei enthält eigene Ortsangaben der Kamera' : 'keine eingebetteten Ortsdaten gefunden' });
+      rows.push({ quantity: 'GPS-Angaben im EXIF', value: exif.hasGps ? 'vorhanden (nicht ausgewertet)' : 'keine', time: '–', source: exifSource, note: exif.hasGps ? 'Ortsangaben der Kamera im Original (ZIP); im Foto dieses Berichts entfernt' : 'keine eingebetteten Ortsdaten gefunden' });
     }
   }
 
