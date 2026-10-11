@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isPending, isProofRecord, proofToRecord, upsertRecord } from './proofRecord';
+import { canResend, isNotAnchored, isPending, isProofRecord, proofToRecord, upsertRecord } from './proofRecord';
 
 const hash = 'a'.repeat(64);
 const now = '2026-09-27T21:00:00.000Z';
@@ -67,4 +67,15 @@ test('local capture remains available for retry and is not polled before submiss
   assert.equal(submitted.manifest, draft.manifest);
   assert.deepEqual(upsertRecord([draft], submitted), [submitted]);
   assert.equal(isPending({ ...draft, status: 'submission_unknown' }), true);
+});
+
+test('nicht verankerte Nachweise (Dienststatus „unknown“) lassen sich erneut senden', () => {
+  const base = proofToRecord('a'.repeat(64), 'camera', { status: 'local' } as never, undefined, undefined, '2026-10-11T08:00:00.000Z');
+  const withStatus = (status: string) => ({ ...base, status });
+  for (const status of ['local', 'submission_unknown', 'unknown', 'not_found']) assert.equal(canResend(withStatus(status)), true, status);
+  for (const status of ['pending', 'confirmed', 'expired']) assert.equal(canResend(withStatus(status)), false, status);
+  assert.equal(isNotAnchored(withStatus('unknown')), true);
+  assert.equal(isNotAnchored(withStatus('submission_unknown')), false);
+  // Ein späteres Verankern bleibt sichtbar: „unknown“ wird weiter abgefragt
+  assert.equal(isPending(withStatus('unknown')), true);
 });

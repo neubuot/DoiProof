@@ -1,7 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 import { isProofRecord, ProofRecord } from './proofRecord';
 
-export { isPending, proofToRecord, ProofRecord } from './proofRecord';
+export { canResend, isNotAnchored, isPending, proofToRecord, ProofRecord } from './proofRecord';
 
 const historyFile = new File(Paths.document, 'doiproof-history.json');
 const backupFile = new File(Paths.document, 'doiproof-history.backup.json');

@@ -34,8 +34,22 @@ export type BlockAnchor = {
 
 export type PreCaptureAnchors = { bitcoin: BlockAnchor; doichain: BlockAnchor };
 
+export type LocationRecord = {
+  status?: 'recorded' | 'not_requested' | 'permission_denied' | 'unavailable' | 'error';
+  reason?: string;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number | null;
+  accuracy?: number | null;
+  altitudeAccuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  measuredAt?: string;
+  mocked?: boolean;
+};
+
 export type EvidenceManifest = {
-  schema: 'org.doichain.doiproof.evidence/v1' | 'org.doichain.doiproof.evidence/v2';
+  schema: 'org.doichain.doiproof.evidence/v1' | 'org.doichain.doiproof.evidence/v2' | 'org.doichain.doiproof.evidence/v3';
   createdAt: string;
   profile: EvidenceProfile;
   preCapture?: PreCaptureAnchors;
@@ -43,6 +57,7 @@ export type EvidenceManifest = {
     version: string;
     sourceCommit?: string;
     identification: 'self-reported-unattested';
+    update?: { channel: string | null; runtimeVersion: string | null; updateId: string | null; embedded: boolean };
   };
   photo: {
     sha256: string;
@@ -52,22 +67,17 @@ export type EvidenceManifest = {
     mimeType?: string;
     fileName?: string;
   };
-  capture?: { deviceTime?: string; source: 'camera' | 'library' };
-  location?: {
-    latitude: number;
-    longitude: number;
-    altitude?: number | null;
-    accuracy?: number | null;
-    altitudeAccuracy?: number | null;
-    heading?: number | null;
-    speed?: number | null;
-    measuredAt: string;
-    mocked?: boolean;
-  };
+  capture?: { deviceTime?: string; cameraOpenedAt?: string; source: 'camera' | 'library' };
+  location?: LocationRecord;
+  /** Ab v3: Sensorblock (siehe core/sensors.mjs). */
+  sensors?: Record<string, unknown>;
   device?: {
     platform: string;
     osVersion?: string | number;
+    /** Android: Versionsname (z. B. „14“); osVersion ist dort der API-Level. */
+    osRelease?: string;
     appVersion: string;
+    model?: string;
   };
 };
 
@@ -108,6 +118,16 @@ export function proofToRecord(
 
 export function isPending(record: ProofRecord): boolean {
   return record.status !== 'local' && record.status !== 'confirmed' && record.status !== 'expired';
+}
+
+/** Der Dienst kennt den Hash nicht (check_proof: „unknown“; „not_found“ aus älteren Antworten). */
+export function isNotAnchored(record: ProofRecord): boolean {
+  return record.status === 'unknown' || record.status === 'not_found';
+}
+
+/** Lokal gesichert, Einreichung unklar oder nicht verankert: erneutes Senden ist möglich. */
+export function canResend(record: ProofRecord): boolean {
+  return record.status === 'local' || record.status === 'submission_unknown' || isNotAnchored(record);
 }
 
 export function upsertRecord(records: ProofRecord[], record: ProofRecord): ProofRecord[] {

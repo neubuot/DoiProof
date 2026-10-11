@@ -1,4 +1,9 @@
 {
   "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true }
+  "compilerOptions": {
+    "strict": true,
+    "checkJs": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", "core/**/*.mjs", "scripts/verify.mjs"],
+  "exclude": ["node_modules", "desktop", ".scratch"]
 }

@@ -1,147 +1,118 @@
 # DoiProof
 
-DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie erstellt lokal ein kryptografisch gebundenes Beweispaket aus Originalfoto und optionalen Metadaten und verankert ausschließlich dessen SHA-256-Hash als Proof of Existence auf der Doichain.
+DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die bei der Aufnahme gemessenen Angaben – Gerätezeit, Vorabblöcke von Bitcoin und Doichain, optional Standort sowie Bewegungs-, Kompass-, Luftdruck- und Lichtsensoren – lokal zu einem kryptografisch gebundenen Beweispaket verbindet. Auf der Doichain wird ausschließlich dessen SHA-256-Hash als Proof of Existence verankert.
 
-> **Android-Version 0.5:** Originalfoto und Manifest werden vor der Übermittlung lokal gesichert. Das APK-Buildprofil ist vorbereitet; ein signierter Build und der Gerätetest benötigen noch das Expo/EAS-Projekt. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
+**Version 1.0.0.** App, Kommandozeilen-Prüfer und Windows-Prüfer nutzen denselben Prüf- und Berichtskern und erzeugen denselben PDF-Prüfbericht.
 
 ## Dokumentation
 
 | Dokument | Für wen und wofür |
 |---|---|
 | [Produktbeschreibung und Beweiskette](docs/PRODUKT-UND-BEWEISKETTE.md) | Nutzer, Prüfer, Versicherungen und Gerichte: Aussagekraft, Grenzen und Anwendungsfälle |
-| [Kurzanleitung](docs/KURZANLEITUNG.md) | Erste Aufnahme, Einreichung und sichere Weitergabe |
-| [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Alle Einstellungen, Status, Export und Fehlerfälle |
-| [Technische Architektur](docs/ARCHITECTURE.md) | Datenmodell, Implementierung und Sicherheitsgrenzen |
-| [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Prüfbefehl, Bericht und Onlineprüfung ohne DoiProof-App |
-| [Windows-Prüfer mit Oberfläche](docs/DESKTOP-PRUEFER.md) | Portable EXE herunterladen und Beweispakete per Dialog prüfen |
-| [Android-APK und Gerätetest](docs/ANDROID-RELEASE.md) | Signierter EAS-Build, Installation und Testablauf |
+| [Kurzanleitung](docs/KURZANLEITUNG.md) | Erste Aufnahme, Einreichung, Prüfung und Weitergabe |
+| [Erster Test](docs/ERSTER-TEST.md) | Projektinhaber: Schritt für Schritt vom ersten APK bis zur Gegenprüfung auf Handy und Windows, mit Prompts für Claude |
+| [Ausführliches Benutzerhandbuch](docs/BENUTZERHANDBUCH.md) | Profile, Sensoren, Status, Prüfbericht, Prüfer und Fehlerfälle |
+| [Anleitung für Tester](docs/TESTER.md) | Android-APK installieren, TestFlight-Einladung, Feedback |
+| [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Kommandozeilen-Prüfer, PDF-Bericht, Hashverfahren |
+| [Windows-Prüfer](docs/DESKTOP-PRUEFER.md) | Portable EXE mit Oberfläche |
+| [Technische Architektur](docs/ARCHITECTURE.md) | Bausteine, Datenfluss, Manifest v3, Sicherheitsgrenzen |
+| [Android-Build und Gerätetest](docs/ANDROID-RELEASE.md) | EAS Build, Release-Tag, EAS Update, Testablauf |
+| [iOS-Release über TestFlight](docs/IOS-RELEASE.md) | Einmalige Schritte mit dem Apple-Login |
+| [Veröffentlichung im Google Play Store](docs/PLAY-STORE.md) | Play Console, Store-Eintrag, Datensicherheit, Build und Upload mit EAS |
+| [Review 1.0](docs/REVIEW-1.0.md) | Bewertung des Ausgangszustands, Befunde, Restrisiken |
+| [Release-Notes](RELEASE_NOTES.md) | Änderungen in 1.0.0 |
+| [Designvorlage Prüfbericht](docs/design/PRUEFBERICHT-DESIGN.md) | Verbindliche Gestaltung des PDF-Berichts |
 
-Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
+Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, Verankerung oder Export passen die betroffenen Abschnitte im selben Pull Request an.
 
 ## Funktionen
 
-- Foto aufnehmen oder vorhandenes Bild auswählen.
-- SHA-256 der ausgewählten Dateibytes lokal berechnen.
-- Standardmäßig ohne Schlüssel über den [Doichain-MCP-Server](https://doi-api.sendlabs.de/mcp) mit `anchor_proof` verankern.
-- Kettenstatus mit `check_proof` prüfen.
-- Kostenloses Tageskontingent mit `get_anchoring_quota` anzeigen: bis zu 10 Nachweise je IP-Adresse und UTC-Tag sowie insgesamt höchstens 200 täglich.
-- Optional einen eigenen PoE- oder Write-Schlüssel ausschließlich für die aktuelle App-Sitzung verwenden.
-- Bei Kameraaufnahmen optional sofort senden.
-- Nachweise dauerhaft und ausschließlich lokal auf dem Gerät speichern.
-- Originalfoto und Manifest vor der Einreichung sichern; lokale Entwürfe nach App-Neustart erneut senden können.
-- Ausstehende Nachweise beim App-Start, bei Rückkehr in die App und während der Nutzung automatisch aktualisieren.
-- Einen nachvollziehbaren PDF-Beleg erstellen und über den Systemdialog teilen.
-- Zwischen den Profilen „Privat“, „Standortnachweis“ und „Individuell“ wählen.
-- Optional GPS-Position, Höhe, Genauigkeit, Richtung, Geschwindigkeit, Bilddaten und Geräteangaben kryptografisch an den Nachweis binden.
-- Ein vollständiges ZIP-Beweispaket mit Originalfoto, kanonischem Manifest, Verifikationsdaten und Prüfanleitung exportieren.
-- Vor dem Kamerastart aktuelle BTC- und DOI-Blockhöhe, -Hash, Blockzeit und lokale Abfragezeit ins neue Manifest v2 aufnehmen; bei Fehler abbrechen oder den Modus sichtbar ausschalten.
-- App-Version und bei Start über `npm start` den Git-Commit als **nicht attestierte Selbstauskunft** im Manifest erfassen.
+- Foto aufnehmen oder auswählen; SHA-256 der Dateibytes lokal berechnen.
+- Metadatenprofile „Privat“, „Standort & Sensoren“ und „Individuell“.
+- **Sensoren während der Aufnahme** (Manifest v3): Beschleunigung, Gyroskop, Magnetometer, Kompass, Barometer (Luftdruck, auf iOS relative Höhe) und – wo verfügbar – Licht. Einzelwert mit Zeitstempel und kurze Messreihe je Sensor; nicht verfügbare oder verweigerte Sensoren werden ausdrücklich vermerkt.
+- Vor dem Kamerastart aktuelle BTC- und DOI-Blöcke ins Manifest aufnehmen (Vorabblöcke).
+- Verankerung ohne Schlüssel über den [Doichain-MCP-Server](https://doi-api.sendlabs.de/mcp) (`anchor_proof`), Status mit `check_proof`; kostenloses Tageskontingent (`get_anchoring_quota`).
+- Lokale Sicherung von Original und Manifest vor dem Senden; Verlauf mit automatischer Statusaktualisierung.
+- **PDF-Prüfbericht** nach Designvorlage mit Anhang aller erhobenen Messwerte, mit Kartenausschnitt (OpenStreetMap) wie im Windows-Prüfer; ZIP-Beweispaket zum Teilen.
+- **Prüfer in der App:** eigene oder fremde ZIPs importieren, offline prüfen, optional online abgleichen, Bericht teilen.
+- Eigenständige Builds (EAS) mit Over-the-Air-Updates für JavaScript-Änderungen.
 
 ## Datenschutz
 
-Die Bilddatei wird nicht hochgeladen. Übertragen werden nur:
+Übertragen werden nur der Beweispaket-Hash und eine kurze, als Geräteangabe gekennzeichnete Aufnahmezeit; für Vorabblöcke und Online-Prüfungen werden öffentliche Blockdaten abgefragt. Foto, genaue GPS-Koordinaten und Sensorwerte bleiben auf dem Gerät und im bewusst geteilten ZIP bzw. PDF. Für den Kartenausschnitt im PDF-Bericht (in der App standardmäßig an, sobald der Standort im Bericht steht; abschaltbar) werden Kartenkacheln bei OpenStreetMap abgerufen; der Kartendienst sieht dabei den Standort auf etwa 1 km genau und die IP-Adresse. Bei jedem Start fragt die App bei Expo nach Updates (mit einer zufälligen Installationskennung). Im Profil „Privat“ werden weder Standort noch Sensoren erfasst; Ortsangaben, die die Kamera-App selbst ins Foto schreibt (EXIF), bleiben im Originalfoto des ZIP erhalten und werden nur im PDF entfernt. Ein Hash beweist, dass dieselben Bytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Gerätezeit, Standort, Sensorwerte und App-Version sind nicht attestierte Selbstauskünfte. Einzelheiten: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- der SHA-256-Hash;
-- optional eine ausdrücklich als Geräteangabe gekennzeichnete Aufnahmezeit.
+## Installation
 
-Im Profil „Privat“ werden keine GPS-Daten angefordert. Standort- und weitere Metadaten werden nur nach sichtbarer Auswahl und erforderlicher Betriebssystemfreigabe erfasst. Ein Hash beweist, dass dieselben Dateibytes vorlagen; er beweist weder Urheberschaft noch Echtheit des Motivs oder eine verlässliche Aufnahmezeit. Weitere Einzelheiten stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- **Tester:** Android-APK aus den [Releases](https://github.com/neubuot/DoiProof/releases), iPhone über TestFlight – siehe [docs/TESTER.md](docs/TESTER.md).
+- **Windows-Prüfer:** `DoiProof-Pruefer-1.0.0-Windows.exe` aus den Releases – siehe [docs/DESKTOP-PRUEFER.md](docs/DESKTOP-PRUEFER.md).
 
-## Schnellstart
+## Entwicklung
 
-Für die Prüfung exportierter ZIPs unter Windows gibt es zusätzlich die portable [DoiProof-Prüfer-EXE in GitHub Releases](https://github.com/neubuot/DoiProof/releases). Sie bietet dieselbe Hashprüfung wie `npm run verify` mit grafischer Oberfläche. Ab Prüfer-Version 0.6.0 können Originalfoto und sämtliche Manifest- und Exportstatusangaben bewusst eingeblendet werden; der Kartenausschnitt wird erst nach gesondertem Klick abgerufen. Die Android-App trägt Version 0.5.0. Einzelheiten und Vertrauensgrenzen: [Desktop-Anleitung](docs/DESKTOP-PRUEFER.md).
-
-Voraussetzungen:
-
-- aktuelle Node.js-LTS-Version;
-- npm;
-- Expo Go auf dem Testgerät.
+Voraussetzungen: aktuelle Node.js-LTS-Version und npm; für die App zusätzlich Expo Go auf einem Testgerät.
 
 ```sh
 git clone https://github.com/neubuot/DoiProof.git
 cd DoiProof
 npm ci
 npm run check
-npm start
+npm test
+npm start            # Expo-Entwicklungsserver, QR-Code mit Expo Go öffnen
 ```
 
-Den anschließend angezeigten QR-Code mit Expo Go öffnen. Falls Mobilgerät und Notebook nicht zuverlässig direkt miteinander kommunizieren können:
-
-```sh
-npm start -- --tunnel
-```
-
-## Befehle
+Bei Verbindungsproblemen zwischen Gerät und Rechner: `npm start -- --tunnel`.
 
 | Befehl | Zweck |
 |---|---|
-| `npm start` | Expo-Entwicklungsserver starten |
-| `npm run android` | Android-Start anfordern |
-| `npm run ios` | iOS-Start anfordern |
-| `npm run check` | TypeScript ohne Build prüfen |
-| `npm test` | Automatisierte Modelltests ausführen |
-| `npm ci` | Abhängigkeiten reproduzierbar aus dem Lockfile installieren |
-| `npm run verify -- paket.zip` | ZIP ohne Netzwerk lokal prüfen; optional mit `--online` |
+| `npm start` | Expo-Entwicklungsserver (trägt den Git-Commit als Selbstauskunft ein) |
+| `npm run check` | TypeScript-Prüfung (App und JSDoc-typisierter Kern) |
+| `npm test` | Automatisierte Tests (Kern, Bericht, PDF, App-Logik, Konfiguration) |
+| `npm run verify -- paket.zip [--online] [--pdf bericht.pdf [--karte]]` | ZIP prüfen, optional online abgleichen und PDF-Bericht erzeugen (mit `--karte` inklusive Kartenausschnitt) |
+| `cd desktop && npm ci && npm test` | Tests des Windows-Prüfers |
+| `npx eas-cli build -p android --profile preview` | Signiertes Test-APK (siehe [ANDROID-RELEASE.md](docs/ANDROID-RELEASE.md)) |
+| `npx eas-cli build -p android --profile production` | App-Bundle (AAB) für Google Play, Upload mit `npx eas-cli submit -p android --profile production --latest` (siehe [PLAY-STORE.md](docs/PLAY-STORE.md)) |
 
 ## Projektstruktur
 
 ```text
-App.tsx                 Oberfläche, Bildauswahl und lokales Hashing
-src/doichain.ts         Typisierter Doichain-MCP-Client
-src/evidence.ts         Kanonisches Manifest und Beweispaket-Hash
-src/bundle.ts           Lokale Originalsicherung und ZIP-Export
-src/history.ts          Lokale Speicherung des Nachweisverlaufs
-src/proofRecord.ts      Datenmodell und Statuslogik
-src/receipt.ts          Erzeugung und Teilen des PDF-Belegs
-app.json                Expo-Konfiguration und Berechtigungstexte
-docs/ARCHITECTURE.md    Datenfluss und Sicherheitsgrenzen
-docs/PRODUKT-UND-BEWEISKETTE.md  Zweck und Beweisaussagen
-docs/KURZANLEITUNG.md    Erste Schritte
-docs/BENUTZERHANDBUCH.md  Bedienung und Prüfung
-docs/PRUEFPROGRAMM.md     Unabhängiger ZIP-Prüfer
-scripts/verify.mjs        Prüfprogramm für Node.js
-CONTRIBUTING.md         Entwicklungs- und Git-Workflow
-SECURITY.md             Richtlinie für Sicherheitsmeldungen
+App.tsx                 Umschalter „Aufnehmen“ / „Prüfen“
+src/screens/            Aufnahme mit Verlauf; Prüfer
+src/components/         Ergebniskarte, Info und Updates
+src/evidence*.ts        Manifest v3 (Aufbau und Geräteanbindung)
+src/sensor*.ts          Sensorerfassung (expo-sensors, Kompass)
+src/verifier.ts         ZIP-Import, Prüfung, PDF in der App
+src/doichain.ts         Doichain-Aufrufe der App
+core/                   Gemeinsamer Prüf- und Berichtskern (App, CLI, Windows)
+assets/fonts/           Eingebettete Berichtsschriften (OFL)
+scripts/verify.mjs      Kommandozeilen-Prüfer
+scripts/release-notes.mjs  Expo-Downloadlink in Release-Notes
+desktop/                Windows-Prüfer (Electron)
+docs/                   Dokumentation, Designvorlage, Review
+.github/workflows/      CI, Android-APK, EAS Update, Windows-Prüfer
 ```
 
-## Beweispaket und Offenlegung
+## Beweispaket
 
-DoiProof berechnet getrennt den SHA-256 des Originalfotos und des kanonischen Metadaten-Manifests. Der auf Doichain verankerte Beweispaket-Hash bindet beide Werte über eine versionierte, domänenspezifische Zeichenfolge. Dadurch bleiben ältere Nachweise unterscheidbar und neue Pakete reproduzierbar prüfbar.
-
-Neue Pakete verwenden `org.doichain.doiproof.evidence/v2` und `DoiProof:v2\nphoto:<PHOTO_HASH>\nmanifest:<MANIFEST_HASH>`. Alte v1-Pakete bleiben anhand ihres Manifests nach dem v1-Verfahren prüfbar. Die Vorabblöcke werden nur bei einer **neuen Kameraaufnahme** abgerufen. Bei bereits vorhandenen Bildern gibt es keine nachträglich behauptete Vorabaufnahme. Der BTC-Block wird über die öffentliche Blockstream-Esplora-API gelesen, der DOI-Block über das MCP-Werkzeug `get_chain_status`. Eine Netzstörung stoppt diesen Ablauf; die Person kann den Vorabmodus ausdrücklich deaktivieren.
-
-Block-Headerzeiten und Gerätezeiten sind nicht sekundengenau vertrauenswürdig. Die im Manifest stehenden Abfragezeiten und die App-/Commit-Angaben sind **Selbstauskünfte**, keine Attestierung. Die Blockchain-Hashes sind unabhängig nachprüfbar, aber ein bereits vorhandenes Foto kann nach dem Abruf erneut eingebunden werden. Eine signierte, kurzlebige Server-Challenge erfordert einen zusätzlichen Backend-Endpunkt und ist noch nicht aktiv.
-
-Rohdaten einschließlich GPS und Originalfoto bleiben im privaten App-Verzeichnis. Auf die Blockchain gelangen nur der Beweispaket-Hash und eine kurze Kennzeichnung. Der PDF-Export kann sensible Standortdaten ausblenden; das vollständige ZIP enthält bewusst Original und Manifest und sollte nur an vertrauenswürdige Empfänger weitergegeben werden.
-
-Satelliten-Einzeldaten sind über die gemeinsame Android-/iOS-Schnittstelle nicht zuverlässig verfügbar und gehören deshalb noch nicht zum portablen Schema.
+Das Paket bindet drei Hashwerte: Foto, kanonisches Manifest und den versionierten Paket-Hash `SHA-256("DoiProof:v3\nphoto:<FOTO>\nmanifest:<MANIFEST>")`. Neue Pakete verwenden Manifest v3 mit Kanonisierung nach RFC 8785; v1 und v2 bleiben nach ihrem Verfahren prüfbar. Vorabblöcke werden nur bei neuen Kameraaufnahmen abgefragt (BTC über die Blockstream-Esplora-API, DOI über `get_chain_status`). Blockzeiten und Gerätezeiten sind keine sekundengenauen Uhren; ein bereits vorhandenes Foto kann nach dem Abruf erneut eingebunden werden. Details: [docs/PRUEFPROGRAMM.md](docs/PRUEFPROGRAMM.md).
 
 ## MCP und REST
 
-Der MCP-Server unter `https://doi-api.sendlabs.de/mcp` ist ein zustandsloser Streamable-HTTP-Dienst. DoiProof ruft seine Werkzeuge per JSON-RPC auf. Der Server nutzt intern die [Doichain-REST-API](https://doi-api.sendlabs.de/docs) und seinen öffentlichen PoE-Schlüssel.
-
-Die direkte REST-Route `POST /v1/poe` benötigt dagegen einen Schlüssel. Für die kostenlose Nutzung vom Mobilgerät ist MCP vorgesehen; das Kontingent wird der vom Server sichtbaren IP-Adresse zugerechnet. Geräte hinter demselben Anschluss sowie Geräte über denselben VPN oder Proxy teilen dieses Kontingent. Die Rücksetzung erfolgt um 00:00 UTC.
+Der MCP-Server unter `https://doi-api.sendlabs.de/mcp` ist ein zustandsloser Streamable-HTTP-Dienst; DoiProof ruft seine Werkzeuge per JSON-RPC auf (Antworten als JSON oder Server-Sent Events, mit Zeitlimit). Der Server nutzt intern die [Doichain-REST-API](https://doi-api.sendlabs.de/docs). Das kostenlose Kontingent wird der vom Server gesehenen IP-Adresse zugerechnet; die Rücksetzung erfolgt um 00:00 UTC.
 
 ## Sicherheit
 
-**Keinen Admin-Schlüssel in die App eintragen.** Ein optionaler PoE- oder Write-Schlüssel bleibt nur im flüchtigen App-Zustand. Für einen kommerziellen Betrieb mit Benutzerkonten muss die Schlüsselverwaltung in einen abgesicherten Backend-Dienst verlagert werden.
-
-Das Repository ignoriert `.env*`-Dateien. Sicherheitsmeldungen bitte nach [SECURITY.md](SECURITY.md) behandeln.
+**Keinen Admin-Schlüssel in die App eintragen.** Ein optionaler PoE- oder Write-Schlüssel bleibt nur im flüchtigen App-Zustand. Das Repository ist öffentlich: Signaturschlüssel, Expo- und Apple-Zugangsdaten liegen ausschließlich in Expo bzw. als GitHub-Secret (`EXPO_TOKEN`). Ein Test prüft, dass keine Schlüssel- oder Signaturdateien eingecheckt sind. Sicherheitsmeldungen nach [SECURITY.md](SECURITY.md).
 
 ## Entwicklung und Beiträge
 
-Änderungen werden auf Feature-Branches entwickelt, durch einen Pull Request geprüft und nach erfolgreicher CI bevorzugt per Squash Merge in `main` übernommen. Details und Checkliste: [CONTRIBUTING.md](CONTRIBUTING.md).
+Änderungen entstehen auf Feature-Branches, werden per Pull Request geprüft und nach erfolgreicher CI bevorzugt per Squash Merge übernommen. Details: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Nächste Schritte
 
-- Integrationstests für den MCP-Client ergänzen.
-- UI-Tests für Kamera, Verlauf und Export ergänzen.
-- Optionales Löschen und Exportieren des gesamten lokalen Verlaufs ergänzen.
-- Serverseitig signierte Empfangsbestätigungen und Geräte-Attestierung prüfen.
-- Plattformabhängige GNSS-/Satellitendetails als optionale Erweiterung evaluieren.
-- Android- und iOS-Release-Builds mit EAS Build einrichten.
-- Android: EAS-Projekt verknüpfen, signiertes APK bauen und den Gerätetest durchführen; [Anleitung](docs/ANDROID-RELEASE.md).
-- Serverseitig signierte Einmal-Challenge vor dem Kamerastart mit Verifikationsschlüssel, Ablaufzeit und Replay-Schutz ergänzen.
+- Gerätetest auf Android und iOS vor breiterer Verteilung ([Review 1.0](docs/REVIEW-1.0.md)).
+- App-/Geräteattestierung (Play Integrity, App Attest; [#6](https://github.com/neubuot/DoiProof/issues/6)) und signierte Server-Challenge ([#7](https://github.com/neubuot/DoiProof/issues/7)).
+- Code-Signing für den Windows-Prüfer.
+- Optional: ZIP-Pakete per „Öffnen mit“ direkt an die App übergeben.
 
 ## Lizenz
 
-DoiProof ist unter der [MIT-Lizenz](LICENSE) veröffentlicht. Copyright © 2026 Ottmar Neuburger.
+DoiProof ist unter der [MIT-Lizenz](LICENSE) veröffentlicht. Copyright © 2026 Ottmar Neuburger. Die eingebetteten Schriften stehen unter der SIL Open Font License ([assets/fonts](assets/fonts/README.md)).

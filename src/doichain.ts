@@ -1,4 +1,6 @@
-export const MCP_URL = 'https://doi-api.sendlabs.de/mcp';
+import { callTool, MCP_URL } from '../core/mcp.mjs';
+
+export { MCP_URL };
 
 export type Proof = {
   sha256: string;
@@ -35,46 +37,13 @@ export type Quota = {
 };
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
-let requestId = 0;
-
-async function callTool<T>(name: string, args: Record<string, unknown>, apiKey = ''): Promise<T> {
-  const response = await fetch(MCP_URL, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json, text/event-stream',
-      'Content-Type': 'application/json',
-      'MCP-Protocol-Version': '2025-06-18',
-      ...(apiKey.trim() ? { 'X-API-Key': apiKey.trim() } : {}),
-    },
-    body: JSON.stringify({ jsonrpc: '2.0', id: ++requestId, method: 'tools/call', params: { name, arguments: args } }),
-  });
-  let envelope: {
-    error?: { message?: string };
-    result?: { structuredContent?: T; content?: Array<{ text?: string }>; isError?: boolean };
-  };
-  try {
-    envelope = await response.json();
-  } catch {
-    throw new Error(`MCP-Antwort konnte nicht gelesen werden (HTTP ${response.status}).`);
-  }
-  const tool = envelope.result;
-  const text = tool?.content?.find(item => item.text)?.text;
-  if (!response.ok || envelope.error || tool?.isError || !tool) {
-    throw new Error(envelope.error?.message || text || `MCP-Fehler (HTTP ${response.status}).`);
-  }
-  if (tool.structuredContent) return tool.structuredContent;
-  if (text) {
-    try { return JSON.parse(text) as T; } catch { /* Older MCP servers may return only text. */ }
-  }
-  throw new Error('MCP-Antwort enthält keine auswertbaren Daten.');
-}
 
 export async function getQuota(apiKey = ''): Promise<Quota> {
-  return callTool<Quota>('get_anchoring_quota', {}, apiKey);
+  return callTool<Quota>('get_anchoring_quota', {}, { apiKey });
 }
 
 export async function getChainStatus(): Promise<ChainStatus> {
-  return callTool<ChainStatus>('get_chain_status', {});
+  return callTool<ChainStatus>('get_chain_status', {}, { timeoutMs: 12000 });
 }
 
 export async function getBlock(block: number | string): Promise<DoichainBlock> {
@@ -92,7 +61,7 @@ export async function withConfirmedBlock(proof: Proof): Promise<Proof> {
       || (transaction.confirmations ?? 0) < 1) return proof;
     const block = await getBlock(transaction.block_hash);
     if (block.hash !== transaction.block_hash || block.height !== proof.block_height) return proof;
-    return { ...proof, block_hash: block.hash };
+    return { ...proof, block_hash: block.hash, confirmations: transaction.confirmations ?? proof.confirmations };
   } catch {
     // Do not convert a confirmed proof into an error when the supplemental lookup is unavailable.
     return proof;
@@ -109,5 +78,5 @@ export async function createProof(hash: string, apiKey = '', note?: string): Pro
   return callTool<Proof>('anchor_proof', {
     sha256: hash,
     ...(note ? { note: note.slice(0, 160) } : {}),
-  }, apiKey);
+  }, { apiKey, timeoutMs: 30000 });
 }

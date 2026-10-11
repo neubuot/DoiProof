@@ -1,0 +1,110 @@
+name: Android-APK (EAS Build)
+
+# Baut bei einem Release-Tag (v*) per EAS ein signiertes Android-APK (Profil preview,
+# interne Verteilung) und schreibt den Expo-Downloadlink in die GitHub-Release-Notes.
+# Voraussetzung: Repository-Secret EXPO_TOKEN (Expo-Robot-Nutzer, Rolle Developer).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    name: Signiertes APK bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: TypeScript prüfen
+        run: npm run check
+
+      - name: Tests ausführen
+        run: npm test
+
+      - name: Version und Tag abgleichen
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zur Version $VERSION in package.json."
+            exit 1
+          fi
+
+      - name: EXPO_TOKEN prüfen
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Das Repository-Secret EXPO_TOKEN fehlt (Expo-Robot-Nutzer mit Rolle Developer). Siehe docs/ANDROID-RELEASE.md."
+            exit 1
+          fi
+
+      - name: EAS CLI einrichten
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: APK mit EAS bauen (Profil preview)
+        id: build
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          eas build --platform android --profile preview --non-interactive --wait --json \
+            --message "DoiProof $VERSION (${GITHUB_SHA::12})" > build.json
+          STATUS=$(jq -r '.[0].status' build.json)
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          APK_URL=$(jq -r '.[0].artifacts.buildUrl // .[0].artifacts.applicationArchiveUrl // empty' build.json)
+          if [ "$STATUS" != "FINISHED" ] || [ -z "$APK_URL" ]; then
+            echo "::error::EAS-Build nicht erfolgreich (Status $STATUS)."
+            cat build.json
+            exit 1
+          fi
+          BUILD_URL="https://expo.dev/accounts/neubuots-team/projects/doiproof/builds/$BUILD_ID"
+          {
+            echo "version=$VERSION"
+            echo "build_url=$BUILD_URL"
+            echo "apk_url=$APK_URL"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Android-APK $VERSION"
+            echo ""
+            echo "- Download: $APK_URL"
+            echo "- Expo-Build-Seite: $BUILD_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Expo-Downloadlink in die Release-Notes schreiben
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.build.outputs.version }}
+          BUILD_URL: ${{ steps.build.outputs.build_url }}
+          APK_URL: ${{ steps.build.outputs.apk_url }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          gh release view "$TAG" > /dev/null 2>&1 \
+            || gh release create "$TAG" --verify-tag --title "DoiProof $VERSION" --notes-file RELEASE_NOTES.md \
+            || gh release view "$TAG" > /dev/null
+          gh release view "$TAG" --json body --jq .body > current-notes.md
+          node scripts/release-notes.mjs current-notes.md --version "$VERSION" --build-url "$BUILD_URL" \
+            --apk-url "$APK_URL" --commit "$GITHUB_SHA" --repo-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" > new-notes.md
+          gh release edit "$TAG" --notes-file new-notes.md

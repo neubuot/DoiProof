@@ -1,228 +1,132 @@
 #!/usr/bin/env node
 /**
- * App-independent verification of a DoiProof export. Online lookups are optional and
- * informational: the MCP API is also used by the app and is not an independent node.
+ * App-unabhängige Prüfung eines DoiProof-Beweispakets auf der Kommandozeile.
+ * Der Prüf- und Berichtskern liegt in core/ und wird unverändert auch vom Windows-Prüfer und
+ * von der Handy-App verwendet. Online-Abfragen sind optional und informativ: Der MCP-Dienst wird
+ * auch von der App genutzt und ist kein unabhängiger Full Node.
  */
-import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import JSZip from 'jszip';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { systemTimeZone } from '../core/format.mjs';
+import { fileTileCache, ianaTimeZone, loadFonts, nodeSha256, userCacheDirectory } from '../core/node.mjs';
+import { MAP_COPYRIGHT, mapUserAgent } from '../core/map.mjs';
+import { createPdfReport, verifyPackage, VERSION } from '../core/pipeline.mjs';
+import { reportText } from '../core/report-text.mjs';
+import { checkOnline, verifyLocal as coreVerifyLocal } from '../core/verify.mjs';
 
-const MCP = 'https://doi-api.sendlabs.de/mcp';
-const BTC = 'https://blockstream.info/api';
-const HEX = /^[0-9a-f]{64}$/;
-const MAX_ZIP = 200 * 1024 * 1024;
-const MAX_PHOTO = 150 * 1024 * 1024;
-const MAX_JSON = 1024 * 1024;
-const sha = data => createHash('sha256').update(data).digest('hex');
-
-function canonical(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value).filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
+export { reportText, VERSION };
+export const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'fonts');
+/** Schreibt nur neue Dateien; vorhandene Berichte bleiben unverändert. @param {string} path @param {string | Uint8Array} data */
+async function writeNew(path, data) {
+  try { await writeFile(path, data, { flag: 'wx' }); }
+  catch (error) {
+    if (/** @type {any} */ (error)?.code === 'EEXIST') throw new Error(`Datei existiert bereits und wird nicht überschrieben: ${path}`);
+    throw error;
   }
-  return JSON.stringify(value);
 }
-function assert(ok, message) { if (!ok) throw new Error(message); }
-function field(value, label) {
-  assert(typeof value === 'string' && HEX.test(value), `Ungültiger oder fehlender Wert: ${label}`);
-  return value;
-}
-async function limited(entry, max, label) {
-  assert(entry && !entry.dir && entry._data?.uncompressedSize <= max, `Fehlender oder zu großer ZIP-Eintrag: ${label}`);
-  const bytes = await entry.async('nodebuffer');
-  assert(bytes.length <= max, `ZIP-Eintrag zu groß: ${label}`);
-  return bytes;
-}
-function parseJson(bytes, label) {
-  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  try { return [JSON.parse(text), text]; }
-  catch { throw new Error(`Ungültiges JSON: ${label}`); }
+const USAGE = 'Aufruf: npm run verify -- <paket.zip> [--online] [--json] [--report bericht.md|bericht.json] [--pdf bericht.pdf] [--karte] [--ohne-foto] [--ohne-standort] [--zeitzone Europe/Berlin]';
+
+/** Lokale Prüfung (wirft bei jedem Fehler). @param {Uint8Array} zipBytes */
+export function verifyLocal(zipBytes) {
+  return coreVerifyLocal(zipBytes, { sha256: nodeSha256 });
 }
 
-export async function verifyLocal(zipBytes) {
-  assert(zipBytes.length <= MAX_ZIP, 'ZIP überschreitet die Größenbegrenzung (200 MiB).');
-  // Inspect declared sizes before CRC verification, which decompresses every entry.
-  const zip = await JSZip.loadAsync(zipBytes);
-  const names = Object.keys(zip.files);
-  const photoNames = names.filter(name => /^original\.[a-zA-Z0-9]+$/.test(name));
-  assert(photoNames.length === 1, 'Genau eine Datei original.<endung> ist erforderlich.');
-  const expected = new Set([photoNames[0], 'manifest.json', 'verification.json', 'README.txt']);
-  assert(names.every(name => expected.has(name) && !zip.files[name].dir
-    && (!zip.files[name].unsafeOriginalName || zip.files[name].unsafeOriginalName === name)),
-    'Unerwarteter oder unsicherer ZIP-Eintrag.');
-  assert(names.every(name => zip.files[name]._data?.uncompressedSize <=
-    (name === photoNames[0] ? MAX_PHOTO : MAX_JSON)), 'ZIP-Eintrag überschreitet die Größenbegrenzung.');
-  await JSZip.loadAsync(zipBytes, { checkCRC32: true });
-  const photo = await limited(zip.files[photoNames[0]], MAX_PHOTO, photoNames[0]);
-  const [manifest, manifestText] = parseJson(await limited(zip.files['manifest.json'], MAX_JSON, 'manifest.json'), 'manifest.json');
-  const [verification] = parseJson(await limited(zip.files['verification.json'], MAX_JSON, 'verification.json'), 'verification.json');
-  assert(manifest && typeof manifest === 'object' && !Array.isArray(manifest), 'Manifest ist kein Objekt.');
-  assert(verification && typeof verification === 'object' && !Array.isArray(verification), 'Verifikationsdaten sind kein Objekt.');
-  const version = /^org\.doichain\.doiproof\.evidence\/(v[12])$/.exec(manifest.schema)?.[1];
-  assert(version, 'Unbekannte Manifestversion.');
-  const canonicalText = canonical(manifest);
-  assert(manifestText === `${canonicalText}\n`, 'manifest.json ist nicht kanonisch mit genau einem abschließenden LF.');
-  const photoHash = sha(photo);
-  const manifestHash = sha(Buffer.from(canonicalText, 'utf8'));
-  field(manifest.photo?.sha256, 'manifest.photo.sha256');
-  field(verification.photoSha256, 'verification.photoSha256');
-  field(verification.manifestSha256, 'verification.manifestSha256');
-  field(verification.evidenceSha256, 'verification.evidenceSha256');
-  assert(photoHash === manifest.photo.sha256 && photoHash === verification.photoSha256,
-    'Fotodatei und Foto-Hash stimmen nicht überein.');
-  assert(manifestHash === verification.manifestSha256, 'Manifest-Hash stimmt nicht überein.');
-  const evidenceHash = sha(Buffer.from(`DoiProof:${version}\nphoto:${photoHash}\nmanifest:${manifestHash}`, 'utf8'));
-  assert(evidenceHash === verification.evidenceSha256, 'Beweispaket-Hash stimmt nicht überein.');
-  const pre = manifest.preCapture;
-  if (pre !== undefined) {
-    assert(manifest.capture?.source === 'camera' && pre?.bitcoin && pre?.doichain,
-      'Vorabblöcke erfordern Kameraquelle und beide Blockreferenzen.');
-    for (const [key, chain] of [['bitcoin', 'btc'], ['doichain', 'doi']]) {
-      const block = pre[key];
-      assert(block.chain === chain && HEX.test(block.hash)
-        && Number.isSafeInteger(block.height) && block.height >= 0
-        && !Number.isNaN(Date.parse(block.headerTimeUtc))
-        && !Number.isNaN(Date.parse(block.observedAtDeviceUtc)),
-      `Ungültiger Vorabblock: ${key}`);
-    }
-  }
+/**
+ * Prüft eine ZIP-Datei. Kompatibel zu früheren Versionen: wirft bei lokalem Fehler.
+ * @param {string} path
+ * @param {boolean} [withOnline]
+ * @param {{ fetchImpl?: typeof fetch }} [options]
+ */
+export async function verifyBundle(path, withOnline = false, options = {}) {
+  const local = await verifyLocal(new Uint8Array(await readFile(path)));
   return {
-    version, photoFile: photoNames[0], photoSha256: photoHash, manifestSha256: manifestHash,
-    evidenceSha256: evidenceHash, preCapture: pre ?? null,
-    exportedStatus: verification.status ?? null,
-    exportedTxid: verification.txid ?? null,
-    statement: 'Byteintegrität des exportierten Pakets bestätigt; Inhalt, Aufnahmezeit, Herkunft und App-Identität nicht attestiert.',
+    generatedAtUtc: new Date().toISOString(), file: resolve(path), local,
+    online: withOnline ? await checkOnline(local, { fetchImpl: options.fetchImpl }) : null,
   };
 }
 
-async function fetchTimeout(url, options = {}) {
-  const response = await fetch(url, { ...options, signal: AbortSignal.timeout(12000) });
-  assert(response.ok, `HTTP ${response.status} von ${url}`);
-  return response;
-}
-async function mcp(name, args) {
-  const response = await fetchTimeout(MCP, {
-    method: 'POST', headers: { Accept: 'application/json, text/event-stream',
-      'Content-Type': 'application/json', 'MCP-Protocol-Version': '2025-06-18' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
-  });
-  const envelope = await response.json();
-  const result = envelope.result;
-  assert(!envelope.error && result && !result.isError, `MCP-Fehler bei ${name}`);
-  if (result.structuredContent) return result.structuredContent;
-  const text = result.content?.find(item => item.text)?.text;
-  assert(text, `Leere MCP-Antwort bei ${name}`);
-  return JSON.parse(text);
-}
-async function online(local) {
-  const checks = [];
-  let failed = false;
-  let incomplete = false;
-  const add = (name, status, details) => {
-    checks.push({ name, status, details });
-    if (status === 'failed') failed = true;
-    if (status === 'unavailable' || status === 'pending') incomplete = true;
-  };
-  try {
-    const proof = await mcp('check_proof', { sha256: local.evidenceSha256 });
-    if (proof.sha256 && proof.sha256 !== local.evidenceSha256) {
-      add('Doichain-Transaktion', 'failed', 'API antwortet mit einem anderen Paket-Hash.');
-    } else if (proof.status === 'confirmed' || proof.status === 'expired') {
-      if (!HEX.test(proof.txid ?? '') || !Number.isSafeInteger(proof.block_height)) {
-        add('Doichain-Transaktion', 'failed', 'Bestätigungsantwort ohne gültige Transaktions-ID oder Blockhöhe.');
-      } else {
-        const transaction = await mcp('get_transaction', { txid: proof.txid });
-        if (transaction.txid !== proof.txid || !HEX.test(transaction.block_hash ?? '')
-          || (transaction.confirmations ?? 0) < 1) {
-          add('Doichain-Transaktion', 'failed', 'Transaktion, Block-Hash oder Bestätigungen widersprüchlich.');
-        } else {
-          const block = await mcp('get_block', { block: transaction.block_hash });
-          add('Doichain-Transaktion',
-            block.hash === transaction.block_hash && block.height === proof.block_height ? 'matched' : 'failed',
-            `Status ${proof.status}; Transaktion ${proof.txid}; Block ${transaction.block_hash}; Höhe ${proof.block_height}`);
-        }
-      }
-    } else {
-      add('Doichain-Transaktion', proof.status === 'pending' ? 'pending' : 'failed',
-        `Aktueller API-Status: ${String(proof.status)}`);
-    }
-  } catch (error) { add('Doichain-Transaktion', 'unavailable', String(error.message)); }
-  if (local.preCapture) {
-    const pre = local.preCapture;
-    try {
-      const block = await (await fetchTimeout(`${BTC}/block/${pre.bitcoin.hash}`)).json();
-      add('BTC-Vorabblock',
-        block.id === pre.bitcoin.hash && block.height === pre.bitcoin.height
-          && new Date(block.timestamp * 1000).toISOString() === pre.bitcoin.headerTimeUtc ? 'matched' : 'failed',
-        `Block ${pre.bitcoin.hash}; Höhe ${pre.bitcoin.height}`);
-    } catch (error) { add('BTC-Vorabblock', 'unavailable', String(error.message)); }
-    try {
-      const block = await mcp('get_block', { block: pre.doichain.hash });
-      add('DOI-Vorabblock',
-        block.hash === pre.doichain.hash && block.height === pre.doichain.height
-          && block.time_utc === pre.doichain.headerTimeUtc ? 'matched' : 'failed',
-        `Block ${pre.doichain.hash}; Höhe ${pre.doichain.height}`);
-    } catch (error) { add('DOI-Vorabblock', 'unavailable', String(error.message)); }
-  }
-  return { checks, status: failed ? 'failed' : incomplete ? 'incomplete' : 'matched',
-    source: 'Doichain-MCP-Dienst (auch von der App genutzt) und Blockstream; keine eigene Full-Node-Prüfung.' };
-}
-
-export async function verifyBundle(path, withOnline = false) {
-  const local = await verifyLocal(await readFile(path));
-  return { generatedAtUtc: new Date().toISOString(), file: resolve(path), local,
-    online: withOnline ? await online(local) : null };
-}
-
-export function reportText(report) {
-  const rows = [
-    '# DoiProof-Prüfbericht', '', `Erstellt (UTC): ${report.generatedAtUtc}`,
-    `ZIP: ${report.file}`, '',
-    '## Lokale Prüfung', '',
-    'Ergebnis: **Byteintegrität der Datei und der Hashbindung bestätigt.**', '',
-    `Format: ${report.local.version}`,
-    `Foto SHA-256: ${report.local.photoSha256}`,
-    `Manifest SHA-256: ${report.local.manifestSha256}`,
-    `Beweispaket SHA-256: ${report.local.evidenceSha256}`, '',
-    'Ein ZIP oder dessen Begleitdaten können nachträglich erstellt worden sein. Die lokale Prüfung bestätigt weder Bildinhalt noch Aufnahmezeit, Person, Ort oder ausführenden App-Code.',
-    '',
-    '## Online-Abfragen', '',
-  ];
-  if (report.online) {
-    rows.push(`Ergebnis: **${report.online.status}**`, '',
-      ...report.online.checks.map(item => `- ${item.name}: ${item.status} — ${item.details}`),
-      '', report.online.source);
-  } else rows.push('Nicht durchgeführt (offline).');
-  rows.push('', 'Geräte-Abfragezeiten und App-Version im Manifest sind Selbstauskünfte; Vorabblöcke belegen nicht den Auslösezeitpunkt. Eine API-Antwort ersetzt keine eigene Kettenprüfung.', '');
-  return rows.join('\n');
-}
-
-async function cli(args) {
-  let path; let reportPath; let asJson = false; let withOnline = false;
+/** @param {string[]} args */
+export function parseArgs(args) {
+  /** @type {{ path?: string, reportPath?: string, pdfPath?: string, json: boolean, online: boolean, includePhoto: boolean, includeLocation: boolean, includeMap: boolean, timeZone?: string }} */
+  const options = { json: false, online: false, includePhoto: true, includeLocation: true, includeMap: false };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--online') withOnline = true;
-    else if (args[i] === '--json') asJson = true;
-    else if (args[i] === '--report') reportPath = args[++i];
-    else if (!args[i].startsWith('-') && !path) path = args[i];
-    else throw new Error(`Unbekanntes Argument: ${args[i]}`);
+    const arg = args[i];
+    const value = () => {
+      const next = args[++i];
+      if (!next || next.startsWith('--')) throw new Error(`Wert fehlt für ${arg}. ${USAGE}`);
+      return next;
+    };
+    if (arg === '--online') options.online = true;
+    else if (arg === '--json') options.json = true;
+    else if (arg === '--report') options.reportPath = value();
+    else if (arg === '--pdf') options.pdfPath = value();
+    else if (arg === '--ohne-foto') options.includePhoto = false;
+    else if (arg === '--ohne-standort') options.includeLocation = false;
+    else if (arg === '--karte') options.includeMap = true;
+    else if (arg === '--zeitzone') options.timeZone = value();
+    else if (!arg.startsWith('-') && !options.path) options.path = arg;
+    else throw new Error(`Unbekanntes Argument: ${arg}. ${USAGE}`);
   }
-  assert(path && (!reportPath || typeof reportPath === 'string'),
-    'Aufruf: npm run verify -- <paket.zip> [--online] [--json] [--report bericht.md]');
-  const result = await verifyBundle(path, withOnline);
-  const human = reportText(result);
-  if (reportPath) await writeFile(reportPath, reportPath.endsWith('.json')
-    ? JSON.stringify(result, null, 2) + '\n' : human, { flag: 'wx' });
-  process.stdout.write(asJson ? JSON.stringify(result, null, 2) + '\n' : human);
-  if (result.online?.status === 'failed') process.exitCode = 1;
-  if (result.online?.status === 'incomplete') process.exitCode = 2;
+  if (!options.path) throw new Error(USAGE);
+  if (options.pdfPath && !options.pdfPath.toLowerCase().endsWith('.pdf')) throw new Error('Der PDF-Bericht braucht die Endung .pdf.');
+  if (options.includeMap && !options.pdfPath) throw new Error('--karte gilt nur zusammen mit --pdf.');
+  if (options.includeMap && !options.includeLocation) throw new Error('--karte zeigt den Standort und passt nicht zu --ohne-standort.');
+  return options;
 }
+
+/**
+ * @param {string[]} args
+ * @param {{ fetchImpl?: typeof fetch, now?: () => Date, stdout?: (text: string) => void, stderr?: (text: string) => void, mapCacheDir?: string }} [io]
+ * @returns {Promise<number>} Exitcode: 0 in Ordnung, 1 Fehler/Widerspruch, 2 Onlineprüfung unvollständig
+ */
+export async function cli(args, io = {}) {
+  const out = io.stdout ?? (text => process.stdout.write(text));
+  const err = io.stderr ?? (text => process.stderr.write(text));
+  const options = parseArgs(args);
+  const path = /** @type {string} */ (options.path);
+  const zipBytes = new Uint8Array(await readFile(path));
+  const now = io.now ?? (() => new Date());
+  const timeZone = options.timeZone ? ianaTimeZone(options.timeZone) : systemTimeZone();
+  const { analysis, local, online } = await verifyPackage(zipBytes, { sha256: nodeSha256, online: options.online, fetchImpl: io.fetchImpl, now });
+
+  if (options.pdfPath) {
+    // Kartenkacheln nur mit --karte; zwischengespeichert für 7 Tage im privaten Cache des Benutzers,
+    // wie es die Nutzungsregeln des OSM-Kachelservers verlangen.
+    const { pdf, mapStatus } = await createPdfReport({
+      analysis, online, fileName: basename(path), fonts: await loadFonts(FONT_DIR), generatedAt: now(), timeZone,
+      includePhoto: options.includePhoto, includeLocation: options.includeLocation, includeMap: options.includeMap,
+      mapLoader: options.includeMap ? {
+        fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`),
+        cache: fileTileCache(io.mapCacheDir ?? join(userCacheDirectory(), 'map-cache')),
+      } : undefined,
+      producer: `DoiProof-Prüfer ${VERSION} (Kommandozeile)`,
+    });
+    await writeNew(options.pdfPath, pdf);
+    if (mapStatus.state === 'included') err(`Kartenausschnitt eingebunden (${MAP_COPYRIGHT}).\n`);
+    else if (mapStatus.state === 'unavailable') err(`Hinweis: ${mapStatus.reason ?? 'Kartenausschnitt nicht verfügbar.'} Der Bericht enthält die Koordinaten ohne Karte.\n`);
+    else if (mapStatus.state === 'no_location') err('Hinweis: Kein gemessener Standort in einem bestandenen Paket – Bericht ohne Kartenausschnitt.\n');
+  }
+  if (!local) {
+    err(`DoiProof-Prüfung fehlgeschlagen: ${analysis.error}\n`);
+    if (options.pdfPath) err(`PDF-Bericht mit negativem Ergebnis gespeichert: ${options.pdfPath}\n`);
+    return 1;
+  }
+  const result = { generatedAtUtc: now().toISOString(), file: resolve(path), local, online };
+  const human = reportText(result);
+  if (options.reportPath) {
+    await writeNew(options.reportPath, options.reportPath.endsWith('.json') ? `${JSON.stringify(result, null, 2)}\n` : human);
+  }
+  out(options.json ? `${JSON.stringify(result, null, 2)}\n` : human);
+  if (options.pdfPath && !options.json) out(`PDF-Bericht gespeichert: ${options.pdfPath}\n`);
+  if (online?.status === 'failed') return 1;
+  if (online?.status === 'incomplete') return 2;
+  return 0;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  cli(process.argv.slice(2)).catch(error => {
-    process.stderr.write(`DoiProof-Prüfung fehlgeschlagen: ${error.message}\n`);
+  cli(process.argv.slice(2)).then(code => { process.exitCode = code; }, error => {
+    process.stderr.write(`DoiProof-Prüfung fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });
 }

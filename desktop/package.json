@@ -1,8 +1,8 @@
 {
   "name": "doiproof-pruefer",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Lokaler und optionaler Online-Prüfer für DoiProof-Beweispakete",
+  "description": "Lokaler und optionaler Online-Prüfer für DoiProof-Beweispakete mit PDF-Prüfbericht",
   "main": "main.cjs",
   "author": "Ottmar Neuburger",
   "license": "MIT",
@@ -14,7 +14,11 @@
     "smoke": "npm run prepare:verifier && electron . --smoke"
   },
   "dependencies": {
-    "jszip": "3.10.2"
+    "@pdf-lib/fontkit": "1.1.1",
+    "jszip": "3.10.2",
+    "pako": "1.0.11",
+    "pdf-lib": "1.17.1",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "electron": "44.4.5",
@@ -24,16 +28,19 @@
     "appId": "org.doichain.doiproof.verifier",
     "productName": "DoiProof Prüfer",
     "copyright": "Copyright © 2026 Ottmar Neuburger",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "files": [
       "main.cjs",
       "preload.cjs",
       "renderer.js",
       "index.html",
       "styles.css",
-      "verify.mjs",
+      "report.mjs",
       "details.mjs",
-      "map.mjs",
+      "core/**/*.mjs",
+      "fonts/**/*",
       "assets/icon.ico",
       "package.json"
     ],
