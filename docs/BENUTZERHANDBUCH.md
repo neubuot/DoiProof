@@ -53,7 +53,7 @@ Nicht vorhandene Sensoren (z. B. Lichtsensor auf dem iPhone, Barometer auf manch
 2. Nach der Rückkehr berechnet die App den SHA-256 der Bilddatei, misst Standort und letzte Sensorwerte und erstellt das Manifest v3. Sichtbar sind Foto-, Manifest- und Paket-Hash, Standort, Sensorübersicht und Vorabblöcke.
 3. „Tageskontingent“ zeigt die freien Einreichungen (ohne Schlüssel bis zu 10 je IP-Adresse und UTC-Tag, insgesamt höchstens 200). Maßgeblich ist die Serverantwort.
 4. Optional einen eigenen PoE- oder Write-Schlüssel eintragen; er bleibt nur in dieser App-Sitzung im Speicher. **Niemals einen Admin-Schlüssel eintragen.**
-5. „Nach Aufnahme sofort senden“ ist standardmäßig aktiv. Sonst „Nachweis anlegen“ tippen. „Status prüfen“ fragt den Status des angezeigten Hashs ab.
+5. „Nach Aufnahme sofort senden“ ist standardmäßig aktiv; schaltest du es aus, bleibt die Wahl auch nach einem Neustart gespeichert. Sonst „Nachweis anlegen“ tippen. „Status prüfen“ fragt den Status des angezeigten Hashs ab.
 
 Foto und Manifest werden vor dem Senden im privaten App-Verzeichnis gesichert („Lokal gesichert“) und lassen sich nach einem Neustart mit „Jetzt senden“ einreichen. Bei fehlender Serverantwort zeigt die App „Einreichung unklar“ und fragt später nach. Die App legt das Foto nicht in der Galerie ab; sichere wichtige Nachweise als ZIP.
 
@@ -63,6 +63,7 @@ Foto und Manifest werden vor dem Senden im privaten App-Verzeichnis gesichert (�
 |---|---|
 | `local` | Nur lokal gespeichert; noch keine Einreichung. |
 | `submission_unknown` | Keine eindeutige Serverantwort; Status abfragen oder später erneut senden. |
+| `unknown` („Nicht verankert“) | Der Dienst kennt den Hash nicht, etwa nach erschöpftem Tageskontingent; mit „Jetzt senden“ erneut einreichen. |
 | `pending` | Eingereicht, noch kein bestätigter Block. |
 | `confirmed` | Im Doichain-Block gefunden; Transaktion und Block lassen sich unabhängig prüfen. |
 | `expired` | PoE-Name des Dienstes abgelaufen; die historische Transaktion besteht weiter. |

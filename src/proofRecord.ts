@@ -120,6 +120,16 @@ export function isPending(record: ProofRecord): boolean {
   return record.status !== 'local' && record.status !== 'confirmed' && record.status !== 'expired';
 }
 
+/** Der Dienst kennt den Hash nicht (check_proof: „unknown“; „not_found“ aus älteren Antworten). */
+export function isNotAnchored(record: ProofRecord): boolean {
+  return record.status === 'unknown' || record.status === 'not_found';
+}
+
+/** Lokal gesichert, Einreichung unklar oder nicht verankert: erneutes Senden ist möglich. */
+export function canResend(record: ProofRecord): boolean {
+  return record.status === 'local' || record.status === 'submission_unknown' || isNotAnchored(record);
+}
+
 export function upsertRecord(records: ProofRecord[], record: ProofRecord): ProofRecord[] {
   return [record, ...records.filter(item => item.id !== record.id && item.sha256 !== record.sha256)]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

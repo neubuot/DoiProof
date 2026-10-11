@@ -5,7 +5,7 @@ import { File } from 'expo-file-system';
 import { SENSOR_KEYS, STATUS_TEXT } from '../../core/sensors.mjs';
 import { VERSION } from '../../core/version.mjs';
 import { createProof, getQuota, Proof, Quota, verifyProof, withConfirmedBlock } from '../doichain';
-import { isPending, loadHistory, ProofRecord, proofToRecord, updateHistory } from '../history';
+import { canResend, isNotAnchored, isPending, loadHistory, ProofRecord, proofToRecord, updateHistory } from '../history';
 import { upsertRecord } from '../proofRecord';
 import { createEvidence, LOCATION_SETTINGS, MetadataSettings, prepareCapture, PRIVATE_SETTINGS, type CapturePreparation } from '../evidence';
 import { bundleFileName, buildEvidenceBundle, preserveEvidencePhoto, shareEvidenceBundle } from '../bundle';
@@ -36,6 +36,7 @@ function statusLabel(status: string): string {
   if (status === 'submission_unknown') return 'Einreichung unklar';
   if (status === 'confirmed' || status === 'expired') return 'Bestätigt';
   if (status === 'pending') return 'Ausstehend';
+  if (status === 'unknown' || status === 'not_found') return 'Nicht verankert';
   return status || 'Offen';
 }
 
@@ -398,13 +399,14 @@ export function CaptureScreen() {
         <Text style={styles.muted}>{record.status === 'local' ? 'Lokal erstellt' : 'Erstellt'}: {new Date(record.createdAt).toLocaleString()} · {record.manifest?.schema.split('/').pop() ?? 'ohne Manifest'}</Text>
         {record.status === 'local' && <Text style={styles.muted}>Original und Manifest sind lokal gesichert. Dieser Hash wurde noch nicht eingereicht.</Text>}
         {record.status === 'submission_unknown' && <Text style={styles.muted}>Die Serverantwort blieb aus. Der Status wird geprüft; du kannst später erneut senden.</Text>}
+        {isNotAnchored(record) && <Text style={styles.muted}>Auf der Doichain nicht gefunden. Du kannst den Nachweis erneut senden.</Text>}
         <Text selectable numberOfLines={3} style={styles.hash}>{record.sha256}</Text>
         {record.txid && <Text selectable numberOfLines={2} style={styles.hash}>TX: {record.txid}</Text>}
         {record.blockTimeUtc && <Text>Blockzeit (UTC): {record.blockTimeUtc}</Text>}
         {record.blockHeight !== undefined && <Text>Bestätigungsblock: {record.blockHeight}</Text>}
         {record.blockHash && <Text selectable style={styles.hash}>Block-Hash: {record.blockHash}</Text>}
         <View style={styles.row}>
-          {(record.status === 'local' || record.status === 'submission_unknown' || record.status === 'not_found')
+          {canResend(record)
             && record.manifest && record.localPhotoUri && <Pressable accessibilityRole="button" disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={() => retryRecord(record)}><Text style={styles.buttonText}>Jetzt senden</Text></Pressable>}
           {record.manifest && record.localPhotoUri && <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, !!exportingId && styles.disabled]} onPress={() => exportReport(record)}><Text style={styles.secondaryText}>{exportingId === record.id ? 'Bericht wird erstellt …' : 'Prüfbericht PDF'}</Text></Pressable>}
           {record.manifest && <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, !!exportingId && styles.disabled]} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
