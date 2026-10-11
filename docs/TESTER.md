@@ -54,8 +54,9 @@ Das GitHub-Repository ist **öffentlich**. Lade dort keine echten Fotos, Beweisp
 
 ## Datenschutz in Kürze
 
-- Foto, Standort und Sensorwerte bleiben auf dem Gerät und im exportierten ZIP. Gesendet werden nur der Paket-Hash und eine kurze Notiz mit der Gerätezeit (öffentlich auf der Doichain) sowie öffentliche Blockabfragen – Ausnahme ist der Kartenausschnitt im PDF (nächster Punkt).
-- Der PDF-Prüfbericht kann das Foto und den Standort enthalten; beides lässt sich vor dem Erstellen ausschalten. Steht der Standort im Bericht, kommt standardmäßig ein Kartenausschnitt dazu (Schalter „Kartenausschnitt (OpenStreetMap)“, abschaltbar); dafür sieht der Kartendienst OpenStreetMap den Standort auf etwa 1 km genau und deine IP-Adresse.
+- Foto, genaue GPS-Koordinaten und Sensorwerte bleiben auf dem Gerät und im exportierten ZIP. Gesendet werden nur der Paket-Hash und eine kurze Notiz mit der Gerätezeit (öffentlich und dauerhaft auf der Doichain), öffentliche Blockabfragen und beim App-Start die Update-Abfrage bei Expo (mit einer zufälligen Installationskennung) – Ausnahme ist der Kartenausschnitt im PDF (nächster Punkt).
+- Das Originalfoto im ZIP bleibt unverändert. Hat deine Kamera-App Ortsangaben ins Foto geschrieben (EXIF-GPS), stehen sie auch im Profil „Privat“ darin; im PDF-Bericht werden sie entfernt. Willst du das nicht, schalte die Ortsmarkierung in der Kamera-App aus.
+- Der PDF-Prüfbericht kann das Foto und den Standort enthalten; beides lässt sich vor dem Erstellen ausschalten. Steht der Standort im Bericht, kommt standardmäßig ein Kartenausschnitt dazu (Schalter „Kartenausschnitt (OpenStreetMap)“, abschaltbar); dafür sieht der Kartendienst OpenStreetMap (ausgeliefert über Fastly) den Standort auf etwa 1 km genau und deine IP-Adresse.
 - Gerätezeit, Ort und Sensorwerte sind Angaben deines Geräts. Der Bericht belegt, dass genau dieses Foto mit genau diesen Angaben seit dem Block unverändert ist – nicht, wer fotografiert hat oder ob das Motiv echt ist.
 
 ## Bekannte Einschränkungen
