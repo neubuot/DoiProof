@@ -1,5 +1,7 @@
 # DoiProof
 
+[![Doichain Seal](https://doi-api.sendlabs.de/seal/github/neubuot/DoiProof/seal.svg)](https://doi-api.sendlabs.de/seal/github/neubuot/DoiProof)
+
 DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie erstellt lokal ein kryptografisch gebundenes Beweispaket aus Originalfoto und optionalen Metadaten und verankert ausschließlich dessen SHA-256-Hash als Proof of Existence auf der Doichain.
 
 > **Android-Version 0.5:** Originalfoto und Manifest werden vor der Übermittlung lokal gesichert. Das APK-Buildprofil ist vorbereitet; ein signierter Build und der Gerätetest benötigen noch das Expo/EAS-Projekt. Die API kann eine Einreichung zunächst als `pending` melden; belastbar bestätigt ist sie erst nach Aufnahme in einen Block.
