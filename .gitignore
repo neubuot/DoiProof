@@ -10,7 +10,8 @@ desktop/preview.png
 !.env.example
 play-service-account.json
 *.keystore
+!android/app/debug.keystore
 *.jks
 keystore.properties
-/android/
-/ios/
+local.properties
+android/.kotlin/
