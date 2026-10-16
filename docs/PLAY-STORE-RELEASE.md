@@ -28,18 +28,17 @@ Da unter dem Konto bereits eine App liegt: DoiProof wird **als eigene App** ange
 
 ## 3. AAB in Android Studio erzeugen **[Terminal und Android Studio]**
 
-Google Play nimmt nur ein App-Bundle (`.aab`) an. DoiProof ist ein Expo-Projekt ohne eingecheckten Android-Ordner: Das native Gradle-Projekt wird aus `app.json` erzeugt und danach in Android Studio geöffnet.
+Google Play nimmt nur ein App-Bundle (`.aab`) an. Der native Gradle-Ordner `android/` liegt wie bei [DoiWallet](https://github.com/Doichain/DoiWallet) im Repository und wird in Android Studio geöffnet.
 
 ```bash
 npm ci                 # benötigt Node 22; npm 6 kann die Lockfile-Version nicht lesen
 npm run check
 npm test
-npx expo prebuild --platform android
 ```
 
-`prebuild` schreibt den Ordner `android/` mit Paketname, Symbolen, Berechtigungen und Plugin-Konfiguration aus `app.json`. **Der Ordner ist erzeugter Stand, keine Quelle.** Wer ihn nicht eincheckt, erzeugt ihn vor jedem Release neu; Änderungen gehören dann nach `app.json` und nicht in die Gradle-Dateien.
+Erzeugt wurde der Ordner einmalig mit `npx expo prebuild --platform android` aus `app.json`. Dieser Befehl ist **nur** nötig, wenn sich Paketname, Symbole, Berechtigungen oder Expo-Plugins ändern. Er überschreibt dabei die Gradle-Dateien: Eigene Änderungen an der Build-Konfiguration müssen danach erneut eingetragen werden. Berechtigungen gehören deshalb nach `app.json`, nicht in das Manifest.
 
-Danach in Android Studio **den Ordner `android/` öffnen** – nicht den Projektstamm. Gradle-Sync abwarten, dann **Build → Generate Signed App Bundle / APK → Android App Bundle**.
+In Android Studio **den Ordner `android/` öffnen** – nicht den Projektstamm. Gradle-Sync abwarten, dann **Build → Generate Signed App Bundle / APK → Android App Bundle**.
 
 Beim ersten Mal im selben Dialog über **Create new…** einen Upload-Schlüssel anlegen. Als Ablageort einen Pfad **außerhalb des Repositorys** wählen; Gültigkeit mindestens 25 Jahre. `.gitignore` schließt `*.keystore` und `*.jks` zusätzlich aus. Der Schlüssel und seine Passwörter müssen dauerhaft gesichert werden: Ohne sie lässt sich kein Update mehr hochladen. Play App Signing übernimmt den Auslieferungsschlüssel separat und bleibt aktiviert; ein verlorener Upload-Schlüssel kann darüber zurückgesetzt werden, der Auslieferungsschlüssel nicht.
 
@@ -57,7 +56,18 @@ Nach dem Build die tatsächlich zusammengeführten Berechtigungen prüfen:
 grep "uses-permission" android/app/build/intermediates/merged_manifest/release/*/AndroidManifest.xml
 ```
 
-Erwartet werden nur `CAMERA`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `INTERNET` und `READ_EXTERNAL_STORAGE` mit `maxSdkVersion="32"`. `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW` und `VIBRATE` werden von Abhängigkeiten mitgebracht und sind in `app.json` unter `android.blockedPermissions` entfernt; sie dürfen im zusammengeführten Manifest nicht auftauchen. Erscheint dort `READ_MEDIA_IMAGES`, verlangt Google zusätzlich die Erklärung zu Foto- und Videoberechtigungen (Schritt 5).
+Geprüfter Stand für Version 0.5.0: `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `CAMERA`, `INTERNET` und die interne `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW` und `VIBRATE` werden von expo-image-picker und der React-Native-Entwicklungsunterstützung mitgebracht; `android.blockedPermissions` in `app.json` entfernt sie beim Zusammenführen. Erscheint eine der drei oder `READ_MEDIA_IMAGES` doch im Manifest, darf nicht hochgeladen werden: Mikrofon und Overlay sind in Play erklärungsbedürftig, Fotoberechtigungen verlangen zusätzlich die Erklärung aus Schritt 5.
+
+### Unterschied zum Vorgehen bei DoiWallet
+
+DoiWallet baut in [`scripts/build-release-apk.sh`](https://github.com/Doichain/DoiWallet/blob/master/scripts/build-release-apk.sh) ein **unsigniertes APK** und signiert es danach mit `apksigner`; den Schlüssel stellt die CI aus einem hex-kodierten GitHub-Secret wieder her, der `versionCode` kommt aus einem Zeitstempel.
+
+Für DoiProof lässt sich das nicht eins zu eins übernehmen:
+
+- Google Play nimmt für eine **neue** App kein APK mehr an, sondern nur ein `.aab`. Ein Bundle lässt sich mit `apksigner` nicht signieren; dafür dient entweder der Signatur-Dialog in Android Studio oder eine `signingConfig` in Gradle.
+- Ein `versionCode` aus einem Zeitstempel liegt bereits bei rund 1,8 Milliarden. Das ist unterhalb der Obergrenze von 2 100 000 000 zulässig, verbraucht den Bereich aber unwiderruflich und lässt sich nie wieder verkleinern. Für DoiProof wird stattdessen fortlaufend gezählt, beginnend bei `1`.
+
+Übernommen ist der Aufbau des Repositorys: eingecheckter `android/`-Ordner und die Store-Texte unter `fastlane/metadata/android/`.
 
 ### Alternative: EAS Build in der Cloud
 
@@ -75,50 +85,26 @@ Beide Wege schließen sich gegenseitig aus, solange nicht derselbe Schlüssel hi
 
 Unter „Wachstum → Store-Präsenz → Hauptdarstellung im Store“.
 
-**Kurzbeschreibung** (maximal 80 Zeichen):
+Alle Texte liegen im Repository unter `fastlane/metadata/android/de-DE/` im supply-Aufbau, den auch DoiWallet verwendet. Sie werden dort gepflegt und von dort in die Console übernommen, damit es keine zweite, abweichende Fassung gibt.
 
-```
-Fotos lokal hashen und den Hash als Nachweis auf der Doichain verankern.
-```
+| Feld in der Console | Datei | Grenze | belegt |
+|---|---|---|---|
+| App-Name | [`title.txt`](../fastlane/metadata/android/de-DE/title.txt) | 30 Zeichen | 24 |
+| Kurzbeschreibung | [`short_description.txt`](../fastlane/metadata/android/de-DE/short_description.txt) | 80 Zeichen | 72 |
+| Vollständige Beschreibung | [`full_description.txt`](../fastlane/metadata/android/de-DE/full_description.txt) | 4000 Zeichen | 2253 |
+| Versionshinweise | [`changelogs/1.txt`](../fastlane/metadata/android/de-DE/changelogs/1.txt) | 500 Zeichen | 256 |
 
-**Vollständige Beschreibung** (maximal 4000 Zeichen):
-
-```
-DoiProof erstellt aus einem Foto ein Beweispaket, das vollständig auf dem Gerät entsteht. Das Bild selbst wird nicht hochgeladen: Übertragen wird ausschließlich sein SHA-256-Hash, der als Proof of Existence in der öffentlichen Doichain verankert wird.
-
-So entsteht ein Nachweis
-• Foto aufnehmen oder ein vorhandenes Bild auswählen.
-• DoiProof berechnet den SHA-256-Hash der Dateibytes lokal.
-• Auf Wunsch werden Aufnahmezeit, GPS-Position, Genauigkeit, Richtung, Bild- und Geräteangaben in ein Manifest geschrieben und kryptografisch an den Hash gebunden.
-• Vor dem Kamerastart können aktuelle Block-Höhen und Block-Hashes von Bitcoin und Doichain in das Manifest aufgenommen werden. Sie zeigen, dass die Aufnahme nicht vor diesem Block entstanden sein kann.
-• Der Hash wird verankert; der Status wird getrennt als Einreichung und als bestätigter Blockeintrag geführt.
-
-Datenschutz
-Das Originalfoto, der Standort und alle Metadaten bleiben auf dem Gerät. An den Doichain-Server gehen nur der Hash und optional eine als Geräteangabe gekennzeichnete Aufnahmezeit. Im Profil „Privat“ wird kein Standort angefordert. Es gibt keine Werbung, kein Tracking und kein Nutzerkonto.
-
-Weitergabe und Prüfung
-• Vollständiges ZIP-Beweispaket mit Originalfoto, kanonischem Manifest, Verifikationsdaten und Prüfanleitung exportieren.
-• Nachvollziehbaren PDF-Beleg erstellen, der sensible Metadaten auf Wunsch ausblendet.
-• Jedes ZIP lässt sich ohne DoiProof prüfen: mit dem offenen Prüfprogramm des Projekts oder mit jedem SHA-256-Werkzeug und einem eigenen Zugang zur Doichain.
-
-Kostenloses Kontingent
-Ohne eigenen Schlüssel stehen täglich bis zu 10 Verankerungen je IP-Adresse zur Verfügung. Ein eigener PoE- oder Write-Schlüssel kann für die laufende Sitzung hinterlegt werden.
-
-Was ein Nachweis zeigt und was nicht
-Ein verankerter Hash belegt, dass genau diese Dateibytes zum Zeitpunkt der Verankerung vorlagen. Er belegt weder die Urheberschaft noch die Echtheit des Motivs noch eine verlässliche Aufnahmezeit. DoiProof stellt keinen qualifizierten elektronischen Zeitstempel im Sinne der eIDAS-Verordnung aus und ersetzt keine Rechtsberatung.
-
-DoiProof ist quelloffen. Code, Dokumentation und das unabhängige Prüfprogramm stehen unter github.com/neubuot/DoiProof.
-```
+Der Dateiname des Änderungshinweises ist der `versionCode`: Für den nächsten Release entsteht `changelogs/2.txt`.
 
 **Grafiken:**
 
 | Element | Vorgabe | Datei |
 |---|---|---|
-| App-Symbol | 512 × 512 px, PNG, ohne Transparenz | [`assets/play/icon-512.png`](../assets/play/icon-512.png) |
-| Feature-Grafik | 1024 × 500 px, PNG oder JPG | [`assets/play/feature-graphic-1024x500.png`](../assets/play/feature-graphic-1024x500.png) |
-| Telefon-Screenshots | mindestens 2, empfohlen 4–8; 16:9 oder 9:16, kürzere Seite ab 1080 px | müssen auf einem echten Gerät entstehen |
+| App-Symbol | 512 × 512 px, PNG, ohne Transparenz | [`images/icon.png`](../fastlane/metadata/android/de-DE/images/icon.png) |
+| Feature-Grafik | 1024 × 500 px, PNG oder JPG | [`images/featureGraphic.png`](../fastlane/metadata/android/de-DE/images/featureGraphic.png) |
+| Telefon-Screenshots | mindestens 2, empfohlen 4–8; 16:9 oder 9:16, kürzere Seite ab 1080 px | fehlen noch; Ablage in [`images/phoneScreenshots/`](../fastlane/metadata/android/de-DE/images/phoneScreenshots/) |
 
-Screenshots vom Testgerät aufnehmen, sobald das APK aus `--profile preview` installiert ist: Startansicht, Kameraaufnahme mit Profilwahl, Nachweisverlauf mit bestätigtem Eintrag, PDF-Beleg. Keine echten personenbezogenen Daten und keine echten Koordinaten im Bild belassen.
+Screenshots entstehen auf einem echten Gerät, sobald ein Debug- oder Release-Build darauf läuft: Startansicht, Kameraaufnahme mit Profilwahl, Nachweisverlauf mit bestätigtem Eintrag, PDF-Beleg. Keine echten personenbezogenen Daten und keine echten Koordinaten im Bild belassen.
 
 **Weitere Felder:** Kategorie „Tools“ (alternativ „Produktivität“), Tags „Sicherheit“ und „Dienstprogramme“, Kontakt-E-Mail, Website `https://github.com/neubuot/DoiProof`.
 
@@ -189,7 +175,8 @@ Das Organisationskonto darf ohne vorgeschalteten geschlossenen Test in die Produ
 Für jeden weiteren Release:
 
 - `version` in `app.json` und `package.json` auf dieselbe neue Nummer setzen;
-- `versionCode` wird durch `autoIncrement` im Profil `production` automatisch erhöht; die geänderte `app.json` committen;
+- `versionCode` um eins erhöhen, und zwar an **beiden** Stellen: `android.versionCode` in `app.json` als Quelle und `versionCode` in [`android/app/build.gradle`](../android/app/build.gradle) im eingecheckten Gradle-Projekt. Nur der Gradle-Wert landet im Bundle; der Wert in `app.json` hält den nächsten `prebuild` auf demselben Stand. Das `autoIncrement` im EAS-Profil `production` greift ausschließlich bei Cloud-Builds;
+- Änderungshinweise als `fastlane/metadata/android/de-DE/changelogs/<versionCode>.txt` anlegen;
 - Dokumentation im selben Pull Request anpassen, wie in [CONTRIBUTING.md](../CONTRIBUTING.md) festgelegt;
 - bei geändertem Datenfluss die Datensicherheitsangaben und [DATENSCHUTZ.md](DATENSCHUTZ.md) nachziehen.
 
@@ -200,7 +187,7 @@ Ein einmal verwendeter `versionCode` kann nie erneut hochgeladen werden.
 - [ ] Verantwortlichen, Anschrift und Kontakt in [DATENSCHUTZ.md](DATENSCHUTZ.md) eintragen und committen
 - [ ] Betreiber des MCP-Servers `doi-api.sendlabs.de` in [DATENSCHUTZ.md](DATENSCHUTZ.md) benennen
 - [ ] Rechte im Firmenkonto prüfen: Apps erstellen und Produktions-Releases verwalten
-- [ ] `eas init` ausführen und die erzeugte `projectId` committen
-- [ ] Produktions-AAB bauen und die Berechtigungen im Manifest prüfen
+- [ ] Upload-Schlüssel in Android Studio anlegen und außerhalb des Repositorys sichern
+- [ ] Signiertes Produktions-AAB bauen und mit `keytool -printcert -jarfile` prüfen, dass es **nicht** `CN=Android Debug` trägt
 - [ ] Screenshots auf einem echten Gerät aufnehmen
 - [ ] Gerätetest nach [ANDROID-RELEASE.md](ANDROID-RELEASE.md) bestehen

@@ -1,0 +1,1 @@
+Fotos lokal hashen und den Hash als Nachweis auf der Doichain verankern.

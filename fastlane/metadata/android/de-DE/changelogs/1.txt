@@ -1,0 +1,4 @@
+Erste Veröffentlichung. Foto aufnehmen, SHA-256 lokal berechnen und als Proof of
+Existence auf der Doichain verankern. Originalfoto und Manifest werden vor dem
+Senden lokal gesichert. ZIP-Beweispaket und PDF-Beleg lassen sich teilen und
+unabhängig prüfen.

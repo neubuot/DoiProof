@@ -1,0 +1,24 @@
+DoiProof erstellt aus einem Foto ein Beweispaket, das vollständig auf dem Gerät entsteht. Das Bild selbst wird nicht hochgeladen: Übertragen wird ausschließlich sein SHA-256-Hash, der als Proof of Existence in der öffentlichen Doichain verankert wird.
+
+So entsteht ein Nachweis
+• Foto aufnehmen oder ein vorhandenes Bild auswählen.
+• DoiProof berechnet den SHA-256-Hash der Dateibytes lokal.
+• Auf Wunsch werden Aufnahmezeit, GPS-Position, Genauigkeit, Richtung, Bild- und Geräteangaben in ein Manifest geschrieben und kryptografisch an den Hash gebunden.
+• Vor dem Kamerastart können aktuelle Block-Höhen und Block-Hashes von Bitcoin und Doichain in das Manifest aufgenommen werden. Sie zeigen, dass die Aufnahme nicht vor diesem Block entstanden sein kann.
+• Der Hash wird verankert; der Status wird getrennt als Einreichung und als bestätigter Blockeintrag geführt.
+
+Datenschutz
+Das Originalfoto, der Standort und alle Metadaten bleiben auf dem Gerät. An den Doichain-Server gehen nur der Hash und optional eine als Geräteangabe gekennzeichnete Aufnahmezeit. Im Profil „Privat“ wird kein Standort angefordert. Es gibt keine Werbung, kein Tracking und kein Nutzerkonto.
+
+Weitergabe und Prüfung
+• Vollständiges ZIP-Beweispaket mit Originalfoto, kanonischem Manifest, Verifikationsdaten und Prüfanleitung exportieren.
+• Nachvollziehbaren PDF-Beleg erstellen, der sensible Metadaten auf Wunsch ausblendet.
+• Jedes ZIP lässt sich ohne DoiProof prüfen: mit dem offenen Prüfprogramm des Projekts oder mit jedem SHA-256-Werkzeug und einem eigenen Zugang zur Doichain.
+
+Kostenloses Kontingent
+Ohne eigenen Schlüssel stehen täglich bis zu 10 Verankerungen je IP-Adresse zur Verfügung. Ein eigener PoE- oder Write-Schlüssel kann für die laufende Sitzung hinterlegt werden.
+
+Was ein Nachweis zeigt und was nicht
+Ein verankerter Hash belegt, dass genau diese Dateibytes zum Zeitpunkt der Verankerung vorlagen. Er belegt weder die Urheberschaft noch die Echtheit des Motivs noch eine verlässliche Aufnahmezeit. DoiProof stellt keinen qualifizierten elektronischen Zeitstempel im Sinne der eIDAS-Verordnung aus und ersetzt keine Rechtsberatung.
+
+DoiProof ist quelloffen. Code, Dokumentation und das unabhängige Prüfprogramm stehen unter github.com/neubuot/DoiProof.
