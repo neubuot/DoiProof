@@ -8,3 +8,9 @@ desktop/dist/
 desktop/preview.png
 .env*
 !.env.example
+play-service-account.json
+*.keystore
+*.jks
+keystore.properties
+/android/
+/ios/
