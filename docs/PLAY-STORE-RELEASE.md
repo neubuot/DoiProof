@@ -31,7 +31,7 @@ Da unter dem Konto bereits eine App liegt: DoiProof wird **als eigene App** ange
 Google Play nimmt nur ein App-Bundle (`.aab`) an. Der native Gradle-Ordner `android/` liegt wie bei [DoiWallet](https://github.com/Doichain/DoiWallet) im Repository und wird in Android Studio geöffnet.
 
 ```bash
-npm ci                 # benötigt Node 22; npm 6 kann die Lockfile-Version nicht lesen
+npm ci                 # Node 22, wie in der CI
 npm run check
 npm test
 ```
@@ -57,6 +57,18 @@ grep "uses-permission" android/app/build/intermediates/merged_manifest/release/*
 ```
 
 Geprüfter Stand für Version 0.5.0: `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `CAMERA`, `INTERNET` und die interne `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW` und `VIBRATE` werden von expo-image-picker und der React-Native-Entwicklungsunterstützung mitgebracht; `android.blockedPermissions` in `app.json` entfernt sie beim Zusammenführen. Erscheint eine der drei oder `READ_MEDIA_IMAGES` doch im Manifest, darf nicht hochgeladen werden: Mikrofon und Overlay sind in Play erklärungsbedürftig, Fotoberechtigungen verlangen zusätzlich die Erklärung aus Schritt 5.
+
+### Fehlerbilder beim Gradle-Sync
+
+**Keine Geräteauswahl in Android Studio.** Die Auswahlliste bleibt leer, solange der Gradle-Sync fehlgeschlagen ist: Ohne konfigurierte Module gibt es nichts zu starten. Zuerst den Sync in Ordnung bringen, nicht das Gerät suchen.
+
+**`configureCMakeDebug` schlägt fehl mit „WARNING: A restricted method in java.lang.System has been called“.** Die Meldung ist keine Warnung, sondern die Fehlerursache: AGP startet `prefab` als eigenen Prozess und wertet jede Ausgabe auf `stderr` als Fehler. Ab JDK 24 gibt die JVM dort den Hinweis nach JEP 472 aus. Die von `expo prebuild` erzeugte Datei `android/gradle/gradle-daemon-jvm.properties` verlangt mit `toolchainVersion=25` genau so eine JVM und lädt sie bei Bedarf selbst herunter. AGP 8.12 unterstützt sie nicht.
+
+Im Repository steht deshalb `toolchainVersion=17`. **Ein erneutes `expo prebuild` setzt den Wert auf 25 zurück und muss danach wieder korrigiert werden.** In Android Studio zusätzlich unter *Einstellungen → Build, Execution, Deployment → Build Tools → Gradle* als Gradle-JDK die Version 17 oder die mitgelieferte JBR 21 wählen; JDK 25 bricht dort mit demselben Fehler ab.
+
+**`[CXX5304] This version only understands SDK XML versions up to 3 …`** ist dagegen folgenlos. Die Meldung entsteht, weil im SDK neuere Pakete liegen, als AGP 8.12 lesen kann – hier CMake 4.1.2 und NDK 30. Der Build verwendet ohnehin das festgelegte NDK 27.1.12297006 mit CMake 3.22.1. Die Pakete müssen nicht entfernt werden.
+
+**Node.** Die Gradle-Tasks rufen `node` auf, um das Autolinking aufzulösen und das JavaScript zu bündeln. Es gilt dieselbe Version wie in der CI, Node 22. Wird Node über nvm verwaltet, muss die gewünschte Version auch in der Shell aktiv sein, aus der Android Studio gestartet wird: Shells ohne geladenes nvm greifen sonst auf eine ältere, global installierte Node-Version zurück.
 
 ### Unterschied zum Vorgehen bei DoiWallet
 
