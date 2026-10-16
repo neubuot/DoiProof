@@ -19,7 +19,7 @@ npx eas-cli@latest init
 npx eas-cli@latest build --platform android --profile preview
 ```
 
-`init` verbindet dieses Repository einmalig mit einem Expo-Projekt. Beim ersten Build muss die Android-Signatur eingerichtet werden; EAS kann den Schlüssel im Expo-Konto verwalten. **Signaturdaten und Expo-Token gehören nicht ins Git-Repository.** Danach zeigt EAS einen Download-Link zum APK. Weitere Builds müssen denselben Signaturschlüssel und einen höheren `versionCode` verwenden, damit sie eine installierte App aktualisieren können. Das Profil `production` erzeugt ein AAB für Google Play, kein direkt installierbares APK.
+`init` verbindet dieses Repository einmalig mit einem Expo-Projekt. Beim ersten Build muss die Android-Signatur eingerichtet werden; EAS kann den Schlüssel im Expo-Konto verwalten. **Signaturdaten und Expo-Token gehören nicht ins Git-Repository.** Danach zeigt EAS einen Download-Link zum APK. Weitere Builds müssen denselben Signaturschlüssel und einen höheren `versionCode` verwenden, damit sie eine installierte App aktualisieren können. Das Profil `production` erzeugt ein AAB für Google Play, kein direkt installierbares APK; den vollständigen Weg in die Play Console beschreibt [PLAY-STORE-RELEASE.md](PLAY-STORE-RELEASE.md).
 
 Ein Build aus dem Quellcode allein attestiert nicht die Kameraaufnahme oder Geräteidentität. App-Authentizität bleibt in [Issue #6](https://github.com/neubuot/DoiProof/issues/6) für einen späteren signierten und attestierten Verteilungsweg vorgesehen.
 

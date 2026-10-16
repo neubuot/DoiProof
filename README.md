@@ -17,6 +17,8 @@ DoiProof ist eine Android- und iOS-App auf Basis von Expo und React Native. Sie 
 | [ZIP unabhängig prüfen](docs/PRUEFPROGRAMM.md) | Prüfbefehl, Bericht und Onlineprüfung ohne DoiProof-App |
 | [Windows-Prüfer mit Oberfläche](docs/DESKTOP-PRUEFER.md) | Portable EXE herunterladen und Beweispakete per Dialog prüfen |
 | [Android-APK und Gerätetest](docs/ANDROID-RELEASE.md) | Signierter EAS-Build, Installation und Testablauf |
+| [Google Play: App anlegen und veröffentlichen](docs/PLAY-STORE-RELEASE.md) | Play-Console-Eintrag, Store-Texte, Datensicherheit und Freigabeweg |
+| [Datenschutzerklärung der App](docs/DATENSCHUTZ.md) | Verarbeitete Daten, Übertragungen und Löschung; Pflicht-URL für Google Play |
 
 Diese Dokumente gehören zum Git-Verlauf. Bei Änderungen an Bedienung, Manifest, Verankerung oder Export werden die betroffenen Abschnitte im selben Pull Request angepasst; die Beschreibung nennt ihren dokumentierten Versionsstand.
 
