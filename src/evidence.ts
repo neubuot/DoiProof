@@ -1,16 +1,14 @@
 import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
-import { EvidenceManifest, EvidenceProfile, PreCaptureAnchors } from './proofRecord';
+import { EvidenceManifest, PreCaptureAnchors } from './proofRecord';
 import { isValidPreCaptureAnchors } from './chainAnchors';
 import { APP_VERSION } from './version';
+import { MetadataSettings } from './settingsModel';
 
-export type MetadataSettings = {
-  profile: EvidenceProfile;
-  includeLocation: boolean;
-  includeImageDetails: boolean;
-  includeDevice: boolean;
-};
+// Die Profile liegen im Modell, damit die gespeicherten Vorgaben sie ohne Expo-Module lesen können.
+export type { MetadataSettings } from './settingsModel';
+export { PRIVATE_SETTINGS, LOCATION_SETTINGS } from './settingsModel';
 
 export type ImageDetails = {
   width?: number;
@@ -24,14 +22,6 @@ export type Evidence = {
   manifest: EvidenceManifest;
   manifestSha256: string;
   evidenceSha256: string;
-};
-
-export const PRIVATE_SETTINGS: MetadataSettings = {
-  profile: 'private', includeLocation: false, includeImageDetails: false, includeDevice: false,
-};
-
-export const LOCATION_SETTINGS: MetadataSettings = {
-  profile: 'location', includeLocation: true, includeImageDetails: true, includeDevice: true,
 };
 
 export function canonicalJson(value: unknown): string {

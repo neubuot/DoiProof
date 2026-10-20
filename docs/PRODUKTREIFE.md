@@ -43,13 +43,15 @@ Eine Stelle bleibt notwendig getrennt: `versionName` in `android/app/build.gradl
 
 ## 2. Was Nutzerinnen und Nutzer sofort bemerken
 
-### 2.1 Einstellungen überleben den Neustart nicht
+### 2.1 Einstellungen überlebten den Neustart nicht – erledigt
 
-Weder `AsyncStorage` noch `SecureStore` kommen im Projekt vor. Metadatenprofil, Sofortversand, der Schalter für die Vorabblöcke und der eingegebene Schlüssel liegen ausschließlich im React-Zustand und fallen bei jedem Start auf die Vorgabewerte zurück.
+Metadatenprofil, Sofortversand und die Schalter lagen ausschließlich im React-Zustand und fielen bei jedem Start auf die Vorgabewerte zurück. Am folgenreichsten war das Profil: Wer „Standortnachweis“ wählte, die App schloss und zurückkehrte, stand wieder auf „Privat“ – und der nächste Nachweis wäre **stillschweigend ohne Standortdaten** entstanden.
 
-Am folgenreichsten ist das Profil: Wer „Standortnachweis“ wählt, die App schließt und später zurückkehrt, steht wieder auf „Privat“ – und der nächste Nachweis entsteht **stillschweigend ohne Standortdaten**. Das fällt erst auf, wenn der Nachweis gebraucht wird.
+Die Vorgaben liegen jetzt in `doiproof-settings.json` im app-privaten Verzeichnis, geschrieben über [`settingsStore.ts`](../src/settingsStore.ts) mit `expo-file-system`, also auf demselben Weg wie der Nachweisverlauf und ohne zusätzliche Abhängigkeit.
 
-**Vorschlag.** Profil und Schalter dauerhaft sichern. Der API-Schlüssel sollte bewusst flüchtig bleiben; wird er dauerhaft gespeichert, dann ausschließlich in `expo-secure-store` und nach ausdrücklicher Zustimmung.
+[`settingsModel.ts`](../src/settingsModel.ts) hält Typen, Vorgabewerte und das Einlesen frei von Expo-Modulen und ist damit vollständig testbar. Beschädigte oder fremde Daten führen **vollständig** auf die Vorgabewerte zurück statt auf eine Mischung: Ein einzelner unbrauchbarer Schalter könnte sonst „Standortnachweis“ anzeigen, während keine Koordinaten erfasst werden.
+
+Der API-Schlüssel wird bewusst **nicht** gesichert. Er bleibt flüchtig, wie es die Oberfläche und die Datenschutzerklärung zusagen; eine dauerhafte Ablage käme nur in `expo-secure-store` und nach ausdrücklicher Zustimmung in Frage.
 
 ### 2.2 Kein Einstieg beim ersten Start
 
@@ -92,7 +94,7 @@ Es gibt keine Absturzberichterstattung. Nach einer Veröffentlichung bleibt unbe
 
 ## 5. Vorgeschlagene Reihenfolge
 
-**Zuerst, klein und wirksam:** Zeitgrenze im MCP-Client, Fehlergrenze um die Oberfläche, dauerhafte Einstellungen. Drei begrenzte Änderungen, die zwei Arten von Blockaden beseitigen und die folgenreichste Bedienfalle schließen.
+**Zuerst, klein und wirksam:** Zeitgrenze im MCP-Client und Fehlergrenze um die Oberfläche. Zwei begrenzte Änderungen, die zwei Arten von Blockaden beseitigen. Die dauerhaften Einstellungen aus Abschnitt 2.1 sind bereits umgesetzt.
 
 **Danach, als eigenständige Funktionen:** Löschen nach der Trennung aus Abschnitt 1.2 und der Export des gesamten Bestandes. Ohne diese beiden lässt sich die App für den ernsthaften Einsatz nur eingeschränkt empfehlen.
 

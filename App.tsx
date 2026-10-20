@@ -14,6 +14,7 @@ import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
 import { getPreCaptureAnchors } from './src/chainAnchors';
 import { APP_VERSION } from './src/version';
 import { SettingsSheet } from './src/settings';
+import { loadSettings, saveSettings } from './src/settingsStore';
 
 type Selected = {
   uri: string;
@@ -52,6 +53,7 @@ function ProofScreen() {
   const [includeSensitiveInPdf, setIncludeSensitiveInPdf] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const historyRef = useRef<ProofRecord[]>([]);
   const refreshingRef = useRef(false);
 
@@ -96,6 +98,24 @@ function ProofScreen() {
       setRefreshingHistory(false);
     }
   }, []);
+
+  // Gespeicherte Vorgaben übernehmen. Bis sie vorliegen, gilt sichtbar „Privat“.
+  useEffect(() => {
+    loadSettings()
+      .then(stored => {
+        setMetadata(stored.metadata);
+        setAutoSend(stored.autoSend);
+        setUsePreCaptureAnchors(stored.usePreCaptureAnchors);
+        setIncludeSensitiveInPdf(stored.includeSensitiveInPdf);
+      })
+      .finally(() => setSettingsLoaded(true));
+  }, []);
+
+  // Erst nach dem Laden sichern, sonst überschreiben die Vorgabewerte den gespeicherten Stand.
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    void saveSettings({ metadata, autoSend, usePreCaptureAnchors, includeSensitiveInPdf });
+  }, [settingsLoaded, metadata, autoSend, usePreCaptureAnchors, includeSensitiveInPdf]);
 
   useEffect(() => {
     getQuota().then(setQuota).catch(() => setQuota(null));
