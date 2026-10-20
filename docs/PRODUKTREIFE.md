@@ -83,7 +83,7 @@ Es gibt keine Absturzberichterstattung. Nach einer Veröffentlichung bleibt unbe
 
 ## 4. Vor der Veröffentlichung
 
-- **Datenschutzerklärung in der App.** Weder „Datenschutz“ noch „Impressum“ oder „Kontakt“ kommen in der Oberfläche vor. Die App fordert Kamera und genauen Standort an; eine erreichbare Erklärung innerhalb der App ist üblich und senkt das Risiko einer Rückfrage bei der Prüfung. Siehe [PLAY-STORE-RELEASE.md](PLAY-STORE-RELEASE.md).
+- **Datenschutzerklärung in der App – verpflichtend.** Google verlangt den Verweis auf die Datenschutzerklärung an **zwei** Stellen: im Play-Eintrag und zusätzlich **innerhalb der App**, sobald diese personenbezogene oder sensible Daten verarbeitet. DoiProof fordert Kamera und genauen Standort an und fällt damit darunter. In der Oberfläche kommen „Datenschutz“, „Impressum“ und „Kontakt“ derzeit nicht vor; der Verweis fehlt also vollständig. Das ist kein Feinschliff, sondern eine Bedingung für die Freigabe. Siehe [PLAY-STORE-RELEASE.md](PLAY-STORE-RELEASE.md).
 - **Startbildschirm.** `app.json` enthält keinen Splash-Abschnitt, deshalb liegt in `android/app/src/main/res/drawable-*` die Platzhaltergrafik von Expo – ein graues Raster mit Kreisen. Sie erscheint bei jedem Start vor der Oberfläche.
 - **Dunkles Erscheinungsbild.** [`app.json`](../app.json#L9) kündigt `userInterfaceStyle: "automatic"` an, die Gestaltung ist jedoch durchgehend hell; `prebuild` weist zusätzlich auf das fehlende `expo-system-ui` hin. Entweder umsetzen oder die Ankündigung entfernen.
 - **Totes Feld.** Der Server liefert `verify_url`, [`proofRecord.ts`](../src/proofRecord.ts#L104) schreibt es in den Verlauf, angezeigt oder geöffnet wird es nirgends; `Linking` wird nicht eingebunden.
@@ -96,6 +96,6 @@ Es gibt keine Absturzberichterstattung. Nach einer Veröffentlichung bleibt unbe
 
 **Danach, als eigenständige Funktionen:** Löschen nach der Trennung aus Abschnitt 1.2 und der Export des gesamten Bestandes. Ohne diese beiden lässt sich die App für den ernsthaften Einsatz nur eingeschränkt empfehlen.
 
-**Unmittelbar vor der Veröffentlichung:** Startbildschirm, eine Seite „Über DoiProof“ mit Version aus einer einzigen Quelle, Verweis auf die Datenschutzerklärung und Lizenz sowie die Verlagerung des rechtlichen Hinweises aus der Fußzeile dorthin.
+**Zwingend vor der Einreichung:** der Verweis auf die Datenschutzerklärung innerhalb der App. Er lässt sich mit der Seite „Über DoiProof“ in einem Zug erledigen – zusammen mit der Version aus einer einzigen Quelle, der Lizenz und dem rechtlichen Hinweis, der heute in der Fußzeile unter dem Verlauf steht und dort zuletzt gelesen wird. Ebenfalls vorher: der eigene Startbildschirm.
 
 Alle Änderungen folgen dem in [CONTRIBUTING.md](../CONTRIBUTING.md) festgelegten Ablauf; Änderungen am Manifest, an der Verankerung oder am Export ziehen die betroffenen Abschnitte der Dokumentation im selben Pull Request nach.
