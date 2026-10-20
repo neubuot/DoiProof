@@ -114,9 +114,11 @@ Der Dateiname des Änderungshinweises ist der `versionCode`: Für den nächsten 
 |---|---|---|
 | App-Symbol | 512 × 512 px, PNG, ohne Transparenz | [`images/icon.png`](../fastlane/metadata/android/de-DE/images/icon.png) |
 | Feature-Grafik | 1024 × 500 px, PNG oder JPG | [`images/featureGraphic.png`](../fastlane/metadata/android/de-DE/images/featureGraphic.png) |
-| Telefon-Screenshots | mindestens 2, empfohlen 4–8; 16:9 oder 9:16, kürzere Seite ab 1080 px | fehlen noch; Ablage in [`images/phoneScreenshots/`](../fastlane/metadata/android/de-DE/images/phoneScreenshots/) |
+| Telefon-Screenshots | mindestens 2, empfohlen 4–8; Seitenverhältnis höchstens 2:1, kürzere Seite ab 1080 px | drei Stück in [`images/phoneScreenshots/`](../fastlane/metadata/android/de-DE/images/phoneScreenshots/) |
 
-Screenshots entstehen auf einem echten Gerät, sobald ein Debug- oder Release-Build darauf läuft: Startansicht, Kameraaufnahme mit Profilwahl, Nachweisverlauf mit bestätigtem Eintrag, PDF-Beleg. Keine echten personenbezogenen Daten und keine echten Koordinaten im Bild belassen.
+Die vorhandenen drei Aufnahmen stammen vom Testgerät (1080 × 2160): Startansicht mit Profilwahl, Einreichung mit Tageskontingent und Nachweisverlauf mit bestätigtem Eintrag. Ein heutiges Telefon liefert 1080 × 2340, also 2,17:1 – mehr, als Play zulässt. Der Beschnitt auf 1080 × 2160 trifft genau 2:1 und entfernt zugleich die Navigationsleiste.
+
+Weitere Motive lohnen sich: die Hash-Ansicht eines ausgewählten Fotos und der PDF-Beleg. Für die Hash-Ansicht vorher **„Nach Aufnahme sofort senden“ ausschalten**, sonst wird beim Auswählen eines Fotos sofort ein echter Nachweis verankert. Keine echten personenbezogenen Daten und keine echten Koordinaten im Bild belassen.
 
 **Weitere Felder:** Kategorie „Tools“ (alternativ „Produktivität“), Tags „Sicherheit“ und „Dienstprogramme“, Kontakt-E-Mail, Website `https://github.com/neubuot/DoiProof`.
 
