@@ -126,9 +126,12 @@ Weitere Motive lohnen sich: die Hash-Ansicht eines ausgewählten Fotos und der P
 
 Unter „Richtlinien und Programme → App-Inhalt“. Ohne vollständige Angaben bleibt die Veröffentlichung gesperrt.
 
-**Datenschutzerklärung.** URL eintragen. Nach einem Commit von [`docs/DATENSCHUTZ.md`](DATENSCHUTZ.md) ist das:
-`https://github.com/neubuot/DoiProof/blob/main/docs/DATENSCHUTZ.md`
-Die Platzhalter für Verantwortlichen und Kontakt müssen vorher ersetzt sein.
+**Datenschutzerklärung.** Maßgeblich ist die veröffentlichte Fassung:
+`https://doiproof.doilabs.org/datenschutz`
+
+Google verlangt den Verweis an **zwei** Stellen, sobald personenbezogene oder sensible Daten verarbeitet werden – im Play-Eintrag und innerhalb der App. Der zweite Teil ist über die Einstellungen abgedeckt: [`src/settings.tsx`](../src/settings.tsx) führt dieselbe Adresse als `PRIVACY_URL` sowie das Impressum. Wird die Adresse geändert, muss sie an beiden Stellen gleich lauten.
+
+[`docs/DATENSCHUTZ.md`](DATENSCHUTZ.md) im Repository beschreibt denselben Sachverhalt aus technischer Sicht und ist nicht die rechtlich maßgebliche Fassung. Ändert sich der Datenfluss, sind beide Texte im selben Zug nachzuziehen.
 
 **App-Zugriff.** „Alle Funktionen sind ohne besondere Zugangsdaten verfügbar.“
 
@@ -199,8 +202,8 @@ Ein einmal verwendeter `versionCode` kann nie erneut hochgeladen werden.
 
 ## Offene Punkte vor der ersten Einreichung
 
-- [ ] Verantwortlichen, Anschrift und Kontakt in [DATENSCHUTZ.md](DATENSCHUTZ.md) eintragen und committen
-- [ ] Betreiber des MCP-Servers `doi-api.sendlabs.de` in [DATENSCHUTZ.md](DATENSCHUTZ.md) benennen
+- [x] Datenschutzerklärung veröffentlicht unter `https://doiproof.doilabs.org/datenschutz`, in der App über die Einstellungen erreichbar
+- [ ] Platzhalter für Verantwortlichen, Kontakt und Betreiber des MCP-Servers in [DATENSCHUTZ.md](DATENSCHUTZ.md) mit den Angaben der veröffentlichten Fassung abgleichen
 - [ ] Rechte im Firmenkonto prüfen: Apps erstellen und Produktions-Releases verwalten
 - [ ] Upload-Schlüssel in Android Studio anlegen und außerhalb des Repositorys sichern
 - [ ] Signiertes Produktions-AAB bauen und mit `keytool -printcert -jarfile` prüfen, dass es **nicht** `CN=Android Debug` trägt

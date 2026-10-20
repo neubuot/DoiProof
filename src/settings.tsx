@@ -2,12 +2,9 @@ import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } 
 import { APP_VERSION } from './version';
 import { MCP_URL } from './doichain';
 
-/**
- * Dieselbe Adresse gehört in den Play-Eintrag. Sie zeigt auf `main` und wird erst gültig,
- * wenn die Datenschutzerklärung dort liegt: Vor der Einreichung muss der Branch gemergt
- * sein, sonst führt der Verweis in der App ins Leere.
- */
-export const PRIVACY_URL = 'https://github.com/neubuot/DoiProof/blob/main/docs/DATENSCHUTZ.md';
+/** Dieselbe Adresse gehört unverändert in den Play-Eintrag. */
+export const PRIVACY_URL = 'https://doiproof.doilabs.org/datenschutz';
+export const IMPRESSUM_URL = 'https://doiproof.doilabs.org/impressum';
 export const SOURCE_URL = 'https://github.com/neubuot/DoiProof';
 
 async function open(url: string): Promise<void> {
@@ -60,6 +57,7 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
               gelöscht oder widerrufen werden.
             </Text>
             <LinkButton label="Datenschutzerklärung öffnen" url={PRIVACY_URL} />
+            <LinkButton label="Impressum" url={IMPRESSUM_URL} />
           </View>
 
           <Text style={styles.eyebrow}>ÜBER DOIPROOF</Text>
