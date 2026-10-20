@@ -13,6 +13,7 @@ import { createEvidence, LOCATION_SETTINGS, MetadataSettings, PRIVATE_SETTINGS }
 import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
 import { getPreCaptureAnchors } from './src/chainAnchors';
 import { APP_VERSION } from './src/version';
+import { SettingsSheet } from './src/settings';
 
 type Selected = {
   uri: string;
@@ -50,6 +51,7 @@ function ProofScreen() {
   const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
   const [includeSensitiveInPdf, setIncludeSensitiveInPdf] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const historyRef = useRef<ProofRecord[]>([]);
   const refreshingRef = useRef(false);
 
@@ -257,9 +259,19 @@ function ProofScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
+      <SettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.brand}>DOIPROOF  /  ANDROID {APP_VERSION}</Text>
+          <View style={styles.heroTop}>
+            <Text style={styles.brand}>DOIPROOF  /  ANDROID {APP_VERSION}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Einstellungen und Datenschutz"
+              hitSlop={14}
+              style={styles.menu}
+              onPress={() => setSettingsVisible(true)}
+            ><Text style={styles.menuGlyph}>⋮</Text></Pressable>
+          </View>
           <Text style={styles.title}>Dein Foto.{'\n'}Dein Nachweis.</Text>
           <Text style={styles.lead}>Original und Manifest bleiben bei dir. An Doichain gehen nur der Paket-Hash und gegebenenfalls eine kurze Gerätenotiz.</Text>
           <View style={styles.heroStats}><Text style={styles.heroStat}>◈  {history.length} lokal gesichert</Text><Text style={styles.heroStat}>◎  SHA-256</Text></View>
@@ -368,7 +380,10 @@ function ProofScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f4f3eb' }, content: { padding: 22, paddingTop: 20, paddingBottom: 54, gap: 18 },
   hero: { backgroundColor: '#123739', borderRadius: 24, padding: 26, gap: 15 },
-  brand: { color: '#abdac3', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
+  brand: { color: '#abdac3', fontSize: 11, fontWeight: '800', letterSpacing: 2, flex: 1 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  menu: { paddingHorizontal: 6, marginTop: -4, marginRight: -4 },
+  menuGlyph: { color: '#abdac3', fontSize: 24, fontWeight: '700', lineHeight: 26 },
   title: { fontSize: 38, lineHeight: 43, fontWeight: '700', color: '#f4f3eb' },
   lead: { fontSize: 14, lineHeight: 22, color: '#c4dbd0' },
   heroStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
