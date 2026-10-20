@@ -188,7 +188,8 @@ Das Organisationskonto darf ohne vorgeschalteten geschlossenen Test in die Produ
 
 Für jeden weiteren Release:
 
-- `version` in `app.json` und `package.json` auf dieselbe neue Nummer setzen;
+- `version` **nur in `package.json`** auf die neue Nummer setzen. Oberfläche, Beweis-Manifest und Expo-Konfiguration lesen sie über [`src/version.ts`](../src/version.ts) und [`app.config.js`](../app.config.js) von dort; `app.json` führt keine eigene Version mehr;
+- anschließend `npx expo prebuild --platform android` ausführen, damit `versionName` im eingecheckten Gradle-Projekt nachzieht. [`scripts/version.test.mjs`](../scripts/version.test.mjs) lässt die CI fehlschlagen, wenn das vergessen wird;
 - `versionCode` um eins erhöhen, und zwar an **beiden** Stellen: `android.versionCode` in `app.json` als Quelle und `versionCode` in [`android/app/build.gradle`](../android/app/build.gradle) im eingecheckten Gradle-Projekt. Nur der Gradle-Wert landet im Bundle; der Wert in `app.json` hält den nächsten `prebuild` auf demselben Stand. Das `autoIncrement` im EAS-Profil `production` greift ausschließlich bei Cloud-Builds;
 - Änderungshinweise als `fastlane/metadata/android/de-DE/changelogs/<versionCode>.txt` anlegen;
 - Dokumentation im selben Pull Request anpassen, wie in [CONTRIBUTING.md](../CONTRIBUTING.md) festgelegt;

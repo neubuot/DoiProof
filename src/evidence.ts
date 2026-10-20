@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import { EvidenceManifest, EvidenceProfile, PreCaptureAnchors } from './proofRecord';
 import { isValidPreCaptureAnchors } from './chainAnchors';
+import { APP_VERSION } from './version';
 
 export type MetadataSettings = {
   profile: EvidenceProfile;
@@ -82,7 +83,7 @@ export async function createEvidence(
     profile: settings.profile,
     preCapture: source === 'camera' ? preCapture : undefined,
     app: {
-      version: '0.5.0',
+      version: APP_VERSION,
       ...(process.env.EXPO_PUBLIC_SOURCE_COMMIT && /^[0-9a-f]{40}$/.test(process.env.EXPO_PUBLIC_SOURCE_COMMIT)
         ? { sourceCommit: process.env.EXPO_PUBLIC_SOURCE_COMMIT } : {}),
       identification: 'self-reported-unattested',
@@ -96,7 +97,7 @@ export async function createEvidence(
     device: settings.includeDevice ? {
       platform: Platform.OS,
       osVersion: Platform.Version,
-      appVersion: '0.5.0',
+      appVersion: APP_VERSION,
     } : undefined,
   };
   const manifestSha256 = await sha256Text(canonicalJson(manifest));

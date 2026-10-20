@@ -12,6 +12,7 @@ import { shareReceipt } from './src/receipt';
 import { createEvidence, LOCATION_SETTINGS, MetadataSettings, PRIVATE_SETTINGS } from './src/evidence';
 import { preserveEvidencePhoto, shareEvidenceBundle } from './src/bundle';
 import { getPreCaptureAnchors } from './src/chainAnchors';
+import { APP_VERSION } from './src/version';
 
 type Selected = {
   uri: string;
@@ -258,7 +259,7 @@ function ProofScreen() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.brand}>DOIPROOF  /  ANDROID 0.5</Text>
+          <Text style={styles.brand}>DOIPROOF  /  ANDROID {APP_VERSION}</Text>
           <Text style={styles.title}>Dein Foto.{'\n'}Dein Nachweis.</Text>
           <Text style={styles.lead}>Original und Manifest bleiben bei dir. An Doichain gehen nur der Paket-Hash und gegebenenfalls eine kurze Gerätenotiz.</Text>
           <View style={styles.heroStats}><Text style={styles.heroStat}>◈  {history.length} lokal gesichert</Text><Text style={styles.heroStat}>◎  SHA-256</Text></View>

@@ -33,13 +33,13 @@ Beim Entwurf dieser Funktion ist eine Asymmetrie zu beachten, die leicht überse
 
 Der erste Fall ist der dringendere. [`App.tsx`](../App.tsx#L186) legt für **jedes** aufgenommene oder ausgewählte Foto sofort einen lokalen Entwurf an, noch vor jedem Netzaufruf. Wer die App bei abgeschaltetem Sofortversand ausprobiert, erzeugt mit fünf Testaufnahmen fünf dauerhafte Einträge samt fünf Fotokopien, die auf keiner Kette stehen und sich trotzdem nicht entfernen lassen.
 
-### 1.3 Die Versionsnummer steht an fünf Stellen
+### 1.3 Die Versionsnummer stand an fünf Stellen – erledigt
 
-`0.5.0` ist in [`evidence.ts`](../src/evidence.ts#L85), noch einmal in [`evidence.ts`](../src/evidence.ts#L99), in [`App.tsx`](../App.tsx#L261) als „0.5“, in `app.json` und in `package.json` eingetragen.
+`0.5.0` war in `evidence.ts` zweimal, in `App.tsx` als „0.5“, in `app.json` und in `package.json` eingetragen. In einer gewöhnlichen App wäre das eine Unsauberkeit. Hier wandert die Angabe in das Manifest, wird mitgehasht und ist damit Bestandteil des Beweises: Eine vergessene Stelle hätte allen folgenden Beweisen eine **falsche Selbstauskunft über die erzeugende App-Version** mitgegeben.
 
-In einer gewöhnlichen App wäre das eine Unsauberkeit. Hier wandert die Angabe in das Manifest, wird mitgehasht und damit Bestandteil des Beweises. Wird `app.json` auf eine neue Version gehoben und `evidence.ts` dabei vergessen, enthalten alle folgenden Beweise eine **falsche Selbstauskunft über die erzeugende App-Version**.
+Maßgeblich ist jetzt allein `package.json`. [`src/version.ts`](../src/version.ts) liest den Wert von dort und stellt ihn als `APP_VERSION` bereit; Oberfläche und Manifest beziehen ihn ausschließlich daraus. [`app.config.js`](../app.config.js) setzt denselben Wert in die Expo-Konfiguration, `app.json` führt keine Version mehr.
 
-**Vorschlag.** Die Version zur Laufzeit aus `expo-constants` lesen und alle fest eingetragenen Vorkommen entfernen.
+Eine Stelle bleibt notwendig getrennt: `versionName` in `android/app/build.gradle`. Der native Ordner ist eingecheckt und wird nur bei einem erneuten `expo prebuild` geschrieben. [`scripts/version.test.mjs`](../scripts/version.test.mjs) vergleicht beide Werte und bricht die CI ab, sobald sie auseinanderlaufen.
 
 ## 2. Was Nutzerinnen und Nutzer sofort bemerken
 
@@ -96,6 +96,6 @@ Es gibt keine Absturzberichterstattung. Nach einer Veröffentlichung bleibt unbe
 
 **Danach, als eigenständige Funktionen:** Löschen nach der Trennung aus Abschnitt 1.2 und der Export des gesamten Bestandes. Ohne diese beiden lässt sich die App für den ernsthaften Einsatz nur eingeschränkt empfehlen.
 
-**Zwingend vor der Einreichung:** der Verweis auf die Datenschutzerklärung innerhalb der App. Er lässt sich mit der Seite „Über DoiProof“ in einem Zug erledigen – zusammen mit der Version aus einer einzigen Quelle, der Lizenz und dem rechtlichen Hinweis, der heute in der Fußzeile unter dem Verlauf steht und dort zuletzt gelesen wird. Ebenfalls vorher: der eigene Startbildschirm.
+**Zwingend vor der Einreichung:** der Verweis auf die Datenschutzerklärung innerhalb der App. Er lässt sich mit der Seite „Über DoiProof“ in einem Zug erledigen – zusammen mit `APP_VERSION`, der Lizenz und dem rechtlichen Hinweis, der heute in der Fußzeile unter dem Verlauf steht und dort zuletzt gelesen wird. Ebenfalls vorher: der eigene Startbildschirm.
 
 Alle Änderungen folgen dem in [CONTRIBUTING.md](../CONTRIBUTING.md) festgelegten Ablauf; Änderungen am Manifest, an der Verankerung oder am Export ziehen die betroffenen Abschnitte der Dokumentation im selben Pull Request nach.
