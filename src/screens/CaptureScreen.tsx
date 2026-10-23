@@ -14,7 +14,6 @@ import { appSha256 } from '../platform';
 import { DEFAULT_SETTINGS, type AppSettings, type ReportSettings } from '../appSettings';
 import { loadSettings, saveSettings } from '../settings';
 import { mapNote, shareReport, verifyZip } from '../verifier';
-import { AboutCard } from '../components/AboutCard';
 import { colors, styles } from '../ui/styles';
 
 type Selected = {
@@ -431,7 +430,6 @@ export function CaptureScreen() {
           {record.manifest && <Pressable accessibilityRole="button" disabled={!!exportingId} style={[styles.secondary, !!exportingId && styles.disabled]} onPress={() => exportBundle(record)}><Text style={styles.secondaryText}>Beweispaket ZIP</Text></Pressable>}
         </View>
       </View>)}
-      <AboutCard />
       <Text style={styles.footer}>Das Foto wird nicht hochgeladen. Vorab-Blöcke, Sensorwerte und die selbst gemeldete App-Version sind Indizien für die Erstellung des Pakets, keine Attestierung der App oder der tatsächlichen Aufnahmezeit. Ein altes Foto könnte erneut verwendet werden. Belastbar ist die Verankerung erst nach Bestätigung in einem Doichain-Block.</Text>
     </ScrollView>
   );

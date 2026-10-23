@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CaptureScreen } from './src/screens/CaptureScreen';
 import { VerifyScreen } from './src/screens/VerifyScreen';
+import { AboutSheet } from './src/components/AboutSheet';
 import { styles } from './src/ui/styles';
 
 type Tab = 'capture' | 'verify';
@@ -14,6 +15,7 @@ export default function App() {
 
 function Root() {
   const [tab, setTab] = useState<Tab>('capture');
+  const [aboutVisible, setAboutVisible] = useState(false);
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
@@ -23,7 +25,14 @@ function Root() {
             <Text style={[styles.tabText, tab === id && styles.tabTextActive]}>{label}</Text>
           </Pressable>
         ))}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Über diese App, Datenschutz und Impressum"
+          style={styles.menu}
+          onPress={() => setAboutVisible(true)}
+        ><Text style={styles.menuGlyph}>⋮</Text></Pressable>
       </View>
+      <AboutSheet visible={aboutVisible} onClose={() => setAboutVisible(false)} />
       {/* Beide Ansichten bleiben eingehängt, damit Verlauf und Prüfergebnis beim Wechsel erhalten bleiben. */}
       <View style={{ flex: 1, display: tab === 'capture' ? 'flex' : 'none' }}><CaptureScreen /></View>
       <View style={{ flex: 1, display: tab === 'verify' ? 'flex' : 'none' }}><VerifyScreen /></View>
