@@ -11,6 +11,7 @@ import { createEvidence, LOCATION_SETTINGS, MetadataSettings, prepareCapture, PR
 import { bundleFileName, buildEvidenceBundle, preserveEvidencePhoto, shareEvidenceBundle } from '../bundle';
 import { getPreCaptureAnchors } from '../chainAnchors';
 import { appSha256 } from '../platform';
+import { DEFAULT_SETTINGS, type AppSettings, type ReportSettings } from '../appSettings';
 import { loadSettings, saveSettings } from '../settings';
 import { mapNote, shareReport, verifyZip } from '../verifier';
 import { AboutCard } from '../components/AboutCard';
@@ -49,20 +50,18 @@ function sensorSummary(manifest: Selected['manifest']): string | null {
 export function CaptureScreen() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [key, setKey] = useState('');
-  const [autoSend, setAutoSend] = useState(true);
-  const [usePreCaptureAnchors, setUsePreCaptureAnchors] = useState(true);
+  const [autoSend, setAutoSend] = useState(DEFAULT_SETTINGS.autoSend);
+  const [usePreCaptureAnchors, setUsePreCaptureAnchors] = useState(DEFAULT_SETTINGS.usePreCaptureAnchors);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [result, setResult] = useState<Proof | null>(null);
   const [history, setHistory] = useState<ProofRecord[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshingHistory, setRefreshingHistory] = useState(false);
-  const [metadata, setMetadata] = useState<MetadataSettings>(PRIVATE_SETTINGS);
-  const [reportPhoto, setReportPhoto] = useState(true);
-  const [reportLocation, setReportLocation] = useState(false);
-  const [reportMap, setReportMap] = useState(true);
-  const [reportOnline, setReportOnline] = useState(true);
+  const [metadata, setMetadata] = useState<MetadataSettings>(DEFAULT_SETTINGS.metadata);
+  const [report, setReport] = useState<ReportSettings>(DEFAULT_SETTINGS.report);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
   const historyRef = useRef<ProofRecord[]>([]);
   const refreshingRef = useRef(false);
 
@@ -120,13 +119,33 @@ export function CaptureScreen() {
   }, [refreshPending]);
 
   useEffect(() => {
-    loadSettings().then(settings => setAutoSend(settings.autoSend)).catch(() => { /* Voreinstellung bleibt */ });
+    loadSettings().then(settings => {
+      settingsRef.current = settings;
+      setAutoSend(settings.autoSend);
+      setUsePreCaptureAnchors(settings.usePreCaptureAnchors);
+      setMetadata(settings.metadata);
+      setReport(settings.report);
+    }).catch(() => { /* Voreinstellung bleibt */ });
   }, []);
 
-  function changeAutoSend(value: boolean) {
-    setAutoSend(value);
-    try { saveSettings({ autoSend: value }); }
+  /** Schreibt eine Änderung in den gespeicherten Stand fort. */
+  function persist(change: Partial<AppSettings>) {
+    settingsRef.current = { ...settingsRef.current, ...change };
+    try { saveSettings(settingsRef.current); }
     catch { setMessage('Die Einstellung gilt nur bis zum Schließen der App; sie konnte nicht gespeichert werden.'); }
+  }
+
+  function changeAutoSend(value: boolean) { setAutoSend(value); persist({ autoSend: value }); }
+
+  function changePreCaptureAnchors(value: boolean) { setUsePreCaptureAnchors(value); persist({ usePreCaptureAnchors: value }); }
+
+  /** Das Profil bestimmt, ob eine Aufnahme Standort und Sensoren bindet, und bleibt deshalb erhalten. */
+  function changeMetadata(value: MetadataSettings) { setMetadata(value); persist({ metadata: value }); }
+
+  function changeReport(change: Partial<ReportSettings>) {
+    const next = { ...settingsRef.current.report, ...change };
+    setReport(next);
+    persist({ report: next });
   }
 
   async function refreshQuota() {
@@ -267,11 +286,11 @@ export function CaptureScreen() {
     if (exportingId) return;
     try {
       setExportingId(record.id);
-      setMessage(reportOnline ? 'Beweispaket wird geprüft und online abgeglichen …' : 'Beweispaket wird geprüft …');
+      setMessage(report.online ? 'Beweispaket wird geprüft und online abgeglichen …' : 'Beweispaket wird geprüft …');
       const bytes = await buildEvidenceBundle(record);
-      const verification = await verifyZip(bytes, bundleFileName(record), reportOnline);
-      if (reportLocation && reportMap) setMessage('Kartenausschnitt wird geladen und PDF-Prüfbericht erstellt …');
-      const { mapStatus } = await shareReport(verification, { includePhoto: reportPhoto, includeLocation: reportLocation, includeMap: reportMap });
+      const verification = await verifyZip(bytes, bundleFileName(record), report.online);
+      if (report.location && report.map) setMessage('Kartenausschnitt wird geladen und PDF-Prüfbericht erstellt …');
+      const { mapStatus } = await shareReport(verification, { includePhoto: report.photo, includeLocation: report.location, includeMap: report.map });
       setMessage(`PDF-Prüfbericht wurde lokal gespeichert und im Teilen-Dialog angeboten.${mapNote(mapStatus)}`);
     } catch (error) {
       Alert.alert('Prüfbericht konnte nicht erstellt werden', error instanceof Error ? error.message : 'Unbekannter Fehler.');
@@ -307,15 +326,15 @@ export function CaptureScreen() {
       <View style={styles.card}>
         <Text style={styles.label}>Metadatenprofil</Text>
         <View style={styles.row}>
-          <Pressable style={metadata.profile === 'private' ? styles.button : styles.secondary} onPress={() => setMetadata(PRIVATE_SETTINGS)}><Text style={metadata.profile === 'private' ? styles.buttonText : styles.secondaryText}>Privat</Text></Pressable>
-          <Pressable style={metadata.profile === 'location' ? styles.button : styles.secondary} onPress={() => setMetadata(LOCATION_SETTINGS)}><Text style={metadata.profile === 'location' ? styles.buttonText : styles.secondaryText}>Standort & Sensoren</Text></Pressable>
-          <Pressable style={metadata.profile === 'custom' ? styles.button : styles.secondary} onPress={() => setMetadata({ ...metadata, profile: 'custom' })}><Text style={metadata.profile === 'custom' ? styles.buttonText : styles.secondaryText}>Individuell</Text></Pressable>
+          <Pressable style={metadata.profile === 'private' ? styles.button : styles.secondary} onPress={() => changeMetadata(PRIVATE_SETTINGS)}><Text style={metadata.profile === 'private' ? styles.buttonText : styles.secondaryText}>Privat</Text></Pressable>
+          <Pressable style={metadata.profile === 'location' ? styles.button : styles.secondary} onPress={() => changeMetadata(LOCATION_SETTINGS)}><Text style={metadata.profile === 'location' ? styles.buttonText : styles.secondaryText}>Standort & Sensoren</Text></Pressable>
+          <Pressable style={metadata.profile === 'custom' ? styles.button : styles.secondary} onPress={() => changeMetadata({ ...metadata, profile: 'custom' })}><Text style={metadata.profile === 'custom' ? styles.buttonText : styles.secondaryText}>Individuell</Text></Pressable>
         </View>
         {metadata.profile === 'custom' && <>
-          <View style={styles.switchRow}><Text style={styles.switchLabel}>GPS, Höhe und Genauigkeit</Text><Switch value={metadata.includeLocation} onValueChange={value => setMetadata(current => ({ ...current, includeLocation: value }))} /></View>
-          <View style={styles.switchRow}><Text style={styles.switchLabel}>Bewegung, Kompass, Luftdruck, Licht</Text><Switch value={metadata.includeSensors} onValueChange={value => setMetadata(current => ({ ...current, includeSensors: value }))} /></View>
-          <View style={styles.switchRow}><Text style={styles.switchLabel}>Bildformat und Abmessungen</Text><Switch value={metadata.includeImageDetails} onValueChange={value => setMetadata(current => ({ ...current, includeImageDetails: value }))} /></View>
-          <View style={styles.switchRow}><Text style={styles.switchLabel}>Betriebssystem und App-Version</Text><Switch value={metadata.includeDevice} onValueChange={value => setMetadata(current => ({ ...current, includeDevice: value }))} /></View>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>GPS, Höhe und Genauigkeit</Text><Switch value={metadata.includeLocation} onValueChange={value => changeMetadata({ ...metadata, includeLocation: value })} /></View>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>Bewegung, Kompass, Luftdruck, Licht</Text><Switch value={metadata.includeSensors} onValueChange={value => changeMetadata({ ...metadata, includeSensors: value })} /></View>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>Bildformat und Abmessungen</Text><Switch value={metadata.includeImageDetails} onValueChange={value => changeMetadata({ ...metadata, includeImageDetails: value })} /></View>
+          <View style={styles.switchRow}><Text style={styles.switchLabel}>Betriebssystem und App-Version</Text><Switch value={metadata.includeDevice} onValueChange={value => changeMetadata({ ...metadata, includeDevice: value })} /></View>
         </>}
         <Text style={styles.muted}>{metadata.includeLocation || metadata.includeSensors
           ? 'Standort und Sensorwerte (Beschleunigung, Gyroskop, Magnetfeld/Kompass, Luftdruck, Licht) werden während der Aufnahme lokal gemessen und durch den Hash gebunden. Nicht verfügbare oder verweigerte Sensoren werden ausdrücklich vermerkt. Auf der Blockchain stehen nur Hash und kurze Notiz (öffentlich, nicht löschbar).'
@@ -326,7 +345,7 @@ export function CaptureScreen() {
         <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => choose('library')} disabled={busy}><Text style={styles.secondaryText}>Foto wählen</Text></Pressable>
       </View>
       <View style={styles.card}>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>BTC- und Doichain-Block vor Kameraaufnahme</Text><Switch value={usePreCaptureAnchors} onValueChange={setUsePreCaptureAnchors} disabled={busy} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>BTC- und Doichain-Block vor Kameraaufnahme</Text><Switch value={usePreCaptureAnchors} onValueChange={changePreCaptureAnchors} disabled={busy} /></View>
         <Text style={styles.muted}>Standardmäßig aktiv. Bei Netzwerkfehlern startet die Kamera erst, wenn du es erneut versuchst oder diese Option ausschaltest. Gilt nicht für bereits gespeicherte Fotos.</Text>
       </View>
       {selected && <View style={styles.card}>
@@ -383,11 +402,11 @@ export function CaptureScreen() {
       </View>
       <View style={styles.card}>
         <Text style={styles.label}>PDF-Prüfbericht</Text>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>Kettenstatus online abgleichen</Text><Switch value={reportOnline} onValueChange={setReportOnline} /></View>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={reportPhoto} onValueChange={setReportPhoto} /></View>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={reportLocation} onValueChange={setReportLocation} /></View>
-        <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={reportLocation && reportMap} onValueChange={setReportMap} disabled={!reportLocation} /></View>
-        {reportLocation && reportMap && <Text style={styles.muted}>Lädt beim Erstellen Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei den Standort auf etwa 1 km genau und deine IP-Adresse.</Text>}
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Kettenstatus online abgleichen</Text><Switch value={report.online} onValueChange={value => changeReport({ online: value })} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Foto im Bericht</Text><Switch value={report.photo} onValueChange={value => changeReport({ photo: value })} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Standort im Bericht</Text><Switch value={report.location} onValueChange={value => changeReport({ location: value })} /></View>
+        <View style={styles.switchRow}><Text style={styles.switchLabel}>Kartenausschnitt (OpenStreetMap)</Text><Switch value={report.location && report.map} onValueChange={value => changeReport({ map: value })} disabled={!report.location} /></View>
+        {report.location && report.map && <Text style={styles.muted}>Lädt beim Erstellen Kartenkacheln von OpenStreetMap. Der Dienst sieht dabei den Standort auf etwa 1 km genau und deine IP-Adresse.</Text>}
         <Text style={styles.muted}>Der Prüfbericht entsteht mit derselben Prüflogik wie der Windows- und Kommandozeilen-Prüfer. Das vollständige ZIP-Beweispaket enthält immer Originalfoto und Manifest. Teile es nur bewusst mit vertrauenswürdigen Empfängern.</Text>
       </View>
       {!history.length && <Text style={styles.muted}>Noch keine Nachweise auf diesem Gerät gespeichert.</Text>}
