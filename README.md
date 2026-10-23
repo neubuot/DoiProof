@@ -1,5 +1,7 @@
 # DoiProof
 
+[![Doichain Seal](https://doi-api.sendlabs.de/seal/github/neubuot/DoiProof/seal.svg)](https://doi-api.sendlabs.de/seal/github/neubuot/DoiProof)
+
 DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die bei der Aufnahme gemessenen Angaben – Gerätezeit, Vorabblöcke von Bitcoin und Doichain, optional Standort sowie Bewegungs-, Kompass-, Luftdruck- und Lichtsensoren – lokal zu einem kryptografisch gebundenen Beweispaket verbindet. Auf der Doichain wird ausschließlich dessen SHA-256-Hash als Proof of Existence verankert.
 
 **Version 1.0.0.** App, Kommandozeilen-Prüfer und Windows-Prüfer nutzen denselben Prüf- und Berichtskern und erzeugen denselben PDF-Prüfbericht.
