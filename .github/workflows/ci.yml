@@ -11,9 +11,9 @@ permissions:
 
 jobs:
   typecheck:
-    name: TypeScript check
+    name: TypeScript, Tests und Android-Bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -28,5 +28,36 @@ jobs:
         run: npm run check
       - name: Run tests
         run: npm test
+      - name: Verify sample package and render PDF report
+        run: |
+          node -e "import('./scripts/fixtures/fixture.mjs').then(async f => { const b = await f.buildBundle(); require('fs').writeFileSync('/tmp/sample.zip', b.zipBytes); })"
+          npm run verify -- /tmp/sample.zip --pdf /tmp/sample-report.pdf --zeitzone Europe/Berlin
+          test -s /tmp/sample-report.pdf
       - name: Bundle Android JavaScript
         run: npx expo export --platform android --output-dir /tmp/doiproof-android-export
+      - name: Bundle iOS JavaScript
+        run: npx expo export --platform ios --output-dir /tmp/doiproof-ios-export
+
+  desktop:
+    name: Windows-Prüfer (Logik unter Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      - name: Install core dependencies
+        run: npm ci
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Test desktop integration
+        working-directory: desktop
+        run: npm test

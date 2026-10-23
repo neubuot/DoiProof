@@ -1,33 +1,34 @@
-import { createHash } from 'node:crypto';
-import JSZip from 'jszip';
-import { verifyLocal } from './verify.mjs';
+import { analyzeBundle } from './core/verify.mjs';
+import { nodeSha256 } from './core/node.mjs';
 
 const PREVIEW_LIMIT = 25 * 1024 * 1024;
-const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
+/** @param {Uint8Array} bytes */
 function imageMime(bytes) {
-  if (bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return 'image/jpeg';
-  if (bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
-  if (bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP') return 'image/webp';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if ([137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => bytes[i] === b)) return 'image/png';
+  if (String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP') return 'image/webp';
   return null;
 }
 
+/**
+ * Liefert Foto und vollständiges Manifest erst nach erneuter Prüfung desselben Pakets.
+ * @param {Uint8Array} zipBytes
+ * @param {string} expectedHash
+ */
 export async function evidenceDetails(zipBytes, expectedHash) {
   if (!/^[0-9a-f]{64}$/.test(expectedHash)) throw new Error('Ungültiger Paket-Hash.');
-  const local = await verifyLocal(zipBytes);
-  if (local.evidenceSha256 !== expectedHash) throw new Error('Die ZIP-Datei hat sich seit der Prüfung geändert. Bitte erneut prüfen.');
-  const zip = await JSZip.loadAsync(zipBytes);
-  const manifest = JSON.parse(await zip.file('manifest.json').async('string'));
-  const verification = JSON.parse(await zip.file('verification.json').async('string'));
-  const photo = await zip.file(local.photoFile).async('nodebuffer');
-  if (sha(photo) !== local.photoSha256) throw new Error('Fotodatei wurde verändert.');
+  const analysis = await analyzeBundle(zipBytes, { sha256: nodeSha256 });
+  if (!analysis.ok) throw new Error(analysis.error ?? 'Das Paket ist nicht unverändert.');
+  if (analysis.hashes.evidenceSha256 !== expectedHash) throw new Error('Die ZIP-Datei hat sich seit der Prüfung geändert. Bitte erneut prüfen.');
+  const photo = /** @type {Uint8Array} */ (analysis.photoBytes);
   const mime = photo.length <= PREVIEW_LIMIT ? imageMime(photo) : null;
   return {
-    manifest,
-    verification,
-    photoFile: local.photoFile,
+    manifest: analysis.manifest,
+    verification: analysis.verification,
+    photoFile: analysis.photoFile,
     photoBytes: photo.length,
-    photoPreview: mime ? `data:${mime};base64,${photo.toString('base64')}` : null,
+    photoPreview: mime ? `data:${mime};base64,${Buffer.from(photo).toString('base64')}` : null,
     previewReason: photo.length > PREVIEW_LIMIT
       ? 'Das Foto ist größer als 25 MiB; die Vorschau wurde aus Speichergründen ausgelassen.'
       : mime ? null : 'Dieses Bildformat kann die Vorschau nicht sicher darstellen.',

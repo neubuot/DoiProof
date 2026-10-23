@@ -4,7 +4,30 @@ dist/
 web-build/
 *.log
 desktop/verify.mjs
+desktop/core/
+desktop/fonts/
 desktop/dist/
 desktop/preview.png
 .env*
 !.env.example
+# Signatur- und Zugangsdaten gehören nie ins Repository (öffentlich!)
+credentials.json
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.pem
+google-services.json
+# Google-Play-Dienstkonto (JSON-Schlüssel für eas submit) – nur in EAS hinterlegen
+*service-account*.json
+pc-api-*.json
+GoogleService-Info.plist
+# Lokale Native-Projekte (Prebuild) und Testdaten
+/android/
+/ios/
+.scratch/
+# Beweispakete und Prüfberichte enthalten Fotos und Standorte
+*.zip
+*.pdf
+!docs/design/*.pdf

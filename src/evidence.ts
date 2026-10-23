@@ -1,70 +1,78 @@
-import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
+import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
-import { EvidenceManifest, EvidenceProfile, PreCaptureAnchors } from './proofRecord';
-import { isValidPreCaptureAnchors } from './chainAnchors';
+import { VERSION } from '../core/version.mjs';
+import buildInfo from './buildInfo.json';
+import { buildManifestV3, sealManifest, type Evidence, type ImageDetails, type MetadataSettings } from './evidenceManifest';
+import { appSha256 } from './platform';
+import type { EvidenceManifest, LocationRecord, PreCaptureAnchors } from './proofRecord';
+import { startDeviceSensorSession, type SensorSession } from './sensors';
 
-export type MetadataSettings = {
-  profile: EvidenceProfile;
-  includeLocation: boolean;
-  includeImageDetails: boolean;
-  includeDevice: boolean;
+export { LOCATION_SETTINGS, PRIVATE_SETTINGS } from './evidenceManifest';
+export type { Evidence, ImageDetails, MetadataSettings } from './evidenceManifest';
+
+export type CapturePreparation = {
+  locationPermission: 'granted' | 'denied' | 'not_requested';
+  sensors?: SensorSession;
 };
 
-export type ImageDetails = {
-  width?: number;
-  height?: number;
-  fileSize?: number;
-  mimeType?: string;
-  fileName?: string;
-};
+const COMMIT = /^[0-9a-f]{40}$/;
 
-export type Evidence = {
-  manifest: EvidenceManifest;
-  manifestSha256: string;
-  evidenceSha256: string;
-};
-
-export const PRIVATE_SETTINGS: MetadataSettings = {
-  profile: 'private', includeLocation: false, includeImageDetails: false, includeDevice: false,
-};
-
-export const LOCATION_SETTINGS: MetadataSettings = {
-  profile: 'location', includeLocation: true, includeImageDetails: true, includeDevice: true,
-};
-
-export function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .filter(([, item]) => item !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
-  }
-  return JSON.stringify(value);
+/** App-Kennung als nicht attestierte Selbstauskunft (Version, Commit, Update-Kanal). */
+export function appIdentity(): NonNullable<EvidenceManifest['app']> {
+  const commit = process.env.EXPO_PUBLIC_SOURCE_COMMIT || buildInfo.sourceCommit || '';
+  return {
+    version: VERSION,
+    ...(COMMIT.test(commit) ? { sourceCommit: commit } : {}),
+    identification: 'self-reported-unattested',
+    ...(Updates.isEnabled ? {
+      update: {
+        channel: Updates.channel ?? null,
+        runtimeVersion: Updates.runtimeVersion ?? null,
+        updateId: Updates.updateId ?? null,
+        embedded: Updates.isEmbeddedLaunch,
+      },
+    } : {}),
+  };
 }
 
-async function sha256Text(value: string): Promise<string> {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, value);
+function deviceInfo(): NonNullable<EvidenceManifest['device']> {
+  const constants = Platform.constants as unknown as Record<string, unknown>;
+  const model = Platform.OS === 'android' && typeof constants.Model === 'string'
+    ? `${typeof constants.Manufacturer === 'string' ? `${constants.Manufacturer} ` : ''}${constants.Model}`.slice(0, 80) : undefined;
+  const osRelease = Platform.OS === 'android' && typeof constants.Release === 'string' ? constants.Release.slice(0, 20) : undefined;
+  return { platform: Platform.OS, osVersion: Platform.Version, ...(osRelease ? { osRelease } : {}), appVersion: VERSION, ...(model ? { model } : {}) };
 }
 
-export async function createEvidence(
-  photoSha256: string,
-  source: 'camera' | 'library',
-  capturedAt: string | undefined,
-  image: ImageDetails,
-  settings: MetadataSettings,
-  preCapture?: PreCaptureAnchors,
-): Promise<Evidence> {
-  if (source === 'camera' && preCapture && !isValidPreCaptureAnchors(preCapture)) {
-    throw new Error('Vorab-Blöcke sind ungültig.');
-  }
-  let location: EvidenceManifest['location'];
+/**
+ * Vor dem Öffnen der Kamera: Standortfreigabe einholen und Sensoren starten. Eine verweigerte
+ * Freigabe bricht die Aufnahme nicht mehr ab, sondern wird im Manifest vermerkt.
+ */
+export async function prepareCapture(settings: MetadataSettings, source: 'camera' | 'library'): Promise<CapturePreparation> {
+  let locationPermission: CapturePreparation['locationPermission'] = 'not_requested';
   if (settings.includeLocation) {
     const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) throw new Error('Standortzugriff wurde nicht erlaubt. Bitte Profil „Privat“ wählen oder den Zugriff erlauben.');
-    const fix = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    location = {
+    locationPermission = permission.granted ? 'granted' : 'denied';
+  }
+  const sensors = settings.includeSensors && source === 'camera' ? await startDeviceSensorSession() : undefined;
+  return { locationPermission, sensors };
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
+}
+
+async function measureLocation(permission: CapturePreparation['locationPermission']): Promise<LocationRecord> {
+  if (permission === 'not_requested') return { status: 'not_requested' };
+  if (permission === 'denied') return { status: 'permission_denied', reason: 'Die Standortfreigabe wurde verweigert.' };
+  try {
+    const fix = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), 20000,
+      'Kein Standort innerhalb von 20 Sekunden.');
+    return {
+      status: 'recorded',
       latitude: fix.coords.latitude,
       longitude: fix.coords.longitude,
       altitude: fix.coords.altitude,
@@ -75,31 +83,38 @@ export async function createEvidence(
       measuredAt: new Date(fix.timestamp).toISOString(),
       mocked: fix.mocked,
     };
+  } catch (error) {
+    return { status: 'unavailable', reason: error instanceof Error ? error.message.slice(0, 160) : 'Standort nicht verfügbar.' };
   }
-  const manifest: EvidenceManifest = {
-    schema: 'org.doichain.doiproof.evidence/v2',
+}
+
+export async function createEvidence(input: {
+  photoSha256: string;
+  source: 'camera' | 'library';
+  capturedAt?: string;
+  cameraOpenedAt?: string;
+  image: ImageDetails;
+  settings: MetadataSettings;
+  preCapture?: PreCaptureAnchors;
+  preparation: CapturePreparation;
+}): Promise<Evidence> {
+  const [location, sensors] = await Promise.all([
+    measureLocation(input.preparation.locationPermission),
+    input.preparation.sensors?.finish(),
+  ]);
+  const manifest = buildManifestV3({
     createdAt: new Date().toISOString(),
-    profile: settings.profile,
-    preCapture: source === 'camera' ? preCapture : undefined,
-    app: {
-      version: '0.5.0',
-      ...(process.env.EXPO_PUBLIC_SOURCE_COMMIT && /^[0-9a-f]{40}$/.test(process.env.EXPO_PUBLIC_SOURCE_COMMIT)
-        ? { sourceCommit: process.env.EXPO_PUBLIC_SOURCE_COMMIT } : {}),
-      identification: 'self-reported-unattested',
-    },
-    photo: {
-      sha256: photoSha256,
-      ...(settings.includeImageDetails ? image : {}),
-    },
-    capture: { deviceTime: capturedAt, source },
+    settings: input.settings,
+    photoSha256: input.photoSha256,
+    image: input.image,
+    source: input.source,
+    capturedAt: input.capturedAt,
+    cameraOpenedAt: input.cameraOpenedAt,
+    preCapture: input.preCapture,
+    app: appIdentity(),
+    device: deviceInfo(),
     location,
-    device: settings.includeDevice ? {
-      platform: Platform.OS,
-      osVersion: Platform.Version,
-      appVersion: '0.5.0',
-    } : undefined,
-  };
-  const manifestSha256 = await sha256Text(canonicalJson(manifest));
-  const evidenceSha256 = await sha256Text(`DoiProof:v2\nphoto:${photoSha256}\nmanifest:${manifestSha256}`);
-  return { manifest, manifestSha256, evidenceSha256 };
+    sensors,
+  });
+  return sealManifest(manifest, appSha256);
 }
