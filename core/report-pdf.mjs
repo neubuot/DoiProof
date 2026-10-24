@@ -64,6 +64,10 @@ class Canvas {
     this.pages = [];
     /** @type {Page} */
     this.page = /** @type {any} */ (null);
+    /** Abweichende erste Fußzeile je Seitenindex (Anhang Plausibilität). @type {Map<number, string>} */
+    this.sectionFooters = new Map();
+    /** Seitenindex, ab dem der Anhang „Alle erhobenen Messwerte“ beginnt. */
+    this.appendixStart = 2;
   }
 
   addPage() {
@@ -575,7 +579,8 @@ function drawQr(cv, url, x, top, size) {
 /**
  * Tabelle mit Seitenumbruch und wiederholtem Kopf.
  * @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow
- * @param {Column[]} columns @param {string[][]} rows @param {{ highlight?: (index: number) => boolean }} [options]
+ * @param {Column[]} columns @param {string[][]} rows
+ * @param {{ highlight?: (index: number) => boolean, cellStyle?: (row: number, column: number) => { color?: Color, font?: Font, size?: number } | undefined }} [options]
  */
 function table(cv, flow, columns, rows, options = {}) {
   const f = cv.f;
@@ -585,12 +590,13 @@ function table(cv, flow, columns, rows, options = {}) {
   const headerH = 18;
   const fontOf = (/** @type {Column} */ col) => (col.font === 'mono' ? f.mono : col.font === 'sansBold' ? f.sansBold : f.sans);
   const sizeOf = (/** @type {Column} */ col) => col.size ?? (col.font === 'mono' ? 6.6 : 7.4);
-  const laid = rows.map(cells => {
+  const laid = rows.map((cells, rowIndex) => {
     const lines = cells.map((cell, i) => {
       const col = columns[i];
-      const font = /^[0-9a-f]{64}$/.test(cell) ? f.mono : fontOf(col);
-      const size = /^[0-9a-f]{64}$/.test(cell) ? 6.6 : sizeOf(col);
-      return { lines: cv.wrap(cell, font, size, col.width - 2 * pad), font, size };
+      const style = options.cellStyle?.(rowIndex, i);
+      const font = style?.font ?? (/^[0-9a-f]{64}$/.test(cell) ? f.mono : fontOf(col));
+      const size = style?.size ?? (/^[0-9a-f]{64}$/.test(cell) ? 6.6 : sizeOf(col));
+      return { lines: cv.wrap(cell, font, size, col.width - 2 * pad), font, size, color: style?.color };
     });
     const h = Math.max(...lines.map(l => l.lines.length)) * lh + 2 * pad + 1;
     return { lines, h };
@@ -618,7 +624,7 @@ function table(cv, flow, columns, rows, options = {}) {
       let cx = M;
       row.lines.forEach((cell, i) => {
         const col = columns[i];
-        cell.lines.forEach((line, li) => cv.text(line, cx + pad + 2, y + pad + 7 + li * lh, { font: cell.font, size: cell.size, color: col.color ?? C.text }));
+        cell.lines.forEach((line, li) => cv.text(line, cx + pad + 2, y + pad + 7 + li * lh, { font: cell.font, size: cell.size, color: cell.color ?? col.color ?? C.text }));
         cx += col.width;
       });
       y += row.h;
@@ -711,6 +717,7 @@ function appendix(cv, model, images) {
   const f = cv.f;
   const startPage = () => { cv.addPage(); header(cv, model, false); return 72; };
   const flow = { y: startPage(), newPage: startPage };
+  cv.appendixStart = cv.pages.length - 1;
   cv.text('Anhang: Alle erhobenen Messwerte', M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
   const intro = cv.wrap(`Jede im Manifest ${model.appendix.version} gebundene Angabe, gruppiert nach Quelle. Die Werte stammen vom Gerät und sind inhaltlich nicht unabhängig belegt; jede nachträgliche Änderung hätte aber den Manifest-Hash gebrochen. Nicht erhobene Sensoren sind ausdrücklich aufgeführt. Messreihen sind als Minimum, Maximum, Mittelwert und Anzahl zusammengefasst; Anhang B listet jede Einzelmessung.`, f.sans, 8.6, CONTENT_W, 0.1);
   intro.forEach((line, i) => cv.text(line, M, flow.y + 30 + i * 12, { font: f.sans, size: 8.6, color: C.text2, spacing: 0.1 }));
@@ -761,6 +768,226 @@ function appendix(cv, model, images) {
   }
 }
 
+// ---------- Anhang: Plausibilität gegen Referenzdaten ----------
+
+const LEVEL_COLOR = /** @type {Record<string, () => Color>} */ ({
+  stark: () => C.petrol, stimmig: () => C.banner, intern: () => C.text2, auffaellig: () => C.terra, offen: () => C.text3, widerspruch: () => C.red,
+});
+const LEVEL_LABEL = /** @type {Record<string, string>} */ ({ stark: 'stark', stimmig: 'stimmig', intern: 'intern', auffaellig: 'auffällig', offen: 'offen', widerspruch: 'Widerspruch' });
+const FLOW_BOTTOM = 776;
+
+/**
+ * Absatz im Fließtextbereich mit Seitenumbruch zwischen den Zeilen.
+ * @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow @param {string} text
+ * @param {{ font?: Font, size?: number, color?: Color, lh?: number, spacing?: number, x?: number, width?: number, after?: number }} [o]
+ */
+function flowText(cv, flow, text, o = {}) {
+  const font = o.font ?? cv.f.sans; const size = o.size ?? 8.6; const lh = o.lh ?? 12; const x = o.x ?? M; const width = o.width ?? CONTENT_W;
+  const lines = cv.wrap(text, font, size, width, o.spacing ?? 0.1);
+  // Kurze Absätze bleiben zusammen, lange dürfen umbrechen
+  if (lines.length <= 6 && flow.y + lines.length * lh > FLOW_BOTTOM) flow.y = flow.newPage();
+  for (const line of lines) {
+    if (flow.y + lh > FLOW_BOTTOM) flow.y = flow.newPage();
+    cv.text(line, x, flow.y + size, { font, size, color: o.color ?? C.text2, spacing: o.spacing ?? 0.1 });
+    flow.y += lh;
+  }
+  flow.y += o.after ?? 6;
+}
+
+/** Zwischenüberschrift; wandert mit den ersten Zeilen des Folgetexts auf eine neue Seite. @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow @param {string} text @param {number} [size] */
+function flowHeading(cv, flow, text, size = 13.5) {
+  if (flow.y + size + 60 > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.text(text, M, flow.y + size, { font: cv.f.serif, size, color: C.banner });
+  flow.y += size + 10;
+}
+
+/** Hinweiskasten in Sandfarbe. @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow @param {string} text @param {{ accent?: boolean }} [o] */
+function flowNote(cv, flow, text, o = {}) {
+  const f = cv.f;
+  const lines = cv.wrap(text, f.sans, 8.25, CONTENT_W - 24, 0.1);
+  const h = 14 + lines.length * 11.5;
+  if (flow.y + h > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.rect(M + 0.4, flow.y, CONTENT_W - 0.8, h, { fill: o.accent ? C.warnBg : C.sand, stroke: o.accent ? C.terra : C.line, width: 0.75, r: 6 });
+  lines.forEach((line, i) => cv.text(line, M + 12, flow.y + 15.5 + i * 11.5, { font: f.sans, size: 8.25, color: o.accent ? C.terra : C.text2, spacing: 0.1 }));
+  flow.y += h + 12;
+}
+
+/** @param {Canvas} cv @param {any} model */
+function plausibilityPages(cv, model) {
+  const f = cv.f;
+  const p = model.plausibility;
+  const startPage = () => { cv.addPage(); header(cv, model, false); cv.sectionFooters.set(cv.pages.length - 1, p.footer); return 72; };
+  const flow = { y: startPage(), newPage: startPage };
+  /** @type {Column[]} */
+  const findingColumns = [
+    { title: 'Angabe', width: 86, font: 'sansBold' },
+    { title: 'Sensorwert', width: 106, size: 7.2 },
+    { title: 'Referenz', width: 148, color: C.text2, size: 7 },
+    { title: 'Abgleich', width: 126, color: C.text2, size: 7 },
+    { title: 'Wertung', width: CONTENT_W - 466 },
+  ];
+  /** Wertungsspalte fett in der Stufenfarbe. @param {any[]} findings */
+  const levelStyle = (/** @type {any[]} */ findings) => (/** @type {number} */ row, /** @type {number} */ column) => (column === 4 ? { font: f.sansBold, size: 7.4, color: LEVEL_COLOR[findings[row].level]?.() ?? C.text } : undefined);
+
+  // Titel
+  cv.text(p.title, M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
+  cv.text(p.subtitle, M, flow.y + 28, { font: f.sans, size: 9.38, color: C.text2, spacing: 0.12 });
+  flow.y += 40;
+
+  // Banner
+  const theme = p.tone === 'passed'
+    ? { bg: C.banner, eyebrow: C.bannerItalic, title: C.bannerTitle, body: C.bannerText }
+    : p.tone === 'incomplete' ? { bg: C.sand, eyebrow: C.terra, title: C.banner, body: C.text2 }
+      : { bg: C.redBanner, eyebrow: C.redAccent, title: c('#fdf3ef'), body: C.redText };
+  const sentenceLines = cv.wrap(p.sentence, f.serif, 15, CONTENT_W - 40);
+  const detailLines = cv.wrap(p.detail, f.sans, 9, CONTENT_W - 40, 0.12);
+  const bannerH = 34 + sentenceLines.length * 19 + detailLines.length * 12.5 + 8;
+  cv.rect(M, flow.y, CONTENT_W, bannerH, { fill: theme.bg, r: 12 });
+  cv.text(p.bannerEyebrow, M + 20, flow.y + 21, { font: f.sansBold, size: 8.25, color: theme.eyebrow, spacing: 1.62 });
+  sentenceLines.forEach((line, i) => cv.text(line, M + 20, flow.y + 42 + i * 19, { font: f.serif, size: 15, color: theme.title }));
+  detailLines.forEach((line, i) => cv.text(line, M + 20, flow.y + 42 + sentenceLines.length * 19 + 2 + i * 12.5, { font: f.sans, size: 9, color: theme.body, spacing: 0.12 }));
+  flow.y += bannerH + 16;
+
+  // Gegenstand und Abgrenzung
+  const colW = (CONTENT_W - 14) / 2;
+  const glance = /** @type {{ label: string, value: string, sub?: string }[]} */ (model.glance);
+  const pick = (/** @type {string} */ label) => glance.find(row => row.label === label);
+  /** @type {[string, string][]} */
+  const subject = [
+    ['Prüfbericht', `Nr. ${model.number}, Manifest ${model.meta.version}, Kette ${model.outcome === 'passed' ? 'bestanden' : model.outcome === 'incomplete' ? 'unvollständig' : 'mit Widerspruch'}`],
+    ['Aufnahme', `${pick('Aufgenommen')?.value ?? 'unbekannt'}${pick('Aufgenommen')?.sub ? `, ${pick('Aufgenommen')?.sub}` : ''}`],
+    ['Ort', `${pick('Ort')?.value ?? 'nicht erfasst'}${pick('Ort')?.sub ? `, ${pick('Ort')?.sub}` : ''}`],
+    ['Gerät', pick('Gerät')?.value ?? '–'],
+    ['Frage', 'Passen die vom Gerät gemeldeten Werte zu dem, was unabhängige Quellen für diesen Ort und diese Zeit ausweisen?'],
+  ];
+  const subjectLines = subject.map(([label, value]) => ({ label, lines: cv.wrap(value, f.sans, 8.25, colW - 86, 0.1) }));
+  const subjectH = 30 + subjectLines.reduce((sum, row) => sum + Math.max(1, row.lines.length) * 11 + 4, 0);
+  const scopeLines = cv.wrap(p.scope, f.sans, 8.25, colW - 24, 0.1);
+  const scopeH = 30 + scopeLines.length * 11.5 + 6;
+  const boxH = Math.max(subjectH, scopeH);
+  if (flow.y + boxH > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.rect(M + 0.4, flow.y, colW - 0.8, boxH, { fill: C.white, stroke: C.line, width: 0.75, r: 9 });
+  cv.rect(M + colW + 14, flow.y, colW, boxH, { fill: C.petrolLight, r: 9 });
+  cv.text('Gegenstand', M + 12, flow.y + 19, { font: f.sansBold, size: 10.12, color: C.banner, spacing: 0.12 });
+  cv.text('Abgrenzung', M + colW + 26, flow.y + 19, { font: f.sansBold, size: 10.12, color: C.banner, spacing: 0.12 });
+  let y = flow.y + 36;
+  for (const row of subjectLines) {
+    cv.text(row.label, M + 12, y, { font: f.sans, size: 8.25, color: C.text3, spacing: 0.1 });
+    row.lines.forEach((line, i) => cv.text(line, M + 86, y + i * 11, { font: f.sans, size: 8.25, color: C.text, spacing: 0.1 }));
+    y += Math.max(1, row.lines.length) * 11 + 4;
+  }
+  scopeLines.forEach((line, i) => cv.text(line, M + colW + 26, flow.y + 36 + i * 11.5, { font: f.sans, size: 8.25, color: C.boxText, spacing: 0.1 }));
+  flow.y += boxH + 16;
+
+  // Was die Indizien zeigen
+  if (flow.y + 120 > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.text('Was die Indizien zeigen', M, flow.y + 15, { font: f.serif, size: 15, color: C.banner });
+  cv.rect(386.2, flow.y + 6, 7.5, 7.5, { fill: C.petrol, r: 2.2 });
+  cv.text('eng bestätigt', 398.2, flow.y + 12.7, { font: f.sans, size: 8.25, color: C.text2, spacing: 0.12 });
+  cv.rect(468.6, flow.y + 6.4, 6.8, 6.8, { stroke: C.terra, width: 0.75, r: 2 });
+  cv.text('stimmig oder offen', 480.2, flow.y + 12.7, { font: f.sans, size: 8.25, color: C.text2, spacing: 0.12 });
+  flow.y += 26;
+  const tiles = /** @type {any[]} */ (p.overview);
+  const icon = (/** @type {string} */ kind) => (kind === 'failed' ? 'cross' : kind === 'proof' || kind === 'hint' ? 'check' : 'minus');
+  for (let i = 0; i < tiles.length; i += 2) {
+    const pair = tiles.slice(i, i + 2);
+    const wrapped = pair.map(tile => cv.wrap(tile.text, f.sans, 8.6, 210, 0.12));
+    const h = 44 + (Math.max(...wrapped.map(w => w.length)) - 1) * 12;
+    if (flow.y + h > FLOW_BOTTOM) flow.y = flow.newPage();
+    pair.forEach((tile, k) => drawTile(cv, { ...tile, icon: icon(tile.kind) }, k === 0 ? M : 301.5, flow.y, 258, h, wrapped[k], 8.6));
+    flow.y += h + 7.6;
+  }
+  flow.y += 4;
+  flowText(cv, flow, 'Gefüllte Kacheln: mindestens ein Indiz der Gruppe mit unabhängiger Referenzquelle und enger Übereinstimmung. Umrandete Kacheln: stimmig, intern konsistent oder offen. Rot: Widerspruch zu einer Referenz.', { size: 8.25, color: C.text3, lh: 11 });
+
+  // Methodik
+  flowHeading(cv, flow, 'Methodik', 15);
+  flowText(cv, flow, p.method);
+  flowHeading(cv, flow, 'Bewertungsskala', 12);
+  table(cv, flow, [{ title: 'Stufe', width: 80, font: 'sansBold' }, { title: 'Bedeutung', width: CONTENT_W - 80, color: C.text2 }],
+    p.legend.map((/** @type {any} */ row) => [LEVEL_LABEL[row.level], row.explanation]),
+    { cellStyle: (row, column) => (column === 0 ? { font: f.sansBold, size: 7.6, color: LEVEL_COLOR[p.legend[row].level]?.() ?? C.text } : undefined) });
+  flowText(cv, flow, p.legendNote, { size: 8.25, color: C.text3, lh: 11 });
+
+  // Zeitstrahl
+  const t = p.timeline;
+  const timelineH = 100 + (t.note ? cv.wrap(t.note, f.sans, 8.25, CONTENT_W - 32, 0.1).length * 11 : 0);
+  if (flow.y + timelineH + 24 > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.text('Zeitlich eingeschlossen', M, flow.y + 12, { font: f.serif, size: 12, color: C.banner });
+  flow.y += 20;
+  const tTop = flow.y;
+  cv.rect(M, tTop, CONTENT_W, timelineH, { fill: C.sand, r: 10.5 });
+  cv.text(t.zone, RIGHT - 16, tTop + 20, { font: f.sans, size: 8.25, color: C.text3, align: 'right', spacing: 0.12 });
+  cv.hline(58.5, tTop + 36, 537, C.timelineLine, 1.5);
+  const dotY = tTop + 36.8;
+  cv.circle(58.5, dotY, 5, { fill: t.earliest.time === '–' ? C.bg : C.terra, stroke: C.terra, width: 2 });
+  cv.circle(297.75, dotY, 3.75, { fill: C.bg, stroke: C.banner, width: 2.25 });
+  cv.circle(537, dotY, 5, { fill: t.sealed.time === '–' ? C.bg : C.petrol, stroke: C.petrol, width: 2 });
+  const lab = { font: f.sansBold, size: 9.38, color: C.text, spacing: 0.35 };
+  const sub = { font: f.sans, size: 8.25, color: C.sub, spacing: 0.15 };
+  cv.text(t.earliest.time, 52.5, tTop + 56, lab); cv.text(t.earliest.label, 52.5, tTop + 68, sub); cv.text(t.earliest.sub, 52.5, tTop + 79, sub);
+  cv.text(t.capture.time, 297.75, tTop + 56, { ...lab, align: 'center' }); cv.text(t.capture.label, 297.75, tTop + 68, { ...sub, align: 'center' }); cv.text(t.capture.sub, 297.75, tTop + 79, { ...sub, align: 'center' });
+  cv.text(t.sealed.time, 542.6, tTop + 56, { ...lab, align: 'right' }); cv.text(t.sealed.label, 543, tTop + 68, { ...sub, align: 'right' }); cv.text(t.sealed.sub, 543, tTop + 79, { ...sub, align: 'right' });
+  if (t.note) cv.wrap(t.note, f.sans, 8.25, CONTENT_W - 32, 0.1).forEach((line, i) => cv.text(line, M + 16, tTop + 96 + i * 11, { font: f.sans, size: 8.25, color: C.text3, spacing: 0.1 }));
+  flow.y = tTop + timelineH + 16;
+
+  if (p.android) {
+    flowHeading(cv, flow, 'Lesehinweis zu Android', 12);
+    flowText(cv, flow, p.notes[0]);
+  }
+
+  // Referenzquellen
+  flowHeading(cv, flow, 'Referenzquellen und Abfragen', 12);
+  table(cv, flow, [{ title: 'Quelle', width: 140, font: 'sansBold' }, { title: 'Liefert', width: 283, color: C.text2 }, { title: 'Abfrage', width: CONTENT_W - 423, color: C.text2 }],
+    p.sources.map((/** @type {any} */ row) => [row.source, row.provides, row.queried]));
+  flowText(cv, flow, 'Die genauen Abfragen und Formeln stehen im Abschnitt „Reproduzierbarkeit“, damit jede Zahl dieses Anhangs nachgerechnet werden kann. Alle Referenzwerte sind Modell- oder Näherungswerte.', { size: 8.25, color: C.text3, lh: 11 });
+
+  // Indizien im Einzelnen
+  flow.y = flow.newPage();
+  cv.text('Indizien im Einzelnen', M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
+  flow.y += 30;
+  p.groups.forEach((/** @type {any} */ group, /** @type {number} */ index) => {
+    flowHeading(cv, flow, `${index + 1} · ${group.title}`, 12);
+    table(cv, flow, findingColumns, group.findings.map((/** @type {any} */ row) => [row.label, row.sensor, row.reference, row.comparison, LEVEL_LABEL[row.level] ?? row.level]), { cellStyle: levelStyle(group.findings) });
+    if (group.weight) { flow.y -= 6; flowText(cv, flow, group.weight, { size: 8.25, color: C.text3, lh: 11, after: 12 }); }
+  });
+
+  // Gesamtwürdigung
+  flow.y = flow.newPage();
+  cv.text('Gesamtwürdigung', M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
+  flow.y += 30;
+  const counts = model.plausibility.detail;
+  flowText(cv, flow, `${p.tone === 'failed' ? 'Mindestens ein Indiz widerspricht den Referenzdaten.' : 'Die Indizien sind nicht nur einzeln stimmig, sie beschreiben unabhängig voneinander denselben Ort zur selben Stunde.'} ${counts} Die folgende Gegenüberstellung prüft, welche Erklärungen außer der angegebenen Aufnahme übrig bleiben.`);
+  table(cv, flow, [{ title: 'Hypothese', width: 120, font: 'sansBold', size: 7.2 }, { title: 'Was dagegen spricht', width: 170, color: C.text2 }, { title: 'Was offen bleibt', width: 160, color: C.text2 }, { title: 'Einschätzung', width: CONTENT_W - 450 }],
+    p.hypotheses.map((/** @type {any} */ h) => [`${h.id} · ${h.title}`, h.against, h.open, h.verdict]),
+    { cellStyle: (row, column) => (column === 3 ? { font: f.sansBold, size: 7.4, color: /zweifelhaft|möglich \(/.test(p.hypotheses[row].verdict) ? C.red : /^(sehr wahrscheinlich|wahrscheinlich|unwahrscheinlich)/.test(p.hypotheses[row].verdict) ? C.petrol : C.terra } : undefined) });
+  flowHeading(cv, flow, 'Einschätzung', 12);
+  flowText(cv, flow, p.assessment, { size: 9, lh: 13, color: C.text });
+  // Belegt / belegt nicht
+  const left = cv.wrap(p.proves, f.sans, 9, 233, 0.12);
+  const right = cv.wrap(p.provesNot, f.sans, 9, 233, 0.12);
+  const bh = Math.max(94.5, 36.3 + Math.max(left.length, right.length) * 13.5);
+  if (flow.y + bh > FLOW_BOTTOM) flow.y = flow.newPage();
+  const bTop = flow.y;
+  cv.rect(M, bTop, 257.2, bh, { fill: p.tone === 'failed' ? C.redBg : C.petrolLight, r: 9 });
+  cv.rect(302.6, bTop + 0.4, 256.5, bh - 0.8, { stroke: C.line, width: 0.75, r: 9 });
+  cv.text('Dieser Anhang belegt', 48, bTop + 21, { font: f.sansBold, size: 10.12, color: p.tone === 'failed' ? C.red : C.banner, spacing: 0.12 });
+  cv.text('Dieser Anhang belegt nicht', 315, bTop + 21.7, { font: f.sansBold, size: 10.12, color: C.terra, spacing: 0.12 });
+  left.forEach((line, i) => cv.text(line, 48, bTop + 38.3 + i * 13.5, { font: f.sans, size: 9, color: C.boxText, spacing: 0.12 }));
+  right.forEach((line, i) => cv.text(line, 315, bTop + 39 + i * 13.5, { font: f.sans, size: 9, color: C.boxText, spacing: 0.12 }));
+  flow.y = bTop + bh + 16;
+
+  // Reproduzierbarkeit
+  flow.y = flow.newPage();
+  cv.text('Reproduzierbarkeit', M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
+  flow.y += 30;
+  flowText(cv, flow, `Jede Zahl dieses Anhangs lässt sich mit den folgenden Abfragen und Formeln nachrechnen. Alle Dienste sind öffentlich und ohne Anmeldung erreichbar. Modelldaten können bei späterer Abfrage geringfügig abweichen (Reanalyse statt Analyse). ${p.queriedText}.`);
+  table(cv, flow, [{ title: 'Schritt', width: 110, font: 'sansBold' }, { title: 'Abfrage oder Rechnung', width: 283, font: 'mono', color: C.text2 }, { title: 'Ergebnis', width: CONTENT_W - 393, color: C.text }],
+    p.repro.map((/** @type {any} */ row) => [row.step, row.how, row.result]));
+  flowHeading(cv, flow, 'Hinweise', 12);
+  for (const note of p.notes.slice(p.android ? 1 : 0)) flowText(cv, flow, note, { size: 8.25, color: C.text2, lh: 11.5, after: 4 });
+}
+
 /** @param {Canvas} cv @param {any} model */
 function footers(cv, model) {
   const f = cv.f;
@@ -771,12 +998,14 @@ function footers(cv, model) {
     const style = { font: f.sans, size: 8.25, color: C.text3, spacing: 0.12 };
     if (i === 0) {
       cv.hline(M, 799.5, RIGHT, C.line);
-      const more = model.locationMap?.tiles && !model.locationMap.unavailable ? 'Karte und alle Messwerte ab Seite 3' : 'alle Messwerte ab Seite 3';
-      const first = total > 2 ? `Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2, ${more}` : 'Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2';
+      const appendixPage = cv.appendixStart + 1;
+      const more = model.locationMap?.tiles && !model.locationMap.unavailable ? `Karte und alle Messwerte ab Seite ${appendixPage}` : `alle Messwerte ab Seite ${appendixPage}`;
+      const first = model.plausibility ? `Details und Grenzen der Aussage auf Seite 2, Plausibilität gegen Referenzdaten ab Seite 3, ${more.replace('alle Messwerte', 'Messwerte')}`
+        : total > 2 ? `Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2, ${more}` : 'Technische Details, Selbstprüfung und Grenzen der Aussage auf Seite 2';
       cv.text(fit(cv, first, f.sans, 8.25, CONTENT_W - 70, 0.12), M, 816.8, style);
     } else {
       cv.hline(M, 786.8, RIGHT, C.line);
-      const first = i === 1 ? model.footer[0] : `Anhang · alle im Manifest gebundenen Angaben · Manifest ${model.appendix.version} · Bericht Nr. ${model.number}`;
+      const first = i === 1 ? model.footer[0] : cv.sectionFooters.get(i) ?? `Anhang · alle im Manifest gebundenen Angaben · Manifest ${model.appendix.version} · Bericht Nr. ${model.number}`;
       cv.text(fit(cv, first, f.sans, 8.25, CONTENT_W, 0.12), M, 804, style);
       cv.text(fit(cv, model.footer[1], f.sans, 8.25, CONTENT_W - 70, 0.12), M, 816.8, style);
     }
@@ -852,6 +1081,7 @@ export async function renderReportPdf(model, { fonts, onMapError }) {
   const cv = new Canvas(doc, f);
   pageOne(cv, model, images);
   pageTwo(cv, model);
+  if (model.plausibility) plausibilityPages(cv, model);
   appendix(cv, model, images);
   footers(cv, model);
   return doc.save({ useObjectStreams: true });

@@ -8,7 +8,7 @@ import JSZip from 'jszip';
 import { evidenceDetails } from './details.mjs';
 import { VIEWER_MAP_SIZE, mapView } from './core/map.mjs';
 import { createDesktopPdf, defaultReportName, markdownReport, verifyForDesktop, VERSION } from './report.mjs';
-import { buildBundle, fakeChain, fakeTileServer } from '../scripts/fixtures/fixture.mjs';
+import { buildBundle, fakeChain, fakeReferences, fakeTileServer, recordedBundle } from '../scripts/fixtures/fixture.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -54,6 +54,33 @@ test('Prüfung, Online-Abgleich und PDF-Bericht im Hauptprozess (Manifest v3)', 
     assert.equal(withMap.model.locationMap?.tiles?.length, tiles.calls.length);
     await appendFile(path, 'x');
     await assert.rejects(createDesktopPdf(full), /seit der Prüfung geändert/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('„Plausibilität prüfen (online)“: Referenzdaten nur auf Wunsch und nur mit sichtbarem Standort', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'doiproof-desktop-'));
+  try {
+    const { zipBytes, evidence, manifest } = await recordedBundle();
+    const path = join(dir, 'paket.zip');
+    await writeFile(path, zipBytes);
+    const chain = fakeChain({ evidence: evidence.evidenceSha256, pre: manifest.preCapture, anchor: { height: 436204, time: '2026-10-14T14:59:20Z', confirmations: 41 } });
+    const references = await fakeReferences({ chain: chain.fetchImpl });
+    const { full } = await verifyForDesktop(path, true, { fetchImpl: chain.fetchImpl });
+    const loader = { fetchImpl: references.fetchImpl, userAgent: 'DoiProof-Pruefer/test (Windows) (+https://github.com/neubuot/DoiProof)' };
+    const plain = await createDesktopPdf(full);
+    assert.equal(plain.plausibilityStatus.state, 'not_requested');
+    assert.equal(plain.model.plausibility, null);
+    assert.equal(references.calls.length, 0);
+    const hidden = await createDesktopPdf(full, { includeLocation: false, includePlausibility: true, plausibilityLoader: loader });
+    assert.equal(hidden.plausibilityStatus.state, 'location_hidden');
+    assert.equal(references.calls.length, 0);
+    const checked = await createDesktopPdf(full, { includePlausibility: true, plausibilityLoader: loader });
+    assert.equal(checked.plausibilityStatus.state, 'included');
+    assert.equal(references.calls.length, 3);
+    assert.ok(references.calls.every(call => call.userAgent === loader.userAgent));
+    assert.equal(checked.plausibility?.summary.tone, 'passed');
+    assert.match(checked.model.plausibility?.sentence ?? '', /stützt die Aufnahmedaten/);
+    assert.ok(checked.pdf.length > plain.pdf.length);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 

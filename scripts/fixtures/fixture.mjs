@@ -13,6 +13,8 @@ import { nodeSha256 } from '../../core/node.mjs';
 import { crc32 } from '../../core/verify.mjs';
 
 export const SYNTHETIC_JPEG = join(dirname(fileURLToPath(import.meta.url)), 'synthetic-orientation6.jpg');
+/** Aufgezeichnete Werte und Antworten für die Tests der Plausibilitätsprüfung. */
+export const PLAUSIBILITY_DIR = join(dirname(fileURLToPath(import.meta.url)), 'plausibility');
 export const CAPTURE_MS = Date.parse('2026-10-01T07:31:35.000Z');
 
 export const PRE_CAPTURE = {
@@ -89,8 +91,12 @@ export async function buildBundle(options = {}) {
   return { zipBytes, manifest, verification, evidence, photoBytes };
 }
 
-/** Fake-fetch für Online-Prüfungen ohne Netzwerk. @param {{ evidence: string, status?: string }} o */
-export function fakeChain({ evidence, status = 'confirmed' }) {
+/**
+ * Fake-fetch für Online-Prüfungen ohne Netzwerk. Vorabblöcke und Bestätigungsblock lassen sich
+ * vorgeben, damit auch aufgezeichnete Manifeste (fakeReferences) bestätigt werden.
+ * @param {{ evidence: string, status?: string, pre?: typeof PRE_CAPTURE, anchor?: { height: number, time: string, confirmations?: number } }} o
+ */
+export function fakeChain({ evidence, status = 'confirmed', pre = PRE_CAPTURE, anchor = { height: 434177, time: '2026-10-01T08:03:06Z', confirmations: 7 } }) {
   const txid = '3'.repeat(64);
   const blockHash = '4'.repeat(64);
   /** @type {string[]} */
@@ -99,19 +105,73 @@ export function fakeChain({ evidence, status = 'confirmed' }) {
   const fetchImpl = /** @type {any} */ (async (/** @type {string} */ url, /** @type {any} */ request) => {
     if (String(url).startsWith('https://blockstream.info')) {
       calls.push('btc');
-      return { ok: true, status: 200, json: async () => ({ id: PRE_CAPTURE.bitcoin.hash, height: PRE_CAPTURE.bitcoin.height, timestamp: Date.parse(PRE_CAPTURE.bitcoin.headerTimeUtc) / 1000 }) };
+      return { ok: true, status: 200, json: async () => ({ id: pre.bitcoin.hash, height: pre.bitcoin.height, timestamp: Date.parse(pre.bitcoin.headerTimeUtc) / 1000 }) };
     }
     const { params } = JSON.parse(request.body);
     calls.push(params.name);
     /** @type {any} */
     let value;
-    if (params.name === 'check_proof') value = { sha256: evidence, status, txid, block_height: 434177, block_time_utc: '2026-10-01T08:03:06Z' };
-    else if (params.name === 'get_transaction') value = { txid, block_hash: blockHash, confirmations: 7 };
-    else if (params.arguments.block === blockHash) value = { hash: blockHash, height: 434177, time_utc: '2026-10-01T08:03:06Z', confirmations: 7 };
-    else value = { hash: PRE_CAPTURE.doichain.hash, height: PRE_CAPTURE.doichain.height, time_utc: '2026-10-01T06:35:46Z' };
+    if (params.name === 'check_proof') value = { sha256: evidence, status, txid, block_height: anchor.height, block_time_utc: anchor.time };
+    else if (params.name === 'get_transaction') value = { txid, block_hash: blockHash, confirmations: anchor.confirmations ?? 7 };
+    else if (params.arguments.block === blockHash) value = { hash: blockHash, height: anchor.height, time_utc: anchor.time, confirmations: anchor.confirmations ?? 7 };
+    else value = { hash: pre.doichain.hash, height: pre.doichain.height, time_utc: pre.doichain.headerTimeUtc };
     return { ok: true, status: 200, json: async () => ({ result: { structuredContent: value } }) };
   });
   return { fetchImpl, calls, txid, blockHash };
+}
+
+/**
+ * Aufgezeichnete Sensor-, Standort- und Zeitankerwerte des echten Beweispakets a40a215c3abd
+ * (14.10.2026, 14:53 UTC, Café in Ingolstadt; Foto und Hashes gehören nicht dazu).
+ * @returns {Promise<{ capture: any, device: any, location: any, preCapture: typeof PRE_CAPTURE, sensors: any }>}
+ */
+export async function recordedManifest() {
+  const { _hinweis, ...values } = JSON.parse(await readFile(join(PLAUSIBILITY_DIR, 'a40a215c3abd-manifest.json'), 'utf8'));
+  return values;
+}
+
+/**
+ * Beweispaket mit den aufgezeichneten Werten des Pakets a40a215c3abd auf dem synthetischen Testbild.
+ * @param {(m: any) => void} [modify]
+ */
+export async function recordedBundle(modify) {
+  const values = await recordedManifest();
+  return buildBundle({ version: 'v3', modify: m => { Object.assign(m, values); modify?.(m); } });
+}
+
+/**
+ * Fake-fetch für die Referenzdienste der Plausibilitätsprüfung: aufgezeichnete Antworten von
+ * Open-Meteo (Forecast, Elevation) und Nominatim für den 14.10.2026 in Ingolstadt; alle anderen
+ * Adressen gehen an `chain`. Mit `fail` antworten einzelne Dienste mit HTTP 503.
+ * @param {{ chain?: typeof fetch, fail?: ('weather'|'elevation'|'place')[] }} [options]
+ */
+export async function fakeReferences(options = {}) {
+  const files = {
+    weather: new Uint8Array(await readFile(join(PLAUSIBILITY_DIR, 'open-meteo-forecast.json'))),
+    elevation: new Uint8Array(await readFile(join(PLAUSIBILITY_DIR, 'open-meteo-elevation.json'))),
+    place: new Uint8Array(await readFile(join(PLAUSIBILITY_DIR, 'nominatim-reverse.json'))),
+  };
+  /** @type {{ url: string, userAgent: string | undefined, kind: 'weather'|'elevation'|'place' }[]} */
+  const calls = [];
+  /** @type {typeof fetch} */
+  const fetchImpl = /** @type {any} */ (async (/** @type {string} */ url, /** @type {any} */ request) => {
+    const text = String(url);
+    /** @type {'weather'|'elevation'|'place' | null} */
+    const kind = text.includes('open-meteo.com/v1/elevation') ? 'elevation' : text.includes('open-meteo.com/v1/') ? 'weather' : text.includes('nominatim.openstreetmap.org') ? 'place' : null;
+    if (!kind) {
+      if (!options.chain) throw new Error(`Unerwartete URL: ${url}`);
+      return options.chain(url, request);
+    }
+    calls.push({ url: text, userAgent: request?.headers?.['User-Agent'], kind });
+    const failed = options.fail?.includes(kind);
+    const bytes = failed ? new Uint8Array(0) : files[kind];
+    return {
+      ok: !failed, status: failed ? 503 : 200,
+      headers: { get: (/** @type {string} */ name) => (name.toLowerCase() === 'content-type' ? 'application/json' : null) },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    };
+  });
+  return { fetchImpl, calls };
 }
 
 /** @param {string} type @param {Uint8Array} data */

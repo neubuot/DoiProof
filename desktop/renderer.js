@@ -17,6 +17,7 @@ const ui = {
   verificationJson: $('verification-json'), hashLabel: $('hash-label'),
   localCard: $('local-card'), localIcon: $('local-icon'), localTitle: $('local-title'),
   localDescription: $('local-description'), pdfPhoto: $('pdf-photo'), pdfLocation: $('pdf-location'), pdfMap: $('pdf-map'),
+  pdfPlausibility: $('pdf-plausibility'),
 };
 let file = null;
 let result = null;
@@ -42,6 +43,7 @@ function resetResult() {
   ui.mapGrid.replaceChildren();
   ui.map.hidden = true;
   ui.pdfMap.checked = false;
+  ui.pdfPlausibility.checked = false;
   ui.evidence.hidden = true;
   ui.reveal.disabled = false;
   ui.reveal.textContent = 'Details anzeigen ↗';
@@ -309,7 +311,8 @@ ui.verify.addEventListener('click', async () => {
 });
 ui.pdfLocation.addEventListener('change', () => {
   ui.pdfMap.disabled = !ui.pdfLocation.checked;
-  if (!ui.pdfLocation.checked) ui.pdfMap.checked = false;
+  ui.pdfPlausibility.disabled = !ui.pdfLocation.checked;
+  if (!ui.pdfLocation.checked) { ui.pdfMap.checked = false; ui.pdfPlausibility.checked = false; }
 });
 let saving = false;
 ui.save.addEventListener('click', async () => {
@@ -319,17 +322,25 @@ ui.save.addEventListener('click', async () => {
   saving = true;
   ui.save.disabled = true;
   const withMap = ui.pdfMap.checked && ui.pdfLocation.checked;
-  if (withMap) say('Nach der Wahl des Speicherorts wird der Kartenausschnitt geladen und der Bericht erstellt …', 'info');
+  const withPlausibility = ui.pdfPlausibility.checked && ui.pdfLocation.checked;
+  if (withMap || withPlausibility) {
+    say('Nach der Wahl des Speicherorts ' + (withMap && withPlausibility ? 'werden Kartenausschnitt und Referenzdaten geladen' : withMap ? 'wird der Kartenausschnitt geladen' : 'werden die Referenzdaten abgefragt') + ' und der Bericht erstellt …', 'info');
+  }
   try {
     const saved = await window.doiproof.saveReport({
       includePhoto: ui.pdfPhoto.checked, includeLocation: ui.pdfLocation.checked, includeMap: ui.pdfMap.checked,
+      includePlausibility: ui.pdfPlausibility.checked,
     });
-    if (!saved && withMap) clearMessage();
+    if (!saved && (withMap || withPlausibility)) clearMessage();
     if (saved) {
       step('step-report', 'done');
       const map = saved.map;
-      const note = map?.state === 'unavailable' ? ' Kartenausschnitt nicht verfügbar: ' + (map.reason || 'Kartendienst nicht erreichbar.')
+      let note = map?.state === 'unavailable' ? ' Kartenausschnitt nicht verfügbar: ' + (map.reason || 'Kartendienst nicht erreichbar.')
         : map?.state === 'no_location' ? ' Ohne Kartenausschnitt: kein gemessener Standort in einem bestandenen Paket.' : '';
+      const plausibility = saved.plausibility;
+      if (plausibility?.state === 'included') note += ' Plausibilität gegen Referenzdaten geprüft' + (plausibility.sentence ? ': ' + plausibility.sentence : '.');
+      else if (plausibility?.state === 'unavailable') note += ' Plausibilitätsprüfung nicht möglich: ' + (plausibility.reason || 'Referenzdienste nicht erreichbar.');
+      else if (plausibility?.state === 'not_passed') note += ' Plausibilitätsprüfung nur für ein lokal bestandenes Paket.';
       say('Bericht gespeichert: ' + saved.path + '.' + note, 'info');
     }
   } catch (error) { say('Bericht konnte nicht gespeichert werden: ' + error.message); }

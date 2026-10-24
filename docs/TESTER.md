@@ -58,6 +58,7 @@ Das GitHub-Repository ist **öffentlich**. Lade dort keine echten Fotos, Beweisp
 - Das Originalfoto im ZIP bleibt unverändert. Hat deine Kamera-App Ortsangaben ins Foto geschrieben (EXIF-GPS), stehen sie auch im Profil „Privat“ darin; im PDF-Bericht werden sie entfernt. Willst du das nicht, schalte die Ortsmarkierung in der Kamera-App aus.
 - Der PDF-Prüfbericht kann das Foto und den Standort enthalten; beides lässt sich vor dem Erstellen ausschalten. Steht der Standort im Bericht, kommt standardmäßig ein Kartenausschnitt dazu (Schalter „Kartenausschnitt (OpenStreetMap)“, abschaltbar); dafür sieht der Kartendienst OpenStreetMap (ausgeliefert über Fastly) den Standort auf etwa 1 km genau und deine IP-Adresse.
 - Gerätezeit, Ort und Sensorwerte sind Angaben deines Geräts. Der Bericht belegt, dass genau dieses Foto mit genau diesen Angaben seit dem Block unverändert ist – nicht, wer fotografiert hat oder ob das Motiv echt ist.
+- Wer ein Paket mit dem Windows-Prüfer oder auf der Kommandozeile zusätzlich „auf Plausibilität“ prüft (standardmäßig aus), sendet dabei die Koordinaten (auf etwa 10 m gerundet) und den Aufnahmetag an Open-Meteo und Nominatim (OpenStreetMap). Der Anhang vergleicht Luftdruck, Erdmagnetfeld, Höhe, Sonnenstand, Licht und Zeitanker mit Modellwerten. Die App selbst macht das nicht.
 
 ## Bekannte Einschränkungen
 

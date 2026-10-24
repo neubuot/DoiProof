@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { systemTimeZone } from '../core/format.mjs';
 import { fileTileCache, ianaTimeZone, loadFonts, nodeSha256, userCacheDirectory } from '../core/node.mjs';
 import { MAP_COPYRIGHT, mapUserAgent } from '../core/map.mjs';
-import { createPdfReport, verifyPackage, VERSION } from '../core/pipeline.mjs';
+import { createPdfReport, preparePlausibility, verifyPackage, VERSION } from '../core/pipeline.mjs';
 import { reportText } from '../core/report-text.mjs';
 import { checkOnline, verifyLocal as coreVerifyLocal } from '../core/verify.mjs';
 
@@ -25,7 +25,7 @@ async function writeNew(path, data) {
     throw error;
   }
 }
-const USAGE = 'Aufruf: npm run verify -- <paket.zip> [--online] [--json] [--report bericht.md|bericht.json] [--pdf bericht.pdf] [--karte] [--ohne-foto] [--ohne-standort] [--zeitzone Europe/Berlin]';
+const USAGE = 'Aufruf: npm run verify -- <paket.zip> [--online] [--plausibilitaet] [--json] [--report bericht.md|bericht.json] [--pdf bericht.pdf] [--karte] [--ohne-foto] [--ohne-standort] [--zeitzone Europe/Berlin]';
 
 /** Lokale Prüfung (wirft bei jedem Fehler). @param {Uint8Array} zipBytes */
 export function verifyLocal(zipBytes) {
@@ -48,8 +48,8 @@ export async function verifyBundle(path, withOnline = false, options = {}) {
 
 /** @param {string[]} args */
 export function parseArgs(args) {
-  /** @type {{ path?: string, reportPath?: string, pdfPath?: string, json: boolean, online: boolean, includePhoto: boolean, includeLocation: boolean, includeMap: boolean, timeZone?: string }} */
-  const options = { json: false, online: false, includePhoto: true, includeLocation: true, includeMap: false };
+  /** @type {{ path?: string, reportPath?: string, pdfPath?: string, json: boolean, online: boolean, plausibility: boolean, includePhoto: boolean, includeLocation: boolean, includeMap: boolean, timeZone?: string }} */
+  const options = { json: false, online: false, plausibility: false, includePhoto: true, includeLocation: true, includeMap: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const value = () => {
@@ -58,6 +58,7 @@ export function parseArgs(args) {
       return next;
     };
     if (arg === '--online') options.online = true;
+    else if (arg === '--plausibilitaet') { options.plausibility = true; options.online = true; }
     else if (arg === '--json') options.json = true;
     else if (arg === '--report') options.reportPath = value();
     else if (arg === '--pdf') options.pdfPath = value();
@@ -72,6 +73,7 @@ export function parseArgs(args) {
   if (options.pdfPath && !options.pdfPath.toLowerCase().endsWith('.pdf')) throw new Error('Der PDF-Bericht braucht die Endung .pdf.');
   if (options.includeMap && !options.pdfPath) throw new Error('--karte gilt nur zusammen mit --pdf.');
   if (options.includeMap && !options.includeLocation) throw new Error('--karte zeigt den Standort und passt nicht zu --ohne-standort.');
+  if (options.plausibility && !options.includeLocation) throw new Error('--plausibilitaet nennt den Aufnahmeort und passt nicht zu --ohne-standort.');
   return options;
 }
 
@@ -90,12 +92,26 @@ export async function cli(args, io = {}) {
   const timeZone = options.timeZone ? ianaTimeZone(options.timeZone) : systemTimeZone();
   const { analysis, local, online } = await verifyPackage(zipBytes, { sha256: nodeSha256, online: options.online, fetchImpl: io.fetchImpl, now });
 
+  // Plausibilitätsprüfung nur mit --plausibilitaet: Koordinaten (auf etwa 10 m gerundet) und Aufnahmetag
+  // gehen an Open-Meteo und Nominatim; Zeitanker kommen aus der Kettenabfrage, die --plausibilitaet einschließt.
+  const checked = await preparePlausibility({
+    analysis, online, includeLocation: options.includeLocation, includePlausibility: options.plausibility, generatedAt: now(),
+    plausibilityLoader: options.plausibility ? { fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`), now } : undefined,
+  });
+  if (checked.status.state === 'unavailable') err(`Hinweis: Plausibilitätsprüfung nicht möglich: ${checked.status.reason ?? ''} Der Bericht entsteht ohne diesen Anhang.\n`);
+  else if (checked.status.state === 'not_passed') err('Hinweis: Plausibilitätsprüfung nur für ein lokal bestandenes Paket.\n');
+  else if (checked.status.state === 'included') {
+    const failed = checked.plausibility?.references.queries.filter(q => q.status === 'error') ?? [];
+    err(`Plausibilität gegen Referenzdaten geprüft: ${checked.plausibility?.summary.sentence ?? ''}${failed.length ? ` Nicht erreichbar: ${failed.map(q => q.name).join(', ')}.` : ''}\n`);
+  }
+
   if (options.pdfPath) {
     // Kartenkacheln nur mit --karte; zwischengespeichert für 7 Tage im privaten Cache des Benutzers,
     // wie es die Nutzungsregeln des OSM-Kachelservers verlangen.
     const { pdf, mapStatus } = await createPdfReport({
-      analysis, online, fileName: basename(path), fonts: await loadFonts(FONT_DIR), generatedAt: now(), timeZone,
+      analysis, online: checked.online, fileName: basename(path), fonts: await loadFonts(FONT_DIR), generatedAt: now(), timeZone,
       includePhoto: options.includePhoto, includeLocation: options.includeLocation, includeMap: options.includeMap,
+      plausibility: checked.plausibility,
       mapLoader: options.includeMap ? {
         fetchImpl: io.fetchImpl, userAgent: mapUserAgent(`DoiProof-Pruefer/${VERSION} (Kommandozeile)`),
         cache: fileTileCache(io.mapCacheDir ?? join(userCacheDirectory(), 'map-cache')),
@@ -112,15 +128,15 @@ export async function cli(args, io = {}) {
     if (options.pdfPath) err(`PDF-Bericht mit negativem Ergebnis gespeichert: ${options.pdfPath}\n`);
     return 1;
   }
-  const result = { generatedAtUtc: now().toISOString(), file: resolve(path), local, online };
+  const result = { generatedAtUtc: now().toISOString(), file: resolve(path), local, online: checked.online, plausibility: checked.plausibility };
   const human = reportText(result);
   if (options.reportPath) {
     await writeNew(options.reportPath, options.reportPath.endsWith('.json') ? `${JSON.stringify(result, null, 2)}\n` : human);
   }
   out(options.json ? `${JSON.stringify(result, null, 2)}\n` : human);
   if (options.pdfPath && !options.json) out(`PDF-Bericht gespeichert: ${options.pdfPath}\n`);
-  if (online?.status === 'failed') return 1;
-  if (online?.status === 'incomplete') return 2;
+  if (checked.online?.status === 'failed') return 1;
+  if (checked.online?.status === 'incomplete') return 2;
   return 0;
 }
 

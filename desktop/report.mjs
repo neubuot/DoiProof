@@ -45,7 +45,10 @@ export async function verifyForDesktop(path, online, options = {}) {
  * Erzeugt den PDF-Bericht aus dem zwischengespeicherten Prüfergebnis. Die Datei wird erneut
  * gehasht; hat sie sich seit der Prüfung geändert, wird kein Bericht erzeugt.
  * @param {Awaited<ReturnType<typeof verifyForDesktop>>['full']} cached
- * @param {{ includePhoto?: boolean, includeLocation?: boolean, includeMap?: boolean, mapLoader?: import('./core/map.mjs').TileLoader, now?: () => Date }} [options]
+ * @param {{
+ *   includePhoto?: boolean, includeLocation?: boolean, includeMap?: boolean, mapLoader?: import('./core/map.mjs').TileLoader,
+ *   includePlausibility?: boolean, plausibilityLoader?: import('./core/plausibility.mjs').ReferenceLoader, now?: () => Date,
+ * }} [options]
  */
 export async function createDesktopPdf(cached, options = {}) {
   const current = await nodeSha256(new Uint8Array(await readFile(cached.path)));
@@ -55,6 +58,7 @@ export async function createDesktopPdf(cached, options = {}) {
     fonts: await loadFonts(FONT_DIR), generatedAt: options.now?.() ?? new Date(), timeZone: systemTimeZone(),
     includePhoto: options.includePhoto, includeLocation: options.includeLocation,
     includeMap: options.includeMap, mapLoader: options.mapLoader,
+    includePlausibility: options.includePlausibility, plausibilityLoader: options.plausibilityLoader,
     producer: `DoiProof-Prüfer ${VERSION} (Windows)`,
   });
 }

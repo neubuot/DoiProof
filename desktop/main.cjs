@@ -43,6 +43,12 @@ async function tileLoader() {
   };
 }
 
+/** Referenzdienste der Plausibilitätsprüfung (Open-Meteo, Nominatim): eindeutiger User-Agent wie beim Kartendienst. */
+async function referenceLoader() {
+  const { map } = await maps();
+  return { fetchImpl: fetch, userAgent: map.mapUserAgent(`DoiProof-Pruefer/${app.getVersion()} (Windows)`) };
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1160, height: 800, minWidth: 890, minHeight: 670,
@@ -62,7 +68,7 @@ function createWindow() {
   if (smoke) window.webContents.once('did-finish-load', async () => {
     try {
       const ready = await window.webContents.executeJavaScript(
-        "Boolean(document.getElementById('verify-button') && document.getElementById('drop-zone') && document.getElementById('reveal-button') && document.getElementById('photo-dialog') && document.getElementById('map-button') && document.getElementById('pdf-photo') && document.getElementById('pdf-location') && document.getElementById('pdf-map') && window.doiproof?.showDetails && window.doiproof?.mapTiles && window.doiproof?.saveReport)"
+        "Boolean(document.getElementById('verify-button') && document.getElementById('drop-zone') && document.getElementById('reveal-button') && document.getElementById('photo-dialog') && document.getElementById('map-button') && document.getElementById('pdf-photo') && document.getElementById('pdf-location') && document.getElementById('pdf-map') && document.getElementById('pdf-plausibility') && window.doiproof?.showDetails && window.doiproof?.mapTiles && window.doiproof?.saveReport)"
       );
       if (!ready) throw new Error('GUI oder sichere Preload-Brücke fehlen.');
       const { verifyForDesktop, createDesktopPdf } = await report();
@@ -115,6 +121,8 @@ app.whenReady().then(() => {
     const includePhoto = options?.includePhoto !== false;
     const includeLocation = options?.includeLocation !== false;
     const includeMap = includeLocation && options?.includeMap === true;
+    // Plausibilitätsprüfung nur mit sichtbarem Standort: Der Anhang nennt die ermittelte Adresse.
+    const includePlausibility = includeLocation && options?.includePlausibility === true;
     const cached = lastResult;
     const module = await report();
     const answer = await dialog.showSaveDialog({
@@ -131,6 +139,7 @@ app.whenReady().then(() => {
     };
     let content;
     let map = null;
+    let plausibility = null;
     if (extension === '.json') {
       if (!cached.local) throw new Error('JSON gibt es nur nach bestandener lokaler Prüfung. Bitte den PDF-Bericht wählen.');
       content = JSON.stringify(summary, null, 2) + '\n';
@@ -138,12 +147,14 @@ app.whenReady().then(() => {
     else {
       const created = await module.createDesktopPdf(cached, {
         includePhoto, includeLocation, includeMap, mapLoader: includeMap ? await tileLoader() : undefined,
+        includePlausibility, plausibilityLoader: includePlausibility ? await referenceLoader() : undefined,
       });
       content = created.pdf;
       map = created.mapStatus;
+      plausibility = { ...created.plausibilityStatus, sentence: created.plausibility?.summary.sentence ?? null };
     }
     await writeFile(answer.filePath, content);
-    return { path: answer.filePath, map };
+    return { path: answer.filePath, map, plausibility };
   });
   ipcMain.handle('copy-hash', (_event, hash) => {
     if (typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash)) {

@@ -1,10 +1,40 @@
 /**
  * Lesbarer Kurzbericht (Markdown). Enthält Pfad, Prüfzeit, Hashwerte und Dienststatus,
- * aber kein Foto, keine Koordinaten und keine Sensorwerte.
+ * aber kein Foto, keine Koordinaten und keine Sensorwerte. Einzige Ausnahme ist der auf Wunsch
+ * angehängte Abschnitt der Plausibilitätsprüfung, der Ort und Sensorwerte gegen Referenzdaten stellt.
  */
 
+import { LEVEL_TEXT } from './plausibility-levels.mjs';
+
 /**
- * @param {{ generatedAtUtc: string, file: string, local: Record<string, any>, online: import('./verify.mjs').OnlineResult | null }} report
+ * Abschnitt „Plausibilität gegen Referenzdaten“ als Markdown. Anders als der übrige Kurzbericht
+ * nennt er Ort und Sensorwerte, weil die Prüfung genau diese Angaben mit Referenzen vergleicht.
+ * @param {import('./plausibility.mjs').PlausibilityResult} result
+ */
+export function plausibilityText(result) {
+  const rows = ['## Plausibilität gegen Referenzdaten', '',
+    `Ergebnis: **${result.summary.sentence}** ${result.summary.detail}`, '',
+    'Hinweis: Dieser Abschnitt enthält Aufnahmeort und Sensorwerte. Alle Referenzwerte sind Modell- oder Näherungswerte (Open-Meteo, WMM2025, OpenStreetMap), keine Stationsmessungen.', ''];
+  for (const group of result.groups) {
+    rows.push(`### ${group.title}`, '');
+    for (const finding of group.findings) {
+      rows.push(`- **${finding.label}** [${LEVEL_TEXT[finding.level]}]: Sensor ${finding.sensor}. Referenz: ${finding.reference} Abgleich: ${finding.comparison}`);
+    }
+    if (group.weight) rows.push('', `${group.weight}`);
+    rows.push('');
+  }
+  rows.push('### Gesamtwürdigung', '');
+  for (const h of result.hypotheses) rows.push(`- **${h.id} · ${h.title}**: ${h.verdict}. Dagegen spricht: ${h.against} Offen bleibt: ${h.open}`);
+  rows.push('', result.assessment, '', '### Reproduzierbarkeit', '',
+    `Referenzdaten abgefragt (UTC): ${result.queriedAtUtc ?? 'nicht abgefragt'}`, '');
+  for (const step of result.repro) rows.push(`- ${step.step}: ${step.how} → ${step.result}`);
+  rows.push('');
+  for (const note of result.notes) rows.push(`> ${note}`);
+  return rows;
+}
+
+/**
+ * @param {{ generatedAtUtc: string, file: string, local: Record<string, any>, online: import('./verify.mjs').OnlineResult | null, plausibility?: import('./plausibility.mjs').PlausibilityResult | null }} report
  */
 export function reportText(report) {
   const rows = [
@@ -31,5 +61,6 @@ export function reportText(report) {
       '', report.online.source);
   } else rows.push('Nicht durchgeführt (offline).');
   rows.push('', 'Geräte-Abfragezeiten, Sensorwerte und App-Version im Manifest sind Selbstauskünfte; Vorabblöcke belegen nicht den Auslösezeitpunkt. Eine API-Antwort ersetzt keine eigene Kettenprüfung.', '');
+  if (report.plausibility) rows.push(...plausibilityText(report.plausibility), '');
   return rows.join('\n');
 }

@@ -9,6 +9,7 @@ import {
 } from './format.mjs';
 import { ORIENTATION_TEXT } from './image.mjs';
 import { MAP_ATTRIBUTION, MAP_COPYRIGHT, validCoordinates } from './map.mjs';
+import { LEVELS, LEVEL_EXPLANATION, LEVEL_TEXT } from './plausibility-levels.mjs';
 import { SENSORS, SENSOR_KEYS, STATUS_TEXT, barometricAltitude, sensorOverview, seriesStats } from './sensors.mjs';
 import { isPlainObject } from './util.mjs';
 
@@ -105,6 +106,7 @@ function plain(value) {
  *   includePhoto?: boolean,
  *   includeLocation?: boolean,
  *   map?: import('./map.mjs').LoadedMap | { error: string } | null,
+ *   plausibility?: import('./plausibility.mjs').PlausibilityResult | null,
  *   producer?: string,
  * }} input
  */
@@ -394,7 +396,65 @@ export function buildReportModel(input) {
     footer,
     appendix: buildAppendix({ analysis, manifest, verification, includeLocation, version }),
     locationMap: buildLocationMap(input.map ?? null, analysis, includeLocation, tz),
+    plausibility: buildPlausibilitySection(input.plausibility ?? null, tz, { captureTime, earliest, sealed, anchor: anchor ?? null, sensors }),
     meta: { evidenceSha256: evidenceHash, zipSha256: analysis.zip.sha256, version, generatedAtUtc: generatedAt.toISOString(), online: !!online },
+  };
+}
+
+/**
+ * Anhang „Plausibilität gegen Referenzdaten“: das Ergebnis aus core/plausibility.mjs, ergänzt um
+ * Kopfzeilen, Zeitstrahl in Ortszeit und Legende. Nur vorhanden, wenn die Prüfung gelaufen ist.
+ * @param {import('./plausibility.mjs').PlausibilityResult | null} result
+ * @param {import('./format.mjs').TimeZone} tz
+ * @param {{
+ *   captureTime: Date | null,
+ *   earliest: { chain: 'bitcoin'|'doichain', time: Date, height: number, verified: boolean } | null,
+ *   sealed: Date | null,
+ *   anchor: import('./verify.mjs').OnlineResult['anchor'] | null,
+ *   sensors: Record<string, any> | null,
+ * }} context
+ */
+function buildPlausibilitySection(result, tz, context) {
+  if (!result) return null;
+  const { captureTime, earliest, sealed, anchor } = context;
+  const queried = result.queriedAtUtc ? new Date(result.queriedAtUtc) : null;
+  const weather = result.references.weather;
+  const weatherWindow = weather?.hour ? `${weather.hour.slice(11)} bis ${String((Number(weather.hour.slice(11, 13)) + 1) % 24).padStart(2, '0')}:00 UTC` : null;
+  const sunrise = weather?.sunrise ? iso(weather.sunrise) : null;
+  const sunset = weather?.sunset ? iso(weather.sunset) : null;
+  const window = context.sensors && isPlainObject(context.sensors.window) ? context.sensors.window : null;
+  const windowStart = iso(window?.startedAt); const windowEnd = iso(window?.endedAt);
+  const sensorWindow = windowStart && windowEnd ? `Sensorfenster ${formatTime(windowStart, tz)} bis ${formatTime(windowEnd, tz)}` : 'Gerätezeit, Selbstauskunft';
+  return {
+    title: 'Anhang: Plausibilität gegen Referenzdaten',
+    subtitle: 'Indizienprüfung der Aufnahmedaten gegen unabhängige Referenzdaten',
+    bannerEyebrow: 'ERGEBNIS DER INDIZIENPRÜFUNG',
+    tone: result.summary.tone,
+    sentence: result.summary.sentence,
+    detail: result.summary.detail,
+    scope: 'Die Beweiskette auf Seite 2 belegt mathematisch, dass Foto und Aufnahmedaten seit der Versiegelung unverändert sind. Sie sagt nichts darüber, ob die Gerätewerte inhaltlich stimmen. Dieser Anhang prüft genau das: Er vergleicht jede versiegelte Angabe mit Wetter-, Magnetfeld-, Gelände-, Karten- und Blockchain-Daten, die unabhängig vom Gerät entstanden sind.',
+    method: 'Jede im Manifest versiegelte Angabe wird einer Referenz gegenübergestellt, die ohne das Gerät entstanden ist. Für jedes Indiz zählen drei Fragen: Ist die Quelle unabhängig vom Gerät? Wie scharf ist die Übereinstimmung, also wie viele andere Orte oder Zeiten hätten denselben Wert geliefert? Wie aufwendig wäre es, den Wert passend zu erfinden? Daraus ergibt sich die Stufe.',
+    legend: LEVELS.map(level => ({ level, text: LEVEL_TEXT[level], explanation: LEVEL_EXPLANATION[level] })),
+    legendNote: result.summary.counts.widerspruch ? 'Ein Widerspruch (Wert passt nachweislich nicht zu Ort oder Zeit) ist in Rot geführt.' : 'Ein Widerspruch (Wert passt nachweislich nicht zu Ort oder Zeit) würde als eigene Stufe in Rot geführt. In diesem Fall tritt keiner auf.',
+    timeline: {
+      zone: `Ortszeit ${zoneLabel(sealed ?? captureTime ?? queried ?? new Date(result.generatedAtUtc), tz)}`,
+      earliest: earliest ? { time: formatTime(earliest.time, tz), label: `${earliest.chain === 'bitcoin' ? 'Bitcoin' : 'Doichain'}-Block ${formatInt(earliest.height)}`, sub: earliest.verified ? 'frühestens, steckt im Paket' : 'frühestens, im Paket, nicht online geprüft' } : { time: '–', label: 'kein Vorabblock', sub: 'frühestens nicht belegt' },
+      capture: captureTime ? { time: formatTime(captureTime, tz), label: 'Aufnahme laut Gerät', sub: sensorWindow } : { time: '–', label: 'Aufnahme', sub: 'Zeit unbekannt' },
+      sealed: sealed ? { time: formatTime(sealed, tz), label: `Doichain-Block ${formatInt(anchor?.blockHeight ?? 0)}`, sub: 'spätestens, öffentlich versiegelt' } : { time: '–', label: 'Doichain-Block', sub: 'spätestens nicht belegt' },
+      note: `${sunrise && sunset ? `Sonnenaufgang ${formatTime(sunrise, tz).slice(0, 5)}, Sonnenuntergang ${formatTime(sunset, tz).slice(0, 5)} Uhr. ` : ''}${weatherWindow ? `Wetterdaten für ${weatherWindow}. ` : ''}${queried ? `Referenzdaten abgefragt am ${formatDateTimeMinutes(queried, tz)}.` : ''}`.trim(),
+    },
+    android: result.android,
+    overview: result.overview,
+    groups: result.groups,
+    hypotheses: result.hypotheses,
+    assessment: result.assessment,
+    proves: result.proves,
+    provesNot: result.provesNot,
+    sources: result.sources,
+    repro: result.repro,
+    notes: result.notes,
+    queriedText: queried ? `Referenzdaten abgefragt am ${formatDateTimeMinutes(queried, tz)}` : 'Referenzdaten nicht abgefragt',
+    footer: `Anhang · Plausibilität gegen Referenzdaten · ${queried ? `abgefragt am ${formatDateTimeMinutes(queried, tz)}` : 'ohne Referenzabfrage'} · Modellwerte, nicht Teil des Beweispakets`,
   };
 }
 

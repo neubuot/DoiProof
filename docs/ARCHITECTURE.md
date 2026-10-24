@@ -18,6 +18,9 @@ core/                    Plattformneutraler Kern (ESM-JavaScript, JSDoc-typisier
   mcp.mjs                Doichain-MCP-Client (JSON und Server-Sent Events)
   verify.mjs             ZIP-Analyse mit Entpackgrenzen, Online-Abgleich
   map.mjs                Kartenausschnitt: Web-Mercator-Kacheln, Laden mit User-Agent und Cache
+  plausibility.mjs       Plausibilität gegen Referenzdaten: Open-Meteo, Nominatim, Sonnenstand, Druckreduktion, Inklination, Bewertung mit Stufen und Hypothesen
+  plausibility-levels.mjs Bewertungsstufen (stark, stimmig, intern, auffällig, offen, Widerspruch)
+  geomag.mjs             Erdmagnetfeld nach WMM2025 (eingebettete Koeffizienten, offline)
   png.mjs                Strenge PNG-Vorprüfung vor dem Einbetten (Chunks, CRC, vollständiger zlib-Strom)
   bundle.mjs             Erzeugung des ZIP-Beweispakets
   report-model.mjs       Berichtsmodell (alle Aussagen und Tabellen)
@@ -106,6 +109,7 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 - API-Schlüssel bleiben nur im flüchtigen App-Zustand. Signaturschlüssel und Tokens liegen ausschließlich in Expo bzw. GitHub-Secrets.
 - Der Windows-Prüfer lädt keine Webseiten, isoliert den Renderer und erzeugt Berichte im Hauptprozess aus der erneut gehashten Datei.
 - Kartenkacheln (Windows-Prüfer „Karte laden“ bzw. „Karte im PDF“, App „Kartenausschnitt (OpenStreetMap)“, Kommandozeile `--karte`) werden nur geladen, wenn die Karte eingeschaltet ist (App: standardmäßig an, sobald der Standort im Bericht steht; Windows-Prüfer und Kommandozeile: nur auf ausdrücklichen Wunsch), und zwar bei `tile.openstreetmap.org`. Der Dienst sieht dabei den Standort auf etwa 1 km genau und die IP-Adresse; die Cache-Dateinamen verraten ebenfalls den ungefähren Ort und liegen deshalb nur in privaten Verzeichnissen.
+- Die Plausibilitätsprüfung (Windows-Prüfer „Plausibilität prüfen (online)“, Kommandozeile `--plausibilitaet`, standardmäßig aus, nicht in der App) sendet die Koordinaten auf vier Nachkommastellen gerundet (etwa 10 m) und den Aufnahmetag an `api.open-meteo.com` beziehungsweise `archive-api.open-meteo.com` und `nominatim.openstreetmap.org` und fragt die Zeitanker bei Blockstream und dem Doichain-Dienst ab. Die Dienste sehen die IP-Adresse des Prüfrechners. Das Erdmagnetfeld wird offline aus den eingebetteten WMM2025-Koeffizienten berechnet. Die Referenzdaten werden wie die Kartenkacheln vor dem Rendern geladen, der PDF-Renderer greift nie selbst aufs Netz. Alle Referenzwerte sind Modell- oder Näherungswerte, und die Bewertung ist eine Indizienprüfung, keine Attestierung.
 
 ## Aktuelle Einschränkungen
 
