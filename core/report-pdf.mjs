@@ -812,6 +812,65 @@ function flowNote(cv, flow, text, o = {}) {
   flow.y += h + 12;
 }
 
+/**
+ * Eine Messgröße als Skala: Referenzwert in der Mitte, Toleranzbänder, Gerätewert als Punkt, darunter
+ * beide Werte in Worten und ein Satz zur Einordnung.
+ * @param {Canvas} cv @param {{ y: number, newPage: () => number }} flow @param {any} item
+ */
+function comparisonCard(cv, flow, item) {
+  const f = cv.f;
+  const pad = 12;
+  const textW = CONTENT_W - 2 * pad;
+  const deviceLines = cv.wrap(`Gerät: ${item.deviceText}`, f.sans, 7.6, textW, 0.1);
+  const referenceLines = cv.wrap(`Referenz: ${item.referenceText}`, f.sans, 7.6, textW, 0.1);
+  const interpretation = cv.wrap(item.interpretation, f.sans, 8.25, textW, 0.1);
+  // Eine feste Skala trägt ihre Beschriftung unter den Enden und braucht eine Zeile mehr
+  const extra = item.scale ? 12 : 0;
+  const h = 24 + 30 + extra + (deviceLines.length + referenceLines.length) * 10 + 4 + interpretation.length * 11 + 10;
+  if (flow.y + h > FLOW_BOTTOM) flow.y = flow.newPage();
+  const top = flow.y;
+  const levelColor = LEVEL_COLOR[item.level]?.() ?? C.text;
+  const markerColor = item.level === 'widerspruch' ? C.red : item.level === 'auffaellig' ? C.terra : item.level === 'intern' ? C.text2 : C.petrol;
+  cv.rect(M + 0.4, top, CONTENT_W - 0.8, h, { fill: C.white, stroke: item.level === 'widerspruch' ? C.red : C.line, width: 0.75, r: 8 });
+  // Titelzeile
+  cv.text(item.label, M + pad, top + 17, { font: f.sansBold, size: 10.12, color: C.text, spacing: 0.12 });
+  const levelText = LEVEL_LABEL[item.level] ?? item.level;
+  cv.text(levelText, RIGHT - pad, top + 17, { font: f.sansBold, size: 8.6, color: levelColor, align: 'right', spacing: 0.12 });
+  cv.text(`Abweichung ${item.deviation}`, RIGHT - pad - cv.width(levelText, f.sansBold, 8.6, 0.12) - 14, top + 17, { font: f.sans, size: 8.25, color: C.text3, align: 'right', spacing: 0.1 });
+  // Skala
+  const x0 = M + pad + 46; const x1 = RIGHT - pad - 46; const w = x1 - x0;
+  const half = Math.max(item.ok * 1.6, Math.abs(item.device - item.reference) * 1.25, item.strong * 3, 1e-9);
+  const min = item.scale ? item.scale.min : item.reference - half; const max = item.scale ? item.scale.max : item.reference + half;
+  const xOf = (/** @type {number} */ value) => x0 + Math.max(0, Math.min(1, (value - min) / (max - min))) * w;
+  const barY = top + 40;
+  cv.rect(xOf(item.reference - item.ok), barY - 7, xOf(item.reference + item.ok) - xOf(item.reference - item.ok), 14, { fill: C.sand, r: 3 });
+  cv.rect(xOf(item.reference - item.strong), barY - 7, xOf(item.reference + item.strong) - xOf(item.reference - item.strong), 14, { fill: C.petrolLight, r: 3 });
+  cv.hline(x0, barY - 0.75, x1, C.line, 1.5);
+  cv.rect(xOf(item.reference) - 0.9, barY - 11, 1.8, 22, { fill: C.petrol });
+  cv.circle(xOf(item.device), barY, 4.6, { fill: C.bg, stroke: markerColor, width: 2.4 });
+  cv.circle(xOf(item.device), barY, 2.2, { fill: markerColor });
+  const unit = item.unit === '°' ? '°' : item.unit ? ` ${item.unit}` : '';
+  const decimals = (max - min) / 2 < 1 ? 2 : (max - min) / 2 < 10 ? 1 : 0;
+  const fmt = (/** @type {number} */ value) => `${Math.abs(value).toFixed(decimals).replace('.', ',')}`.replace(/^/, value < 0 ? '−' : '') + unit;
+  if (item.scale) {
+    cv.text(item.scale.minLabel, x0, barY + 17, { font: f.sans, size: 6.6, color: C.text3, spacing: 0.3 });
+    cv.text(item.scale.maxLabel, x1, barY + 17, { font: f.sans, size: 6.6, color: C.text3, align: 'right', spacing: 0.3 });
+  } else {
+    cv.text(fmt(min), x0 - 6, barY + 3, { font: f.sans, size: 7, color: C.text3, align: 'right' });
+    cv.text(fmt(max), x1 + 6, barY + 3, { font: f.sans, size: 7, color: C.text3 });
+  }
+  cv.text(item.scale?.referenceLabel ?? 'Referenz', xOf(item.reference), barY - 14, { font: f.sans, size: 6.6, color: C.petrol, align: 'center', spacing: 0.3 });
+  const deviceLabelX = xOf(item.device) + (item.device >= item.reference ? 9 : -9);
+  cv.text('Gerät', deviceLabelX, item.scale ? barY - 14 : barY + 17, { font: f.sans, size: 6.6, color: markerColor, align: item.device >= item.reference ? 'left' : 'right', spacing: 0.3 });
+  // Werte und Einordnung
+  let y = top + 24 + 30 + extra + 10;
+  for (const line of deviceLines) { cv.text(line, M + pad, y, { font: f.sans, size: 7.6, color: C.text2, spacing: 0.1 }); y += 10; }
+  for (const line of referenceLines) { cv.text(line, M + pad, y, { font: f.sans, size: 7.6, color: C.text2, spacing: 0.1 }); y += 10; }
+  y += 4;
+  for (const line of interpretation) { cv.text(line, M + pad, y, { font: f.sans, size: 8.25, color: C.text, spacing: 0.1 }); y += 11; }
+  flow.y = top + h + 8;
+}
+
 /** @param {Canvas} cv @param {any} model */
 function plausibilityPages(cv, model) {
   const f = cv.f;
@@ -879,6 +938,36 @@ function plausibilityPages(cv, model) {
   scopeLines.forEach((line, i) => cv.text(line, M + colW + 26, flow.y + 36 + i * 11.5, { font: f.sans, size: 8.25, color: C.boxText, spacing: 0.1 }));
   flow.y += boxH + 16;
 
+  // Die stärksten Indizien und Auffälligkeiten in Klartext
+  const highlights = /** @type {string[]} */ (p.highlights ?? []);
+  const anomalies = /** @type {string[]} */ (p.anomalies ?? []);
+  const highlightLines = (highlights.length ? highlights : ['Kein Indiz erreicht die Stufe „stark“. Die prüfbaren Werte passen, tragen aber nur grob.']).map(text => cv.wrap(text, f.sans, 8.25, colW - 40, 0.1));
+  const anomalyLines = (anomalies.length ? anomalies : ['Keine. Alle prüfbaren Werte liegen im erwarteten Bereich.']).map(text => cv.wrap(text, f.sans, 8.25, colW - 28, 0.1));
+  const listH = (/** @type {string[][]} */ lines) => lines.reduce((sum, item) => sum + item.length * 11 + 5, 0);
+  const hlH = 34 + listH(highlightLines);
+  const anH = 34 + listH(anomalyLines);
+  const listBoxH = Math.max(hlH, anH, 70);
+  if (flow.y + Math.min(listBoxH, 300) > FLOW_BOTTOM) flow.y = flow.newPage();
+  cv.rect(M + 0.4, flow.y, colW - 0.8, listBoxH, { fill: C.white, stroke: C.line, width: 0.75, r: 9 });
+  cv.rect(M + colW + 14 + 0.4, flow.y, colW - 0.8, listBoxH, { fill: anomalies.some(text => /^.*: .*$/.test(text)) && p.tone === 'failed' ? C.redBg : C.warnBg, stroke: p.tone === 'failed' ? C.red : C.terra, width: 0.75, r: 9 });
+  cv.text(highlights.length === 1 ? 'Das stärkste Indiz' : `Die ${highlights.length <= 1 ? '' : ['zwei', 'drei', 'vier'][highlights.length - 2] + ' '}stärksten Indizien`, M + 12, flow.y + 19, { font: f.sansBold, size: 10.12, color: C.banner, spacing: 0.12 });
+  cv.text(anomalies.length === 0 ? 'Auffälligkeiten' : anomalies.length === 1 ? 'Einzige Auffälligkeit' : `${anomalies.length} Auffälligkeiten`, M + colW + 26, flow.y + 19, { font: f.sansBold, size: 10.12, color: p.tone === 'failed' ? C.red : C.terra, spacing: 0.12 });
+  let ly = flow.y + 36;
+  highlightLines.forEach((lines, i) => {
+    if (highlights.length) {
+      cv.circle(M + 19, ly - 3, 6, { fill: C.petrol });
+      cv.text(String(i + 1), M + 19, ly - 0.3, { font: f.sansBold, size: 7.5, color: C.bg, align: 'center' });
+    }
+    lines.forEach((line, k) => cv.text(line, M + (highlights.length ? 31 : 12), ly + k * 11, { font: f.sans, size: 8.25, color: C.text, spacing: 0.1 }));
+    ly += lines.length * 11 + 5;
+  });
+  ly = flow.y + 36;
+  anomalyLines.forEach(lines => {
+    lines.forEach((line, k) => cv.text(line, M + colW + 26, ly + k * 11, { font: f.sans, size: 8.25, color: C.boxText, spacing: 0.1 }));
+    ly += lines.length * 11 + 5;
+  });
+  flow.y += listBoxH + 16;
+
   // Was die Indizien zeigen
   if (flow.y + 120 > FLOW_BOTTOM) flow.y = flow.newPage();
   cv.text('Was die Indizien zeigen', M, flow.y + 15, { font: f.serif, size: 15, color: C.banner });
@@ -899,6 +988,17 @@ function plausibilityPages(cv, model) {
   }
   flow.y += 4;
   flowText(cv, flow, 'Gefüllte Kacheln: mindestens ein Indiz der Gruppe mit unabhängiger Referenzquelle und enger Übereinstimmung. Umrandete Kacheln: stimmig, intern konsistent oder offen. Rot: Widerspruch zu einer Referenz.', { size: 8.25, color: C.text3, lh: 11 });
+
+  // Sensorwerte gegen Referenzwerte: Skalen je Messgröße
+  const comparisons = /** @type {any[]} */ (p.comparisons ?? []);
+  if (comparisons.length) {
+    if (flow.y + 220 > FLOW_BOTTOM) flow.y = flow.newPage();
+    flow.y += 6;
+    cv.text('Sensorwerte gegen Referenzwerte', M, flow.y + 12, { font: f.serif, size: 18, color: C.banner });
+    flow.y += 30;
+    flowText(cv, flow, 'Jede Messgröße, für die ein Gerätewert und ein unabhängiger Referenzwert vorliegen, auf einer Skala um den Referenzwert. Das innere Band ist der Bereich der Stufe „stark“, das äußere Band der Bereich der Stufe „stimmig“ (bei Gerätevergleichen „intern“). Der Punkt ist der Gerätewert, der Strich der Referenzwert. Referenzwerte sind Modell- oder Näherungswerte.', { after: 10 });
+    for (const item of comparisons) comparisonCard(cv, flow, item);
+  }
 
   // Methodik
   flowHeading(cv, flow, 'Methodik', 15);

@@ -23,6 +23,13 @@ export function plausibilityText(result) {
     if (group.weight) rows.push('', `${group.weight}`);
     rows.push('');
   }
+  if (result.comparisons.length) {
+    rows.push('### Sensorwerte gegen Referenzwerte', '');
+    for (const c of result.comparisons) rows.push(`- **${c.label}** [${LEVEL_TEXT[c.level]}]: Gerät ${c.deviceText}. Referenz ${c.referenceText}. Abweichung ${c.deviation}. ${c.interpretation}`);
+    rows.push('');
+  }
+  if (result.highlights.length) rows.push('Die stärksten Indizien:', '', ...result.highlights.map((text, i) => `${i + 1}. ${text}`), '');
+  if (result.anomalies.length) rows.push('Auffälligkeiten:', '', ...result.anomalies.map(text => `- ${text}`), '');
   rows.push('### Gesamtwürdigung', '');
   for (const h of result.hypotheses) rows.push(`- **${h.id} · ${h.title}**: ${h.verdict}. Dagegen spricht: ${h.against} Offen bleibt: ${h.open}`);
   rows.push('', result.assessment, '', '### Reproduzierbarkeit', '',

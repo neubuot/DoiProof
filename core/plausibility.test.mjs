@@ -209,6 +209,22 @@ test('Bewertung des Pakets a40a215c3abd: Luftdruck, Magnetfeld, Inklination und 
   assert.equal(result.hypotheses[4].verdict, 'möglich, aber aufwendig');
   assert.equal(result.android, true);
   assert.ok(result.overview.some(tile => tile.title === 'Erdmagnetfeld bestätigt' && tile.kind === 'proof'));
+  // Vergleichsdaten für die Skalen: Gerätewert, Referenzwert, Toleranzbänder, Einordnung
+  assert.deepEqual(result.comparisons.map(c => c.key), ['hoehe', 'qnh', 'luftdruck', 'feldstaerke', 'inklination', 'deklination', 'helligkeit', 'ruhelage', 'drehrate', 'zeitfenster']);
+  const pressureScale = result.comparisons.find(c => c.key === 'luftdruck');
+  assert.ok(pressureScale && Math.abs(pressureScale.device - 985.378) < 0.001 && pressureScale.reference === 985.5 && pressureScale.level === 'stark');
+  assert.match(pressureScale?.interpretation ?? '', /^Auf 0,1 hPa genau/);
+  const fieldScale = result.comparisons.find(c => c.key === 'feldstaerke');
+  assert.ok(fieldScale && Math.abs(fieldScale.device - 48.23) < 0.01 && Math.abs(fieldScale.reference - 48.99) < 0.01);
+  const windowScale = result.comparisons.find(c => c.key === 'zeitfenster');
+  assert.ok(windowScale && Math.abs(windowScale.device - 10) < 0.1 && Math.abs(windowScale.reference - 7.85) < 0.1, 'Gerätezeit 10 min nach dem Bitcoin-Block im 16-Minuten-Fenster');
+  assert.ok(result.comparisons.every(c => !/;| – /.test(c.interpretation) && Number.isFinite(c.device) && Number.isFinite(c.reference) && c.strong > 0 && c.ok >= c.strong));
+  assert.equal(result.highlights.length, 4);
+  assert.match(result.highlights[0], /^Luftdruck auf 0,1 hPa genau\. Sensor 985,38 hPa, Referenz 985,5 hPa bei einer untypischen Wetterlage \(1029 hPa auf Meeresniveau\)\./);
+  assert.match(result.highlights[1], /^Erdmagnetfeld auf 2 % und 3° genau\. Betrag 48,2 gegen 49,0 µT, Inklination 62° gegen 65°\./);
+  assert.match(result.highlights[2], /^Beide Zeitanker unabhängig bestätigt\. Bitcoin-Block 971\.414 und Doichain-Block 436\.204 schließen die Aufnahme auf 16 Minuten ein, Tageslicht und Sonnenstand passen/);
+  assert.match(result.highlights[3], /^Ort aufgelöst: Der GNSS-Punkt liegt 7 m neben Donaustraße 3, 85049 Ingolstadt/);
+  assert.deepEqual(result.anomalies.map(text => text.split(':')[0]), ['Gestörte Messungen', 'Kameramodul', 'Aufnahmezeit laut EXIF']);
   assert.ok(result.repro.some(step => step.step === 'Inklination aus Sensoren' && step.result === '62,1°'));
   assert.ok(result.repro.some(step => step.step === 'Sonnenstand' && step.result === 'Höhe 13,5°, Azimut 240°'));
   assert.ok(result.sources.some(row => row.source.startsWith('WMM2025') && row.queried === 'berechnet'));
@@ -218,6 +234,8 @@ test('Bewertung des Pakets a40a215c3abd: Luftdruck, Magnetfeld, Inklination und 
   const text = reportText({ generatedAtUtc: NOW.toISOString(), file: 'paket.zip', local: { version: 'v3' }, online, plausibility: result });
   assert.match(text, /## Plausibilität gegen Referenzdaten/);
   assert.match(text, /\*\*Luftdruck\*\* \[stark\]: Sensor 985,378 hPa/);
+  assert.match(text, /### Sensorwerte gegen Referenzwerte\n\n- \*\*Höhe\*\* \[stimmig\]: Gerät 415,7 m/);
+  assert.match(text, /Die stärksten Indizien:\n\n1\. Luftdruck auf 0,1 hPa genau/);
   assert.match(text, /H0 · Aufnahme wie angegeben/);
 });
 
@@ -235,6 +253,9 @@ test('Bewertung: Widerspruch beim Luftdruck, gestörte Aufnahme, fehlende Dienst
   assert.equal(result.hypotheses[0].verdict, 'zweifelhaft');
   assert.equal(result.hypotheses[1].verdict, 'möglich');
   assert.match(result.assessment, /trägt die angegebene Aufnahme nicht/);
+  assert.equal(result.comparisons.find(c => c.key === 'luftdruck')?.level, 'widerspruch');
+  assert.ok(result.anomalies.some(text => text.startsWith('Luftdruck: 940,100 hPa')));
+  assert.ok(!result.highlights.some(text => text.startsWith('Luftdruck')));
   assert.ok(result.overview.some(tile => tile.kind === 'failed'));
 
   // Störfeld auch zur Aufnahme: Betrag nicht verwertbar, Inklination ohne ruhiges Paar
@@ -267,6 +288,8 @@ test('Bewertung: Widerspruch beim Luftdruck, gestörte Aufnahme, fehlende Dienst
   // Nur die EXIF-Zeit des Testbilds passt zur Gerätezeit (intern), alles andere bleibt offen
   assert.ok(none.groups.flatMap(g => g.findings).every(f => f.level === 'offen' || (f.label === 'Aufnahmezeit laut EXIF' && f.level === 'intern')));
   assert.equal(none.summary.sentence, 'Es ließen sich keine Angaben gegen Referenzdaten prüfen.');
+  assert.deepEqual(none.comparisons, []);
+  assert.deepEqual(none.highlights, []);
   assert.equal(none.hypotheses[0].verdict, 'nicht beurteilbar');
 });
 

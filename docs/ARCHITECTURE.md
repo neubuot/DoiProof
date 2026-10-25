@@ -1,6 +1,6 @@
 # Architektur
 
-**Stand:** DoiProof 1.0.0.
+**Stand:** DoiProof 1.1.0.
 
 ## Ziel
 

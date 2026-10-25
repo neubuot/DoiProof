@@ -1,6 +1,6 @@
 # DoiProof-ZIP unabhängig prüfen
 
-**Stand: DoiProof 1.0.0, 5. Oktober 2026, Paketformat v1, v2 und v3.** Das Prüfprogramm ist ein Node.js-Programm im öffentlichen Repository. Es läuft außerhalb der mobilen App und verändert das ZIP nicht. Es prüft Dateibytes und Hashbindungen standardmäßig **ohne Netzwerk**. Ein bestätigter Ketteneintrag wird nur mit `--online` abgefragt; die Onlinequelle ist nicht automatisch ein unabhängiger Full Node.
+**Stand: DoiProof 1.1.0, 25. Oktober 2026, Paketformat v1, v2 und v3.** Das Prüfprogramm ist ein Node.js-Programm im öffentlichen Repository. Es läuft außerhalb der mobilen App und verändert das ZIP nicht. Es prüft Dateibytes und Hashbindungen standardmäßig **ohne Netzwerk**. Ein bestätigter Ketteneintrag wird nur mit `--online` abgefragt; die Onlinequelle ist nicht automatisch ein unabhängiger Full Node.
 
 Kommandozeile, [Windows-Prüfer](DESKTOP-PRUEFER.md) und der Tab „Prüfen“ der App verwenden **denselben Prüf- und Berichtskern** (`core/`). Sie kommen deshalb zum selben Ergebnis und erzeugen denselben PDF-Prüfbericht.
 

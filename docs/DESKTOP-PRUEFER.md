@@ -1,10 +1,10 @@
 # DoiProof Prüfer für Windows
 
-**Version 1.0.0, 5. Oktober 2026.** Die portable Windows-EXE ergänzt die mobile App. Sie verwendet denselben Prüf- und Berichtskern (`core/`) wie `npm run verify` und der Tab „Prüfen“ der App; der veröffentlichte Build wird in GitHub Actions auf Windows erstellt.
+**Version 1.1.0, 25. Oktober 2026.** Die portable Windows-EXE ergänzt die mobile App. Sie verwendet denselben Prüf- und Berichtskern (`core/`) wie `npm run verify` und der Tab „Prüfen“ der App; der veröffentlichte Build wird in GitHub Actions auf Windows erstellt.
 
 ## Herunterladen
 
-Im öffentlichen Repository unter [Releases](https://github.com/neubuot/DoiProof/releases) `DoiProof-Pruefer-1.0.0-Windows.exe` herunterladen. Es ist keine Installation nötig. Die veröffentlichte `SHA256SUMS.txt` enthält den Hash der EXE; in PowerShell vergleichen mit `Get-FileHash "C:\Pfad\DoiProof-Pruefer-1.0.0-Windows.exe" -Algorithm SHA256`.
+Im öffentlichen Repository unter [Releases](https://github.com/neubuot/DoiProof/releases) `DoiProof-Pruefer-1.1.0-Windows.exe` herunterladen. Es ist keine Installation nötig. Die veröffentlichte `SHA256SUMS.txt` enthält den Hash der EXE; in PowerShell vergleichen mit `Get-FileHash "C:\Pfad\DoiProof-Pruefer-1.1.0-Windows.exe" -Algorithm SHA256`.
 
 **Der Build ist nicht mit einem Code-Signing-Zertifikat signiert.** Windows SmartScreen kann deshalb warnen. Beziehe die Datei nur aus dem offiziellen Release und vergleiche den Hash.
 

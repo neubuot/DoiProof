@@ -45,7 +45,7 @@ Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, 
 ## Installation
 
 - **Tester:** Android-APK aus den [Releases](https://github.com/neubuot/DoiProof/releases), iPhone über TestFlight – siehe [docs/TESTER.md](docs/TESTER.md).
-- **Windows-Prüfer:** `DoiProof-Pruefer-1.0.0-Windows.exe` aus den Releases – siehe [docs/DESKTOP-PRUEFER.md](docs/DESKTOP-PRUEFER.md).
+- **Windows-Prüfer:** `DoiProof-Pruefer-1.1.0-Windows.exe` aus den Releases – siehe [docs/DESKTOP-PRUEFER.md](docs/DESKTOP-PRUEFER.md).
 
 ## Entwicklung
 

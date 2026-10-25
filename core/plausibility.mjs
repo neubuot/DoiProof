@@ -63,6 +63,11 @@ export const THRESHOLDS = Object.freeze({
  * @typedef {{ step: string, how: string, result: string }} ReproStep
  * @typedef {{ source: string, provides: string, queried: string }} SourceRow
  * @typedef {{ title: string, kind: 'proof'|'hint'|'neutral'|'warning'|'failed', text: string }} OverviewTile
+ * @typedef {{
+ *   key: string, label: string, unit: string, device: number, reference: number, deviceText: string, referenceText: string,
+ *   deviation: string, strong: number, ok: number, level: Level, interpretation: string,
+ *   scale?: { min: number, max: number, minLabel: string, maxLabel: string, referenceLabel: string },
+ * }} Comparison  strong/ok: halbe Breite des engen und des weiten Toleranzbands um den Referenzwert, scale: feste Skala statt der automatischen
  */
 
 const DEG = Math.PI / 180;
@@ -418,6 +423,7 @@ function parseWeather(json, source, url, captureTime) {
  *   captureTimeUtc: string | null, coordinates: { latitude: number, longitude: number } | null, android: boolean,
  *   summary: { sentence: string, detail: string, counts: Record<Level, number>, total: number, matched: number, tone: 'passed'|'incomplete'|'failed' },
  *   overview: OverviewTile[], groups: FindingGroup[], hypotheses: Hypothesis[], assessment: string,
+ *   comparisons: Comparison[], highlights: string[], anomalies: string[],
  *   proves: string, provesNot: string, sources: SourceRow[], repro: ReproStep[], notes: string[], references: ReferenceData,
  * }} PlausibilityResult
  */
@@ -451,6 +457,8 @@ export function evaluatePlausibility(input) {
   const groups = [];
   /** @type {ReproStep[]} */
   const repro = [];
+  /** @type {Comparison[]} */
+  const comparisons = [];
   /** @param {string} key @param {string} title @param {string} weight */
   const group = (key, title, weight) => { /** @type {FindingGroup} */ const g = { key, title, findings: [], weight }; groups.push(g); return g; };
   /** @param {FindingGroup} g @param {Omit<Finding, 'id'>} finding */
@@ -544,6 +552,7 @@ export function evaluatePlausibility(input) {
   }
 
   // ---- 2 Höhe ----
+  let baroLevel = /** @type {Level} */ ('offen');
   {
     const g = group('hoehe', 'Höhe', '');
     const elevation = references.elevation;
@@ -553,6 +562,12 @@ export function evaluatePlausibility(input) {
     else {
       const delta = altitudeM - elevation;
       altitudeLevel = Math.abs(delta) <= THRESHOLDS.altitudeOkM ? 'stimmig' : 'auffaellig';
+      comparisons.push({
+        key: 'hoehe', label: 'Höhe', unit: 'm', device: altitudeM, reference: elevation,
+        deviceText: `${formatMeasure(altitudeM, 1)} m über Ellipsoid (GNSS)`, referenceText: `${formatMeasure(elevation, 0)} m Gelände (Open-Meteo)`,
+        deviation: `${fix(delta, 1)} m`, strong: 60, ok: THRESHOLDS.altitudeOkM, level: altitudeLevel,
+        interpretation: Math.abs(delta) <= THRESHOLDS.altitudeOkM ? 'Die Differenz liegt im Rahmen von Geoidundulation (Mitteleuropa etwa +45 bis +50 m), GNSS-Höhenfehler und Stockwerk. Das ganze Umland liegt ähnlich hoch, die Höhe allein ist deshalb wenig trennscharf.' : 'Die Differenz ist größer, als Geoid und Gebäude erklären. Im Gebirge kann das Gelände am Gitterpunkt stark vom Aufnahmeort abweichen.',
+      });
       add(g, {
         label: 'Höhe über Ellipsoid', sensor: `${formatMeasure(altitudeM, 1)} m${altitudeAccuracy !== null ? `, vertikal ±${formatMeasure(altitudeAccuracy, 1)} m` : ''}`,
         reference: `Geländehöhe ${formatMeasure(elevation, 1)} m über Meeresniveau (Open-Meteo Elevation, Copernicus-DEM mit 90 m Raster, Modellwert). Die GNSS-Höhe bezieht sich auf das WGS84-Ellipsoid. Die Geoidundulation (weltweit etwa −105 bis +85 m, Mitteleuropa etwa +45 bis +50 m) ist hier nicht abgezogen.`,
@@ -561,7 +576,6 @@ export function evaluatePlausibility(input) {
       });
       repro.push({ step: 'Geländehöhe', how: urlOf(references, 'Open-Meteo Elevation'), result: `${formatMeasure(elevation, 1)} m` });
     }
-    let baroLevel = /** @type {Level} */ ('offen');
     if (pressure === null) add(g, { label: 'Barometrische Höhe', sensor: 'kein Luftdruck erfasst', reference: '–', comparison: 'Ohne Barometer entfällt die Rückrechnung.', level: 'offen' });
     else {
       const baroAltitude = barometricAltitude(pressure);
@@ -573,6 +587,14 @@ export function evaluatePlausibility(input) {
         const dq = qnh - weather.pressureMsl;
         const offset = weather.pressureMsl - 1013.25;
         baroLevel = Math.abs(dq) <= THRESHOLDS.pressureStrongHpa ? 'stark' : Math.abs(dq) <= THRESHOLDS.pressureOkHpa ? 'stimmig' : 'auffaellig';
+        comparisons.push({
+          key: 'qnh', label: 'Druck auf Meeresniveau', unit: 'hPa', device: qnh, reference: weather.pressureMsl,
+          deviceText: `${fix(qnh, 1)} hPa aus Sensordruck und ${formatMeasure(height, 0)} m`, referenceText: `${fix(weather.pressureMsl, 1)} hPa (Open-Meteo)`,
+          deviation: `${fix(dq, 1)} hPa`, strong: THRESHOLDS.pressureStrongHpa, ok: THRESHOLDS.pressureOkHpa, level: baroLevel,
+          interpretation: Math.abs(dq) <= THRESHOLDS.pressureOkHpa
+            ? `Die barometrische Höhe von ${formatMeasure(baroAltitude, 0)} m statt ${formatMeasure(height, 0)} m erklärt sich vollständig aus der Wetterlage (${fix(offset, 0)} hPa ${offset >= 0 ? 'über' : 'unter'} der Normatmosphäre). Der Sensordruck bestätigt den Meeresniveaudruck ein zweites Mal.`
+            : 'Die Rückrechnung passt nicht zum Meeresniveaudruck. Sensordruck, Geländehöhe oder Wetterlage passen nicht zusammen.',
+        });
         add(g, {
           label: 'Barometrische Höhe', sensor: `${formatMeasure(baroAltitude, 1)} m (Normatmosphäre 1013,25 hPa)`,
           reference: `Gelände etwa ${formatMeasure(height, 0)} m. Die Differenz von ${fix(baroAltitude - height, 0)} m entspricht ${fix(offset, 1)} hPa Abweichung des Meeresniveaudrucks von der Normatmosphäre (etwa 8,5 m je hPa). Rückrechnung: Sensordruck ${fix(pressure, 2)} hPa über ${formatMeasure(height, 0)} m bei ${fix(weather.temperature, 1)} °C ergibt QNH ${fix(qnh, 1)} hPa, Open-Meteo ${fix(weather.pressureMsl, 1)} hPa.`,
@@ -599,6 +621,16 @@ export function evaluatePlausibility(input) {
       const delta = pressure - weather.surfacePressure;
       const abs = Math.abs(delta);
       pressureLevel = abs <= THRESHOLDS.pressureStrongHpa ? 'stark' : abs <= THRESHOLDS.pressureOkHpa ? 'stimmig' : abs <= THRESHOLDS.pressureSuspiciousHpa ? 'auffaellig' : 'widerspruch';
+      comparisons.push({
+        key: 'luftdruck', label: 'Luftdruck', unit: 'hPa', device: pressure, reference: weather.surfacePressure,
+        deviceText: `${fix(pressure, 2)} hPa (Barometer)`, referenceText: `${fix(weather.surfacePressure, 1)} hPa Stationsdruck ${weather.hour.slice(11)} UTC (Open-Meteo${weather.modelElevation !== null ? `, ${formatMeasure(weather.modelElevation, 0)} m` : ''})`,
+        deviation: `${fix(delta, 1)} hPa, etwa ${formatMeasure(Math.round(abs * 8.5))} m`, strong: THRESHOLDS.pressureStrongHpa, ok: THRESHOLDS.pressureOkHpa, level: pressureLevel,
+        interpretation: pressureLevel === 'stark'
+          ? `Auf ${fix(abs, 1)} hPa genau, das entspricht etwa ${formatMeasure(Math.round(abs * 8.5))} m Höhe. Der Tagesgang betrug ${weather.dayMinPressure !== null && weather.dayMaxPressure !== null ? `${fix(weather.dayMaxPressure - weather.dayMinPressure, 1)} hPa` : 'mehrere hPa'}${weather.pressureMsl !== null && Math.abs(weather.pressureMsl - 1013.25) > 8 ? `, und die Wetterlage war mit ${fix(weather.pressureMsl, 0)} hPa auf Meeresniveau untypisch` : ''}. Ein solcher Wert lässt sich nicht raten.`
+          : pressureLevel === 'stimmig' ? `Abweichung ${fix(abs, 1)} hPa, etwa ${formatMeasure(Math.round(abs * 8.5))} m. Das passt zu einem Höhenunterschied zwischen Gitterpunkt und Aufnahmeort oder einem höheren Stockwerk.`
+            : pressureLevel === 'auffaellig' ? `Abweichung ${fix(abs, 1)} hPa, etwa ${formatMeasure(Math.round(abs * 8.5))} m. Nur durch große Höhenunterschiede zum Gitterpunkt erklärbar.`
+              : `Abweichung ${fix(abs, 1)} hPa. Weder Wetterlage noch Gebäudehöhe erklären einen solchen Unterschied: Der Sensor stand nicht an diesem Ort oder nicht zu dieser Zeit.`,
+      });
       const check = weather.pressureMsl !== null && weather.temperature !== null && weather.modelElevation !== null
         ? ` Kontrollrechnung: ${fix(weather.pressureMsl, 1)} hPa auf ${formatMeasure(weather.modelElevation, 0)} m reduziert ergibt ${fix(reducePressureToHeight(weather.pressureMsl, weather.modelElevation, weather.temperature), 1)} hPa.` : '';
       add(g, {
@@ -651,6 +683,14 @@ export function evaluatePlausibility(input) {
       const modelUt = field.f / 1000;
       const pct = (fieldMagnitude - modelUt) / modelUt * 100;
       fieldLevel = readingDisturbed ? 'auffaellig' : Math.abs(pct) <= THRESHOLDS.fieldStrongPercent ? 'stark' : Math.abs(pct) <= THRESHOLDS.fieldOkPercent ? 'stimmig' : 'auffaellig';
+      comparisons.push({
+        key: 'feldstaerke', label: 'Magnetfeldstärke', unit: 'µT', device: fieldMagnitude, reference: modelUt,
+        deviceText: `${fix(fieldMagnitude, 2)} µT (Magnetometer)`, referenceText: `${fix(modelUt, 2)} µT Totalintensität (WMM2025)`,
+        deviation: `${fix(pct, 1)} %`, strong: modelUt * THRESHOLDS.fieldStrongPercent / 100, ok: modelUt * THRESHOLDS.fieldOkPercent / 100, level: fieldLevel,
+        interpretation: readingDisturbed ? 'Der Betrag liegt außerhalb des Erdfeldbereichs von 25 bis 65 µT. Ein Störfeld (Metall, Laptop, Magnet) überlagert die Messung, sie ist nicht verwertbar.'
+          : fieldLevel === 'stark' ? `Abweichung ${fix(Math.abs(pct), 1)} %. Innenräume mit Stahlbeton und Geräten verfälschen typischerweise 5 bis 20 %, die Messung ist also sehr sauber. Das Magnetometer arbeitet ohne GNSS.`
+            : fieldLevel === 'stimmig' ? `Abweichung ${fix(Math.abs(pct), 1)} %, im üblichen Rahmen für Innenräume.` : `Abweichung ${fix(Math.abs(pct), 1)} %, mehr als Innenräume üblicherweise verursachen.`,
+      });
       const cleanValues = cleanSamples.map(s => /** @type {number} */ (s.value));
       add(g, {
         label: 'Feldstärke (Betrag)',
@@ -676,6 +716,14 @@ export function evaluatePlausibility(input) {
       const effective = signFlip ? Math.abs(Math.abs(best.inclination) - Math.abs(field.inclination)) : Math.abs(delta);
       inclinationLevel = effective <= THRESHOLDS.inclinationStrongDeg ? 'stark' : effective <= THRESHOLDS.inclinationOkDeg ? 'stimmig' : 'auffaellig';
       if (signFlip && inclinationLevel === 'stark') inclinationLevel = 'stimmig';
+      comparisons.push({
+        key: 'inklination', label: 'Inklination', unit: '°', device: signFlip ? Math.abs(best.inclination) * Math.sign(field.inclination) : best.inclination, reference: field.inclination,
+        deviceText: `${fix(Math.abs(best.inclination), 1)}° ${best.inclination >= 0 ? 'abwärts' : 'aufwärts'} (ruhigstes Sensorpaar)`, referenceText: `${fix(Math.abs(field.inclination), 2)}° ${field.inclination >= 0 ? 'abwärts' : 'aufwärts'} (WMM2025)`,
+        deviation: `${fix(effective, 1)}°`, strong: THRESHOLDS.inclinationStrongDeg, ok: THRESHOLDS.inclinationOkDeg, level: inclinationLevel,
+        interpretation: inclinationLevel === 'stark'
+          ? `Abweichung ${fix(effective, 1)}° bei einem handgehaltenen Gerät. Die Inklination hängt vor allem von der geografischen Breite ab: ${fix(Math.abs(field.inclination), 0)}° passen zu mittleren Breiten der ${field.inclination >= 0 ? 'Nord' : 'Süd'}halbkugel und schließen weit nördlichere oder südlichere Orte aus.`
+          : inclinationLevel === 'stimmig' ? `Abweichung ${fix(effective, 1)}°, für ein handgehaltenes Gerät noch stimmig.` : `Abweichung ${fix(effective, 1)}°, mehr als Handhaltung und Störfelder üblicherweise verursachen.`,
+      });
       const others = inclination.pairs.filter(p => p.quiet && p !== best).map(p => fix(p.inclination, 1));
       const bestAt = iso(best.at);
       add(g, {
@@ -703,6 +751,13 @@ export function evaluatePlausibility(input) {
       while (deviceDeclination < -180) deviceDeclination += 360;
       const delta = Math.abs(deviceDeclination - field.declination);
       declinationLevel = delta <= THRESHOLDS.declinationOkDeg ? 'intern' : delta <= THRESHOLDS.declinationSuspiciousDeg ? 'auffaellig' : 'widerspruch';
+      comparisons.push({
+        key: 'deklination', label: 'Deklination', unit: '°', device: deviceDeclination, reference: field.declination,
+        deviceText: `${fix(Math.abs(deviceDeclination), 2)}° ${deviceDeclination >= 0 ? 'Ost' : 'West'} (Kompass des Betriebssystems)`, referenceText: `${fix(Math.abs(field.declination), 2)}° ${field.declination >= 0 ? 'Ost' : 'West'} (WMM2025)`,
+        deviation: `${fix(delta, 2)}°`, strong: 1, ok: THRESHOLDS.declinationOkDeg, level: declinationLevel,
+        interpretation: declinationLevel === 'intern' ? 'Das Betriebssystem rechnet die Deklination selbst aus dem Weltmagnetmodell und dem GNSS-Ort. Der Wert ist deshalb kein unabhängiger Beleg, zeigt aber, dass das Gerät zur Aufnahmezeit diesen Ort kannte.'
+          : declinationLevel === 'auffaellig' ? 'Die Gerätedeklination gehört zu einem anderen Ort oder einem veralteten Modell.' : 'Die Gerätedeklination gehört zu einem weit entfernten Ort. Das Gerät kannte den angegebenen Standort zur Aufnahmezeit nicht.',
+      });
       add(g, {
         label: 'Deklination', sensor: declinationText(trueHeading, magHeading),
         reference: `${modelText}: ${fix(Math.abs(field.declination), 2)}° ${field.declination >= 0 ? 'Ost' : 'West'}.`,
@@ -793,6 +848,14 @@ export function evaluatePlausibility(input) {
       if (light !== null) {
         const classes = Math.abs(Math.log2(Math.max(1, light) / lux.center));
         exposureLevel = classes <= THRESHOLDS.exposureClassLog2 ? 'intern' : 'auffaellig';
+        const sensorEv = Math.log2(Math.max(1, light) / 2.5);
+        comparisons.push({
+          key: 'helligkeit', label: 'Helligkeit', unit: 'EV', device: sensorEv, reference: ev,
+          deviceText: `${formatInt(Math.round(light))} lx Lichtsensor, entspricht EV ${fix(sensorEv, 1)}`, referenceText: `EV ${fix(ev, 1)} aus Belichtung ${exposureTime >= 1 ? `${fix(exposureTime, 1)} s` : `1/${Math.round(1 / exposureTime)} s`}, f/${formatMeasure(fNumber, 1)}, ISO ${formatInt(isoValue)}`,
+          deviation: `${fix(classes, 1)} Lichtwerte`, strong: 1, ok: THRESHOLDS.exposureClassLog2, level: exposureLevel,
+          interpretation: exposureLevel === 'intern' ? 'Lichtsensor und Kamera sind zwei getrennte Bauteile und messen dieselbe Helligkeitsklasse (ein Lichtwert entspricht einer Verdopplung). Das spricht dagegen, dass das Bild in einer anderen Lichtsituation entstand als die Sensorwerte.'
+            : 'Kamera und Lichtsensor sahen verschiedene Helligkeiten: Die Kamera belichtete auf ein anderes Motiv, oder der Sensor war verdeckt.',
+        });
         comparison = exposureLevel === 'intern' ? `Lichtsensor ${formatInt(Math.round(light))} lx: Kamera und Lichtsensor, zwei getrennte Bauteile, messen dieselbe Helligkeitsklasse.` : `Lichtsensor ${formatInt(Math.round(light))} lx liegt ${fix(classes, 1)} Lichtwerte neben der Belichtung: Kamera auf ein anderes Motiv belichtet oder Sensor verdeckt.`;
       } else comparison += ' Ohne Lichtsensor kein Gegenwert.';
       add(g, {
@@ -838,6 +901,12 @@ export function evaluatePlausibility(input) {
     else {
       const tilt = Math.acos(Math.min(1, Math.abs(num(acc?.z) ?? 0) / accelMagnitude)) / DEG;
       const level = quietAccel ? 'stimmig' : 'auffaellig';
+      comparisons.push({
+        key: 'ruhelage', label: 'Ruhelage', unit: 'g', device: accelMagnitude, reference: 1,
+        deviceText: `|a| ${fix(accelMagnitude, 3)} g (Beschleunigungssensor)`, referenceText: '1,000 g Erdbeschleunigung bei ruhendem Gerät',
+        deviation: `${fix(accelMagnitude - 1, 3)} g`, strong: 0.05, ok: 0.1, level,
+        interpretation: quietAccel ? `Das Gerät war nahezu ruhig, das Display um ${fix(tilt, 0)}° aus der Horizontalen gekippt${android ? ' (Moment nach dem Auslösen)' : ''}. Nur so sind Inklination und Magnetfeld verwertbar.` : 'Das Gerät war in Bewegung. Inklination und Kompass sind in diesem Moment nicht belastbar.',
+      });
       add(g, {
         label: 'Beschleunigung', sensor: `|a| ${fix(accelMagnitude, 3)} g zur Aufnahme${accMagnitudes.length > 1 ? ` (Reihe ${fix(Math.min(.../** @type {number[]} */ (accMagnitudes)), 2)} bis ${fix(Math.max(.../** @type {number[]} */ (accMagnitudes)), 2)} g)` : ''}`,
         reference: 'Erdbeschleunigung 1,000 g bei ruhendem Gerät.',
@@ -854,6 +923,15 @@ export function evaluatePlausibility(input) {
       else if (rotation.compassRate < 0.3 && rotation.gyroRate < 0.3) { comparison = 'Beide Sensoren zeigen ein ruhig gehaltenes Gerät.'; rotationLevel = 'intern'; }
       else if ((rotation.compassRate >= 0.5 && rotation.gyroRate < 0.1) || (rotation.gyroRate >= 0.5 && rotation.compassRate < 0.1)) { comparison = 'Ein Sensor meldet eine deutliche Drehung, der andere nicht. Störfeld oder Kalibrierung des Kompasses prüfen.'; rotationLevel = 'auffaellig'; }
       else { comparison = 'Drehraten liegen auseinander, aber im Bereich von Kompassrauschen und Kalibrierung.'; rotationLevel = 'offen'; }
+      if (rotation.gyroRate !== null) {
+        comparisons.push({
+          key: 'drehrate', label: 'Drehrate', unit: 'rad/s', device: rotation.compassRate, reference: rotation.gyroRate,
+          deviceText: `${fix(rotation.compassRate, 2)} rad/s aus der Kompassreihe (${fix(Math.abs(rotation.headingChange), 0)}° in ${fix(rotation.seconds, 2)} s)`, referenceText: `${fix(rotation.gyroRate, 2)} rad/s Gyroskop im selben Zeitraum`,
+          deviation: `${fix(rotation.compassRate - rotation.gyroRate, 2)} rad/s`, strong: Math.max(0.15, rotation.gyroRate * 0.5), ok: Math.max(0.3, rotation.gyroRate * 1.5), level: rotationLevel,
+          interpretation: rotationLevel === 'intern' ? (rotation.compassRate >= 0.3 ? 'Zwei getrennte Sensoren sehen dieselbe Schwenkbewegung. Erfundene Reihen müssten diese Kopplung nachbilden.' : 'Beide Sensoren zeigen ein ruhig gehaltenes Gerät.')
+            : rotationLevel === 'auffaellig' ? 'Ein Sensor meldet eine deutliche Drehung, der andere nicht. Störfeld oder Kalibrierung des Kompasses prüfen.' : 'Die Drehraten liegen auseinander, aber im Bereich von Kompassrauschen und Kalibrierung.',
+        });
+      }
       add(g, {
         label: 'Kompass gegen Gyroskop',
         sensor: `Richtung ändert sich um ${fix(Math.abs(rotation.headingChange), 0)}° in ${fix(rotation.seconds, 2)} s (${rotation.phase}${from && to ? `, ${formatTime(from, UTC)} bis ${formatTime(to, UTC)}` : ''}) = ${fix(rotation.compassRate, 2)} rad/s`,
@@ -907,6 +985,17 @@ export function evaluatePlausibility(input) {
     else if (anchor?.status === 'matched') {
       const inWindow = captureTime && sealedAt ? (!btcTime || captureTime >= btcTime) && captureTime <= sealedAt : null;
       doiLevel = inWindow === false ? 'auffaellig' : 'stark';
+      if (captureTime && sealedAt && btcTime && btcLevel === 'stark') {
+        const windowMin = (sealedAt.getTime() - btcTime.getTime()) / 60000;
+        const deviceMin = (captureTime.getTime() - btcTime.getTime()) / 60000;
+        comparisons.push({
+          key: 'zeitfenster', label: 'Zeitfenster', unit: 'min', device: deviceMin, reference: windowMin / 2,
+          deviceText: `Gerätezeit ${utcTime(captureTime)}, ${fix(deviceMin, 0)} min nach dem Bitcoin-Block`, referenceText: `Fenster ${utcTime(btcTime)} bis ${utcTime(sealedAt)} (${fix(windowMin, 0)} min, beide Ketten)`,
+          deviation: inWindow ? 'im Fenster' : 'außerhalb', strong: windowMin / 2, ok: windowMin / 2, level: doiLevel,
+          scale: { min: Math.min(0, deviceMin - 2), max: Math.max(windowMin, deviceMin + 2), minLabel: `Bitcoin-Block ${formatTime(btcTime, UTC)}`, maxLabel: `Doichain-Block ${formatTime(sealedAt, UTC)}`, referenceLabel: 'Fenster' },
+          interpretation: inWindow ? `Die Gerätezeit liegt ${fix(deviceMin, 0)} Minuten nach dem Bitcoin-Vorabblock und ${fix(windowMin - deviceMin, 0)} Minuten vor dem Doichain-Block. Beide Blöcke sind öffentlich und unabhängig bestätigt, das Paket kann also nur in diesem Fenster entstanden sein.` : `Die Gerätezeit liegt außerhalb des von beiden Ketten belegten Fensters. Die Geräteuhr ging ${captureTime > sealedAt ? 'vor' : 'nach'}.`,
+        });
+      }
       add(g, {
         label: 'Doichain-Block (Versiegelung)', sensor: `${anchor.blockHeight !== undefined ? formatInt(anchor.blockHeight) : '–'} · ${sealedAt ? utcTime(sealedAt) : 'Blockzeit nicht gemeldet'}${anchor.txid ? `, Transaktion ${shortHash(anchor.txid)}` : ''}`,
         reference: `Doichain-Knoten: Höhe ${anchor.blockHeight !== undefined ? formatInt(anchor.blockHeight) : '–'}${sealedAt ? `, Zeit ${utcDateTime(sealedAt)}` : ''}, Hash identisch${anchor.confirmations ? `, ${formatInt(anchor.confirmations)} Bestätigungen` : ''}.`,
@@ -1062,6 +1151,25 @@ export function evaluatePlausibility(input) {
       : matched ? 'Die prüfbaren Angaben passen zu den Referenzdaten, aber kein Indiz ist für sich eng genug, um Ort und Zeit stark zu stützen. Weitere Sensoren oder ein Onlineabgleich der Zeitanker würden die Aussage schärfen.'
         : 'Für dieses Paket ließen sich keine Angaben gegen Referenzdaten prüfen (kein Standort, keine Sensorwerte oder keine Referenzdienste erreichbar). Die Prüfung trifft keine Aussage zur Plausibilität.';
 
+  // ---- Stärkste Indizien und Auffälligkeiten in Klartext ----
+  /** @type {string[]} */
+  const highlights = [];
+  const byKey = (/** @type {string} */ key) => comparisons.find(c => c.key === key);
+  const pressureComparison = byKey('luftdruck');
+  if (pressureComparison && pressureLevel === 'stark') highlights.push(`Luftdruck auf ${fix(Math.abs(pressureComparison.device - pressureComparison.reference), 1)} hPa genau. Sensor ${fix(pressureComparison.device, 2)} hPa, Referenz ${fix(pressureComparison.reference, 1)} hPa${weather?.pressureMsl !== null && weather && Math.abs(weather.pressureMsl - 1013.25) > 8 ? ` bei einer untypischen Wetterlage (${fix(weather.pressureMsl, 0)} hPa auf Meeresniveau)` : ''}.`);
+  const fieldComparison = byKey('feldstaerke'); const inclinationComparison = byKey('inklination');
+  if (fieldComparison && inclinationComparison && fieldLevel === 'stark' && inclinationLevel === 'stark') highlights.push(`Erdmagnetfeld auf ${fix(Math.abs((fieldComparison.device - fieldComparison.reference) / fieldComparison.reference * 100), 0)} % und ${fix(Math.abs(inclinationComparison.device - inclinationComparison.reference), 0)}° genau. Betrag ${fix(fieldComparison.device, 1)} gegen ${fix(fieldComparison.reference, 1)} µT, Inklination ${fix(Math.abs(inclinationComparison.device), 0)}° gegen ${fix(Math.abs(inclinationComparison.reference), 0)}°.`);
+  else if (fieldComparison && fieldLevel === 'stark') highlights.push(`Magnetfeldstärke ${fix(fieldComparison.device, 1)} gegen ${fix(fieldComparison.reference, 1)} µT (WMM2025).`);
+  else if (inclinationComparison && inclinationLevel === 'stark') highlights.push(`Inklination ${fix(Math.abs(inclinationComparison.device), 1)}° gegen ${fix(Math.abs(inclinationComparison.reference), 1)}° (WMM2025).`);
+  if (btcLevel === 'stark' && doiLevel === 'stark' && btcTime && sealedAt) highlights.push(`Beide Zeitanker unabhängig bestätigt. Bitcoin-Block ${pre ? formatInt(pre.bitcoin.height) : ''} und Doichain-Block ${anchor?.blockHeight !== undefined ? formatInt(anchor.blockHeight) : ''} schließen die Aufnahme auf ${durationText(sealedAt.getTime() - btcTime.getTime())} ein${sunLevel === 'stimmig' ? ', Tageslicht und Sonnenstand passen in dieses Fenster' : ''}.`);
+  const placeComparison = references.place;
+  if (placeComparison && placeComparison.distanceM !== null && placeComparison.distanceM <= 50 && location?.mocked !== true) highlights.push(`Ort aufgelöst: Der GNSS-Punkt liegt ${formatMeasure(Math.round(placeComparison.distanceM))} m neben ${shortAddress(placeComparison)}. Ob das Foto diesen Ort zeigt, bleibt dem Betrachter überlassen.`);
+  const qnhComparison = byKey('qnh');
+  if (highlights.length < 4 && qnhComparison && baroLevel === 'stark') highlights.push(`Barometrische Höhe erklärt: ${qnhComparison.interpretation}`);
+  if (highlights.length < 4 && exposureLevel === 'intern' && sunLevel === 'stimmig') highlights.push('Lichtsensor, Belichtung und Sonnenstand beschreiben dieselbe Lichtsituation.');
+  /** @type {string[]} */
+  const anomalies = all.filter(f => f.level === 'auffaellig' || f.level === 'widerspruch').map(f => `${f.label}: ${f.sensor}. ${f.comparison}`);
+
   // ---- Quellen und Reproduzierbarkeit ----
   const queriedDay = references.queriedAt ? formatDate(new Date(references.queriedAt), UTC) : '–';
   /** @type {SourceRow[]} */
@@ -1092,6 +1200,7 @@ export function evaluatePlausibility(input) {
     captureTimeUtc: captureTime ? captureTime.toISOString() : null, coordinates, android,
     summary: { sentence, detail, counts, total: all.length, matched, tone },
     overview, groups, hypotheses, assessment,
+    comparisons, highlights: highlights.slice(0, 4), anomalies,
     proves: contradictions.length
       ? 'Dass mindestens eine versiegelte Angabe nicht zu unabhängigen Referenzdaten für den angegebenen Ort und die angegebene Zeit passt. Die Unversehrtheit des Pakets bleibt davon unberührt.'
       : 'Dass die versiegelten Gerätewerte mit unabhängigen Referenzdaten für den angegebenen Ort und die angegebene Zeit übereinstimmen und dass keine Angabe diesen Referenzen widerspricht.',
