@@ -1,4 +1,4 @@
-# Android-App 1.0.1: Build, Verteilung und Gerätetest
+# Android-App 1.0.0: Build, Verteilung und Gerätetest
 
 Die Android-App wird mit **EAS Build** (Expo Application Services) als signiertes APK gebaut und an Tester verteilt. Sie läuft eigenständig, ohne Entwicklungsrechner oder Expo Go. JavaScript-Änderungen erreichen installierte Apps über **EAS Update**.
 
@@ -6,7 +6,7 @@ Die Android-App wird mit **EAS Build** (Expo Application Services) als signierte
 |---|---|
 | Expo-Konto / Projekt | `neubuots-team` / `doiproof`, Projekt-ID `190b3b9c-3911-4831-947e-06bb20ce9d89` (`app.json`) |
 | Paketname | `org.doichain.doiproof` |
-| Version | `1.0.1`. Der `versionCode` steht in `app.json` (`android.versionCode`, derzeit `2`) und wird von `expo prebuild` in das Gradle-Projekt übernommen – so gilt er für einen Build aus Android Studio. EAS-Builds verwalten ihn dagegen selbst und zählen ihn hoch (`appVersionSource: remote`, `eas.json`). |
+| Version | `1.0.0`. Der `versionCode` steht in `app.json` (`android.versionCode`, derzeit `3`) und gilt für einen Build aus Android Studio; `expo prebuild` trägt ihn in `android/app/build.gradle` ein. Google Play nimmt eine bereits verwendete Nummer nie wieder an – veröffentlicht ist `2`. EAS-Builds verwalten die Nummer dagegen selbst und zählen sie hoch (`appVersionSource: remote`, `eas.json`). |
 | Profil `preview` | interne Verteilung, **APK**, Update-Kanal `preview` |
 | Profil `production` | Store-Verteilung, **AAB** für Google Play, Update-Kanal `production`; Upload mit `eas submit` als Entwurf in den internen Test (`eas.json`). Ablauf bis zur Veröffentlichung: [PLAY-STORE.md](PLAY-STORE.md) |
 | Berechtigungen | Kamera, Standort (nur im Vordergrund), Internet; Speicher nur bis Android 9 (für die Kamera, `plugins/with-android-play.js`). Gesperrt: Mikrofon, Hintergrundstandort, Bewegungserkennung, Medienzugriff (Fotoauswahl über den Android-Photo-Picker), Werbe-ID |
@@ -24,10 +24,9 @@ Ein Release entsteht so:
 
 ```sh
 git checkout main && git pull
-# Version in package.json, app.json, desktop/package.json und core/version.mjs ist dieselbe
-# (scripts/config.test.mjs prueft das und verlangt sie auch in RELEASE_NOTES.md)
-git tag v1.0.1
-git push origin v1.0.1
+# Version in package.json, app.json, desktop/package.json und core/version.mjs ist 1.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 Parallel baut der Windows-Workflow die portable EXE und hängt sie an dasselbe Release.

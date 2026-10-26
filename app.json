@@ -4,7 +4,7 @@
     "slug": "doiproof",
     "owner": "neubuots-team",
     "scheme": "doiproof",
-    "version": "1.0.1",
+    "version": "1.0.0",
     "runtimeVersion": {
       "policy": "fingerprint"
     },

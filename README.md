@@ -4,7 +4,7 @@
 
 DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die bei der Aufnahme gemessenen Angaben – Gerätezeit, Vorabblöcke von Bitcoin und Doichain, optional Standort sowie Bewegungs-, Kompass-, Luftdruck- und Lichtsensoren – lokal zu einem kryptografisch gebundenen Beweispaket verbindet. Auf der Doichain wird ausschließlich dessen SHA-256-Hash als Proof of Existence verankert.
 
-**Version 1.0.1.** App, Kommandozeilen-Prüfer und Windows-Prüfer nutzen denselben Prüf- und Berichtskern und erzeugen denselben PDF-Prüfbericht.
+**Version 1.0.0.** App, Kommandozeilen-Prüfer und Windows-Prüfer nutzen denselben Prüf- und Berichtskern und erzeugen denselben PDF-Prüfbericht.
 
 ## Dokumentation
 
@@ -22,7 +22,7 @@ DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die
 | [iOS-Release über TestFlight](docs/IOS-RELEASE.md) | Einmalige Schritte mit dem Apple-Login |
 | [Veröffentlichung im Google Play Store](docs/PLAY-STORE.md) | Play Console, Store-Eintrag, Datensicherheit, Build und Upload mit EAS |
 | [Review 1.0](docs/REVIEW-1.0.md) | Bewertung des Ausgangszustands, Befunde, Restrisiken |
-| [Release-Notes](RELEASE_NOTES.md) | Änderungen in 1.0.1 |
+| [Release-Notes](RELEASE_NOTES.md) | Änderungen in 1.0.0 |
 | [Designvorlage Prüfbericht](docs/design/PRUEFBERICHT-DESIGN.md) | Verbindliche Gestaltung des PDF-Berichts |
 
 Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, Verankerung oder Export passen die betroffenen Abschnitte im selben Pull Request an.
@@ -46,7 +46,7 @@ Diese Dokumente sind Teil des Git-Verlaufs. Änderungen an Bedienung, Manifest, 
 ## Installation
 
 - **Tester:** Android-APK aus den [Releases](https://github.com/neubuot/DoiProof/releases), iPhone über TestFlight – siehe [docs/TESTER.md](docs/TESTER.md).
-- **Windows-Prüfer:** `DoiProof-Pruefer-1.0.1-Windows.exe` aus den Releases – siehe [docs/DESKTOP-PRUEFER.md](docs/DESKTOP-PRUEFER.md).
+- **Windows-Prüfer:** `DoiProof-Pruefer-1.0.0-Windows.exe` aus den Releases – siehe [docs/DESKTOP-PRUEFER.md](docs/DESKTOP-PRUEFER.md).
 
 ## Entwicklung
 

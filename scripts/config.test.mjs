@@ -11,8 +11,8 @@ const json = async (/** @type {string} */ path) => JSON.parse(await readFile(new
 const text = (/** @type {string} */ path) => readFile(new URL(path, root), 'utf8');
 const PROJECT_ID = '190b3b9c-3911-4831-947e-06bb20ce9d89';
 
-test('App, Prüfprogramm und Windows-Prüfer tragen dieselbe Version 1.0.1', async () => {
-  assert.equal(VERSION, '1.0.1');
+test('App, Prüfprogramm und Windows-Prüfer tragen dieselbe Version 1.0.0', async () => {
+  assert.equal(VERSION, '1.0.0');
   assert.equal((await json('package.json')).version, VERSION);
   assert.equal((await json('app.json')).expo.version, VERSION);
   assert.equal((await json('desktop/package.json')).version, VERSION);

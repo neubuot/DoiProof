@@ -1,6 +1,6 @@
 {
   "name": "doiproof-pruefer",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "private": true,
   "description": "Lokaler und optionaler Online-Prüfer für DoiProof-Beweispakete mit PDF-Prüfbericht",
   "main": "main.cjs",
