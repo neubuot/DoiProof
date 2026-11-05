@@ -12,6 +12,7 @@ Diese Unterlage ist keine Rechtsberatung.
 
 | Teil | Inhalt | Wer |
 |---|---|---|
+| [0](#0-reihenfolge-von-null-bis-zur-freigabe) | **Reihenfolge von null bis zur Freigabe**, App in App Store Connect anlegen | du |
 | [1](#1-voraussetzungen) | Voraussetzungen | – |
 | [2](#2-entscheidungen-vor-dem-ersten-upload) | Entscheidungen vor dem ersten Upload | du |
 | [3](#3-nur-iphone-keine-ipad-fassung) | Nur iPhone, keine iPad-Fassung | erledigt |
@@ -25,6 +26,55 @@ Diese Unterlage ist keine Rechtsberatung.
 | [11](#11-checkliste-vor-dem-einreichen) | Checkliste | du |
 
 **Zeitbedarf:** etwa einen halben Tag für Teile 5 bis 8, dazu die Wartezeit bei Apple. Die Prüfung dauert meist einen bis zwei Tage; bei Rückfragen länger.
+
+## 0. Reihenfolge von null bis zur Freigabe
+
+Die Teile dieser Seite stehen nach Thema, nicht nach Zeit. Diese Tabelle ist die Reihenfolge, wenn in App Store Connect noch nichts angelegt ist. „ASC“ ist App Store Connect, [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
+
+| Schritt | Was | Wo | Dauer | Hier nachlesen |
+|---|---|---|---|---|
+| 1 | Vereinbarungen im Konto annehmen | ASC → *Verträge, Steuern und Bankverbindung* | 10 min | [0.1](#01-vereinbarungen-annehmen) |
+| 2 | Bundle-ID endgültig entscheiden | – | – | [Teil 2](#2-entscheidungen-vor-dem-ersten-upload) |
+| 3 | Ersten Build starten. EAS fragt dabei nach dem Apple-Login, registriert die Bundle-ID bei Apple und legt Zertifikat und Profil an | Terminal | 5 min Eingaben, 15–30 min Bauzeit | [Teil 4](#4-build-und-testflight) |
+| 4 | **App in ASC anlegen** – das fehlende „Projekt“ | ASC → *Apps* → **+** | 10 min | [0.2](#02-app-in-app-store-connect-anlegen) |
+| 5 | Build nach TestFlight hochladen | Terminal | 5–30 min Verarbeitung bei Apple | [Teil 4](#4-build-und-testflight) |
+| 6 | TestFlight-Fassung auf dem eigenen iPhone prüfen | iPhone | 30 min | [Teil 4](#4-build-und-testflight) |
+| 7 | Screenshots aufnehmen und auf die akzeptierte Größe bringen | iPhone, dann PC | 1 h | [Teil 7](#7-screenshots) |
+| 8 | Store-Eintrag, App-Datenschutz, Altersfreigabe, Händlerangaben, Prüfhinweise | ASC | 1–2 h | [Teile 5–8](#5-store-eintrag-texte) |
+| 9 | Zur Prüfung einreichen | ASC | 1–2 Tage Wartezeit | [Teil 9](#9-einreichen-und-die-häufigsten-ablehnungsgründe) |
+
+**Warum Schritt 3 vor Schritt 4:** Beim Anlegen der App verlangt ASC die Bundle-ID aus einer Auswahlliste. Dort stehen nur Kennungen, die im Developer-Portal registriert sind. Das übernimmt EAS beim ersten Build, sodass du es nicht selbst tun musst.
+
+Wer die App lieber **zuerst** in ASC sehen will, registriert die Kennung von Hand und tauscht die Schritte 3 und 4: [developer.apple.com](https://developer.apple.com/account/resources/identifiers/list) → *Identifiers* → **+** → *App IDs* → *App* → Beschreibung „DoiProof“, *Explicit* mit `org.doichain.doiproof`, keine Capabilities auswählen. Die App braucht keine (keine Push-Benachrichtigungen, kein iCloud, kein Sign in with Apple).
+
+### 0.1 Vereinbarungen annehmen
+
+Ohne angenommene Vereinbarung lässt sich keine App ausliefern, und das fällt erst beim Einreichen auf.
+
+In ASC → *Verträge, Steuern und Bankverbindung* (englisch *Agreements, Tax, and Banking*) muss die Vereinbarung für **kostenlose Apps** den Status „aktiv“ haben. Annehmen darf sie nur die Rolle **Account Holder**. Steuer- und Bankangaben sind für eine kostenlose App nicht nötig; sie werden erst für bezahlte Apps und In-App-Käufe verlangt.
+
+Gleich mit erledigen: **Händlerstatus für die EU**. Apple verlangt Name, Anschrift, Telefon und E-Mail des Händlers und zeigt sie Nutzern in der EU öffentlich an. Fehlen sie, wird die App in der EU nicht ausgeliefert – unabhängig davon, ob Apple sie freigibt. Dieselben geschäftlichen Angaben verwenden wie bei Google Play.
+
+### 0.2 App in App Store Connect anlegen
+
+ASC → *Apps* → **+** → *Neue App*:
+
+| Feld | Wert | Hinweis |
+|---|---|---|
+| Plattformen | **iOS** | Nur iOS ankreuzen. |
+| Name | `DoiProof – Foto-Nachweis` | Muss im App Store **weltweit** frei sein; ASC prüft das sofort. Ist er belegt, Variante aus [Teil 5.1](#51-app-name). Der Name lässt sich später ändern. |
+| Primärsprache | **Deutsch (Deutschland)** | |
+| Bundle-ID | `org.doichain.doiproof` | Aus der Auswahlliste. Steht sie nicht darin, fehlt Schritt 3. **Danach nie mehr änderbar.** |
+| SKU | `doiproof` | Interne Kennung, nur für dich sichtbar, frei wählbar, nicht änderbar. |
+| Benutzerzugriff | **Vollzugriff** | Bei einem Konto mit mehreren Personen hier einschränken. |
+
+Danach steht die App als Entwurf in ASC. Notiere die numerische **Apple-ID der App** unter *Allgemein → App-Informationen*. Sie ist kein Geheimnis und kann in `eas.json` eingetragen werden, damit `eas submit` nicht jedes Mal fragt:
+
+```json
+"submit": { "production": { "ios": { "ascAppId": "1234567890" } } }
+```
+
+Der Preis gehört nicht in dieses Fenster: *Preise und Verfügbarkeit* → **Kostenlos**, und dort auch die Länder festlegen.
 
 ## 1. Voraussetzungen
 
