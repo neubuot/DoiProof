@@ -73,7 +73,7 @@ Nach dem Upload verarbeitet Apple den Build (5–30 Minuten). Danach in App Stor
 3. **Externe Tests:** Gruppe anlegen und Tester per E-Mail oder öffentlichem Link einladen. Der erste Build einer Version durchläuft die **Beta-App-Prüfung** durch Apple. Unter *Testinformationen* ausfüllen: Beta-App-Beschreibung, Feedback-E-Mail, Kontaktdaten und eine **Datenschutzerklärung-URL** (auch für den späteren Store-Eintrag nötig). Prüfhinweis für Apple: „Keine Anmeldung erforderlich. Funktion: Foto aufnehmen, Hash auf der Doichain verankern; Tab ‚Prüfen‘ prüft ZIP-Beweispakete.“
 4. **App-Datenschutz** (*App-Datenschutz* in App Store Connect): Angaben nach eigener Prüfung. Technisch sendet DoiProof weder Foto noch Standort noch Sensorwerte; übertragen werden der Paket-Hash und eine kurze Gerätezeit-Notiz an den Doichain-Dienst, bei Vorabblöcken öffentliche Blockabfragen. Ausnahme: Für den Kartenausschnitt im PDF-Bericht (standardmäßig an, sobald der Standort im Bericht steht) lädt die App Kartenkacheln von `tile.openstreetmap.org`; der Kartendienst erfährt dabei die IP-Adresse und den ungefähren Standort (auf etwa 1 km genau). Das ist bei den Angaben zum ungefähren Standort zu berücksichtigen. Diese Dokumentation ist keine Rechtsberatung.
 
-Die Tester-Anleitung steht in [TESTER.md](TESTER.md).
+Die Tester-Anleitung steht in [TESTER.md](TESTER.md). Den Weg von TestFlight weiter in den App Store – Store-Eintrag, App-Datenschutz, Screenshots und Prüfhinweise – beschreibt [APP-STORE.md](APP-STORE.md).
 
 ## Laufender Betrieb
 

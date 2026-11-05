@@ -19,7 +19,7 @@
     "ios": {
       "bundleIdentifier": "org.doichain.doiproof",
       "buildNumber": "1",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
       },

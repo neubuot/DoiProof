@@ -21,6 +21,7 @@ DoiProof ist eine Android- und iOS-App (Expo/React Native), die ein Foto und die
 | [Android-Build und Gerätetest](docs/ANDROID-RELEASE.md) | EAS Build, Release-Tag, EAS Update, Testablauf |
 | [iOS-Release über TestFlight](docs/IOS-RELEASE.md) | Einmalige Schritte mit dem Apple-Login |
 | [Veröffentlichung im Google Play Store](docs/PLAY-STORE.md) | Play Console, Store-Eintrag, Datensicherheit, Build und Upload mit EAS |
+| [Veröffentlichung im App Store](docs/APP-STORE.md) | Store-Eintrag, App-Datenschutz, Screenshots, Prüfhinweise für App Review |
 | [Review 1.0](docs/REVIEW-1.0.md) | Bewertung des Ausgangszustands, Befunde, Restrisiken |
 | [Release-Notes](RELEASE_NOTES.md) | Änderungen in 1.0.0 |
 | [Designvorlage Prüfbericht](docs/design/PRUEFBERICHT-DESIGN.md) | Verbindliche Gestaltung des PDF-Berichts |

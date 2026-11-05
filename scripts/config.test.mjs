@@ -31,6 +31,10 @@ test('Expo-Konfiguration: Owner, Projekt, iOS-Bundle-ID, Berechtigungen und EAS 
     assert.ok(expo.ios.infoPlist[key]?.length > 40, key);
   }
   assert.equal(expo.ios.config.usesNonExemptEncryption, false);
+  // Unterstuetzt das Binaerpaket das iPad, verlangt App Store Connect einen eigenen Satz
+  // iPad-Screenshots. Die Oberflaeche ist auf Hochformat ausgelegt; auf dem iPad kaeme
+  // zusaetzlich Querformat hinzu. Deshalb nur iPhone (TARGETED_DEVICE_FAMILY = 1).
+  assert.equal(expo.ios.supportsTablet, false);
   assert.equal(expo.android.package, 'org.doichain.doiproof');
   assert.ok(expo.android.blockedPermissions.includes('android.permission.RECORD_AUDIO'));
   // Google Play: keine Bewegungserkennung (nicht genutzt), kein breiter Medienzugriff (Photo Picker), keine Werbe-ID
