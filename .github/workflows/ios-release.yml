@@ -1,0 +1,114 @@
+name: iOS-Build (EAS Build + TestFlight)
+
+# Startet ausschließlich von Hand (workflow_dispatch) – auch aus dem Browser auf dem Handy,
+# GitHub → Actions → „iOS-Build“ → Run workflow. Kein Mac und kein lokaler Rechner nötig:
+# EAS baut in der Cloud und lädt auf Wunsch direkt zu TestFlight hoch.
+#
+# Bewusst kein Tag-Auslöser: Jeder iOS-Build verbraucht Build-Kontingent und löst bei
+# „submit: true“ eine Verarbeitung bei Apple aus.
+#
+# Voraussetzungen (einmalig, siehe docs/IOS-RELEASE.md):
+#   - Repository-Secret EXPO_TOKEN (Expo-Robot-Nutzer)
+#   - in Expo hinterlegte iOS-Zugangsdaten: Distribution Certificate und Provisioning Profile
+#   - für „submit: true“ zusätzlich ein App-Store-Connect-API-Schlüssel in Expo und die App
+#     in App Store Connect (docs/APP-STORE.md, Teil 0)
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: 'Nach dem Build zu TestFlight hochladen'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    name: iOS-Build bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: TypeScript prüfen
+        run: npm run check
+
+      - name: Tests ausführen
+        run: npm test
+
+      - name: EXPO_TOKEN prüfen
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Das Repository-Secret EXPO_TOKEN fehlt. Siehe docs/IOS-RELEASE.md."
+            exit 1
+          fi
+
+      - name: EAS CLI einrichten
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: iOS-Build mit EAS bauen (Profil production)
+        id: build
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          eas build --platform ios --profile production --non-interactive --wait --json \
+            --message "DoiProof $VERSION (${GITHUB_SHA::12})" > build.json
+          STATUS=$(jq -r '.[0].status' build.json)
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          if [ "$STATUS" != "FINISHED" ] || [ -z "$BUILD_ID" ] || [ "$BUILD_ID" = "null" ]; then
+            echo "::error::EAS-Build nicht erfolgreich (Status $STATUS). Fehlen die iOS-Zugangsdaten in Expo, siehe docs/IOS-RELEASE.md, Schritt 2."
+            cat build.json
+            exit 1
+          fi
+          BUILD_URL="https://expo.dev/accounts/neubuots-team/projects/doiproof/builds/$BUILD_ID"
+          RUNTIME=$(jq -r '.[0].runtimeVersion // empty' build.json)
+          IOS_VERSION=$(jq -r '.[0].appBuildVersion // empty' build.json)
+          {
+            echo "build_id=$BUILD_ID"
+            echo "build_url=$BUILD_URL"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## iOS-Build $VERSION (Build-Nummer ${IOS_VERSION:-unbekannt})"
+            echo ""
+            echo "- Expo-Build-Seite: $BUILD_URL"
+            echo "- Laufzeitversion: ${RUNTIME:-unbekannt}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build zu TestFlight hochladen
+        if: inputs.submit
+        run: |
+          eas submit --platform ios --profile production --non-interactive \
+            --id "${{ steps.build.outputs.build_id }}"
+          {
+            echo ""
+            echo "Hochgeladen zu App Store Connect. Apple verarbeitet den Build in 5–30 Minuten;"
+            echo "danach steht er unter TestFlight bereit."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hinweis ohne Upload
+        if: ${{ !inputs.submit }}
+        run: |
+          {
+            echo ""
+            echo "Nicht hochgeladen (Eingabe „submit“ war aus). Upload später:"
+            echo "Actions → iOS-Build erneut starten mit submit = true, oder lokal"
+            echo '`npx eas-cli@latest submit --platform ios --profile production --latest`.'
+          } >> "$GITHUB_STEP_SUMMARY"
