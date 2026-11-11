@@ -106,6 +106,18 @@ test('Workflows: APK bei Release-Tag mit EXPO_TOKEN, EAS Update, Windows-Release
   assert.doesNotMatch(desktop, /0\.6\.0/);
 });
 
+test('Store-Builds laufen nur von Hand, nie bei einem Tag', async () => {
+  // Ein verbrauchter versionCode bei Google und ein Upload bei Apple lassen sich nicht
+  // zuruecknehmen. Beide Workflows starten deshalb ausschliesslich ueber workflow_dispatch.
+  for (const name of ['ios-release', 'android-release']) {
+    const store = await text(`.github/workflows/${name}.yml`);
+    assert.match(store, /^on:\n {2}workflow_dispatch:\n/m, name);
+    assert.doesNotMatch(store, /^ *tags:/m, name);
+    assert.match(store, /--non-interactive/, name);
+    assert.match(store, /secrets\.EXPO_TOKEN/, name);
+  }
+});
+
 test('Release-Notes erhalten den Expo-Link idempotent', () => {
   const section = androidSection({
     version: '1.0.0', buildUrl: 'https://expo.dev/accounts/neubuots-team/projects/doiproof/builds/abc',

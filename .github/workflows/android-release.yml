@@ -1,0 +1,116 @@
+name: Android-Release (EAS Build + Play)
+
+# Startet ausschließlich von Hand (workflow_dispatch) – auch aus dem Browser auf dem Handy,
+# GitHub → Actions → „Android-Release“ → Run workflow. Baut per EAS ein AAB für Google Play
+# (Profil production) und lädt es auf Wunsch als Entwurf in den internen Test.
+#
+# Nicht zu verwechseln mit android-apk.yml: Das baut bei jedem Tag v* ein APK für Tester
+# (Profil preview). Hier geht es um den Store-Build.
+#
+# Bewusst kein Tag-Auslöser: Ein Store-Build verbraucht Build-Kontingent, und ein Upload
+# verbrennt eine versionCode-Nummer bei Google unwiderruflich.
+#
+# Voraussetzungen (einmalig, siehe docs/PLAY-STORE.md):
+#   - Repository-Secret EXPO_TOKEN
+#   - der in Google Play hinterlegte Upload-Schlüssel liegt bei EAS im Profil production
+#   - Google-Dienstkonto-Schlüssel bei EAS (nur für „submit“)
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: 'Nach dem Build als Entwurf in den internen Test hochladen'
+        type: boolean
+        default: false
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: AAB für Google Play bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: TypeScript prüfen
+        run: npm run check
+
+      - name: Tests ausführen
+        run: npm test
+
+      - name: EXPO_TOKEN prüfen
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Das Repository-Secret EXPO_TOKEN fehlt. Siehe docs/ANDROID-RELEASE.md."
+            exit 1
+          fi
+
+      - name: EAS CLI einrichten
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: AAB mit EAS bauen (Profil production)
+        id: build
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          eas build --platform android --profile production --non-interactive --wait --json \
+            --message "DoiProof $VERSION (${GITHUB_SHA::12})" > build.json
+          STATUS=$(jq -r '.[0].status' build.json)
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          if [ "$STATUS" != "FINISHED" ] || [ -z "$BUILD_ID" ] || [ "$BUILD_ID" = "null" ]; then
+            echo "::error::EAS-Build nicht erfolgreich (Status $STATUS)."
+            cat build.json
+            exit 1
+          fi
+          BUILD_URL="https://expo.dev/accounts/neubuots-team/projects/doiproof/builds/$BUILD_ID"
+          RUNTIME=$(jq -r '.[0].runtimeVersion // empty' build.json)
+          CODE=$(jq -r '.[0].appBuildVersion // empty' build.json)
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Android-Store-Build $VERSION (versionCode ${CODE:-unbekannt})"
+            echo ""
+            echo "- Expo-Build-Seite: $BUILD_URL"
+            echo "- Laufzeitversion: ${RUNTIME:-unbekannt}"
+            echo ""
+            echo "Der versionCode muss größer sein als jeder schon bei Google Play"
+            echo "hochgeladene. Google nimmt eine verbrauchte Nummer nie wieder an."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: AAB in den internen Test hochladen
+        if: inputs.submit
+        run: |
+          eas submit --platform android --profile production --non-interactive \
+            --id "${{ steps.build.outputs.build_id }}"
+          {
+            echo ""
+            echo "Hochgeladen als **Entwurf** in den internen Test (track: internal,"
+            echo "releaseStatus: draft). Nichts ist damit veröffentlicht – der Release"
+            echo "wird in der Play Console von Hand ausgerollt."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hinweis ohne Upload
+        if: ${{ !inputs.submit }}
+        run: |
+          {
+            echo ""
+            echo "Nicht hochgeladen (Eingabe „submit“ war aus). Das AAB liegt auf der"
+            echo "Build-Seite zum Herunterladen bereit."
+          } >> "$GITHUB_STEP_SUMMARY"

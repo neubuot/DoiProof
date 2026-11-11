@@ -6,7 +6,7 @@ Die Android-App wird mit **EAS Build** (Expo Application Services) als signierte
 |---|---|
 | Expo-Konto / Projekt | `neubuots-team` / `doiproof`, Projekt-ID `190b3b9c-3911-4831-947e-06bb20ce9d89` (`app.json`) |
 | Paketname | `org.doichain.doiproof` |
-| Version | `1.0.0`. Der `versionCode` steht in `app.json` (`android.versionCode`, derzeit `3`) und gilt für einen Build aus Android Studio; `expo prebuild` trägt ihn in `android/app/build.gradle` ein. Google Play nimmt eine bereits verwendete Nummer nie wieder an – veröffentlicht ist `2`. EAS-Builds verwalten die Nummer dagegen selbst und zählen sie hoch (`appVersionSource: remote`, `eas.json`). |
+| Version | `1.0.0`. Den `versionCode` verwaltet EAS selbst und zählt ihn bei jedem Build hoch (`appVersionSource: remote` in `eas.json`); `android.versionCode` in `app.json` wird dabei ignoriert und gilt nur für einen Build aus Android Studio. Google Play nimmt eine bereits verwendete Nummer nie wieder an – veröffentlicht ist `2`. Vor dem ersten Store-Build mit EAS prüfen, dass der Zähler darüber liegt: [Umstieg auf EAS](#umstieg-von-android-studio-auf-eas). |
 | Profil `preview` | interne Verteilung, **APK**, Update-Kanal `preview` |
 | Profil `production` | Store-Verteilung, **AAB** für Google Play, Update-Kanal `production`; Upload mit `eas submit` als Entwurf in den internen Test (`eas.json`). Ablauf bis zur Veröffentlichung: [PLAY-STORE.md](PLAY-STORE.md) |
 | Berechtigungen | Kamera, Standort (nur im Vordergrund), Internet; Speicher nur bis Android 9 (für die Kamera, `plugins/with-android-play.js`). Gesperrt: Mikrofon, Hintergrundstandort, Bewegungserkennung, Medienzugriff (Fotoauswahl über den Android-Photo-Picker), Werbe-ID |
@@ -46,6 +46,27 @@ npx eas-cli@latest credentials --platform android
 ```
 
 Alle späteren Builds, auch die aus GitHub Actions, nutzen denselben Schlüssel; nur so lassen sich neue APKs über installierte Apps installieren. Einen vorhandenen Keystore nie ersetzen oder löschen.
+
+## Umstieg von Android Studio auf EAS
+
+Version 1.0.0 (`versionCode 2`) wurde aus Android Studio gebaut und von Hand in die Play Console geladen. Kommt der nächste Store-Build von EAS, sind vorher zwei Dinge zu klären. Beide fallen sonst erst beim Upload auf, wenn der Build schon bezahlt ist.
+
+**1. Upload-Schlüssel.** Google Play signiert die ausgelieferte App mit einem eigenen Schlüssel, nimmt ein AAB aber nur an, wenn es mit dem hinterlegten **Upload-Schlüssel** signiert ist – derzeit der lokale Keystore aus Android Studio. EAS signiert mit dem Keystore, den es für die Test-APKs erzeugt hat; Google lehnt ein so signiertes Bundle ab („signed with the wrong key“). Zwei Wege:
+
+- **Den vorhandenen Keystore zu EAS hochladen,** sofort wirksam. `npx eas-cli@latest credentials -p android`, Profil **production**, Keystore → den Schlüssel *nicht* von EAS erzeugen lassen, sondern die vorhandene `.jks` mit Alias und Passwörtern angeben. Die Passwörter gehören in die Abfrage von eas-cli, nie in eine Datei im Repository. Lässt eas-cli für `preview` und `production` getrennte Konfigurationen zu, dem Profil `preview` seinen bisherigen Keystore lassen; andernfalls sind künftige Test-APKs anders signiert und Tester müssen die App einmal neu installieren (**vorher Nachweise als ZIP exportieren**).
+- **Den Upload-Schlüssel bei Google zurücksetzen,** dauert einige Tage. Play Console → *App-Integrität* → *App-Signatur* → Upload-Schlüssel zurücksetzen, mit dem SHA-256 des EAS-Keystores aus `eas credentials -p android`.
+
+Der erste Weg ist der kürzere; er setzt voraus, dass `upload-keystore.jks` samt Passwörtern noch vorhanden ist. Geht er verloren, bleibt nur der zweite – ein Grund mehr für eine Sicherung außerhalb dieses Rechners.
+
+**2. `versionCode`-Zähler.** EAS führt seinen eigenen Zähler auf dem Server und weiß nichts von dem Bundle, das von Hand hochgeladen wurde. Steht er unter `2`, erzeugt der erste Store-Build eine Nummer, die Google schon kennt, und der Upload scheitert.
+
+```sh
+npx eas-cli@latest build:version:get --platform android
+# liegt der Wert unter 2, auf einen höheren Wert setzen:
+npx eas-cli@latest build:version:set --platform android
+```
+
+Ist beides erledigt, läuft Android wie iOS: *Actions → Android-Release → Run workflow* baut das AAB und lädt es auf Wunsch als Entwurf in den internen Test. Ein EAS-Build trägt außerdem den Update-Kanal in die App ein – erst damit erreicht **EAS Update** auch die Play-Version. Die von Hand gebaute 1.0.0 hat keinen Kanal und bekommt keine Updates.
 
 ## EAS Update
 
