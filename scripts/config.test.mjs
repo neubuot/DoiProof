@@ -70,7 +70,9 @@ test('EAS: APK für Tester im Kanal preview, Store/TestFlight im Kanal productio
   assert.equal(eas.build.production.channel, 'production');
   assert.equal(eas.build.production.distribution, 'store');
   assert.ok(eas.build.production.ios, 'iOS-Profil für TestFlight');
-  assert.ok(eas.submit.production.ios, 'Submit-Profil für TestFlight');
+  // Die numerische Apple-ID der App; ohne sie kann eas submit non-interaktiv nichts zuordnen.
+  // Kein Geheimnis: in App Store Connect unter App-Informationen fuer jeden sichtbar.
+  assert.match(eas.submit.production.ios.ascAppId, /^[0-9]{8,12}$/, 'ascAppId aus App Store Connect');
   // Google Play: erster Upload als Entwurf in den internen Test, nichts geht ungeprüft live
   assert.deepEqual(eas.submit.production.android, { track: 'internal', releaseStatus: 'draft' });
   assert.equal(eas.submit.production.android.serviceAccountKeyPath, undefined, 'Dienstkonto-Schlüssel nur in EAS, nie im Repo');
