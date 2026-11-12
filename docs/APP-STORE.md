@@ -382,7 +382,7 @@ Wird abgelehnt, steht der Grund im *Resolution Center* mit Verweis auf die Richt
 | Nur Texte, Screenshots, Werbetext | In App Store Connect ändern. Der Werbetext geht sofort, die übrigen Texte mit der nächsten Version. |
 | Nur JavaScript oder Assets | **EAS Update** auf Kanal `production`: GitHub → *Actions* → „EAS Update“ → *Run workflow*. Erreicht installierte Apps beim nächsten Start. |
 | Native Änderung (Expo-Modul, Berechtigung, SDK) | Die Laufzeitversion ändert sich; alte Builds laden das Update **nicht**. Neuer Build: `npx eas-cli@latest build -p ios --profile production --auto-submit`. |
-| Neue Versionsnummer | `core/version.mjs`, `package.json`, `app.json`, `desktop/package.json` und `RELEASE_NOTES.md`; `scripts/config.test.mjs` hält sie zusammen. Die Build-Nummer zählt EAS selbst hoch. |
+| Neue Versionsnummer | `core/version.mjs`, `package.json`, `app.json`, `desktop/package.json` und `RELEASE_NOTES.md`; `scripts/config.test.mjs` hält sie zusammen. Die Build-Nummer im selben Commit erhöhen, `android.versionCode` und `ios.buildNumber` auf denselben Wert ([ANDROID-RELEASE.md](ANDROID-RELEASE.md#versionen-und-build-nummern)). |
 
 TestFlight-Builds laufen nach 90 Tagen ab. Solange die App nicht im Store ist, erreicht ein Update auf dem Kanal `production` ausschließlich die TestFlight-Tester; danach alle Installationen. Für Tester sollte dann ein eigenes Profil mit eigenem Kanal angelegt werden.
 
