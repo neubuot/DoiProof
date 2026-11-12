@@ -218,7 +218,7 @@ Der Schlüssel liegt jetzt bei EAS; `eas.json` enthält bewusst keinen Pfad. Die
 npx eas-cli@latest build --platform android --profile production
 ```
 
-- Die gelbe Warnung „android.versionCode field in app config is ignored when version source is set to remote“ und „Incremented versionCode from … to …“ sind normal: EAS zählt den `versionCode` selbst hoch, gemeinsam für Test- und Store-Builds.
+- Der `versionCode` kommt aus `app.json` (`appVersionSource: local`) und muss vor dem Build von Hand erhöht worden sein, gemeinsam mit `ios.buildNumber`. Ein Test prüft die Gleichheit beider Werte und lehnt Nummern ab, die bei Google schon verbraucht sind ([ANDROID-RELEASE.md](ANDROID-RELEASE.md#versionen-und-build-nummern)).
 - „Using remote Android credentials (Expo server)“: EAS nutzt denselben Schlüssel wie für die Test-APKs. Er wird in Google Play zum **Upload-Schlüssel**. Nur bei neuem Paketnamen fragt EAS „Generate a new Android Keystore?“ → **Y**; den SHA256 Fingerprint dann nach dem Build notieren (Teil 6c, Schritt 2).
 - Der Build dauert meist 10–20 Minuten, mit Warteschlange länger. Strg+C beendet nur das Warten.
 
@@ -310,7 +310,7 @@ npx eas-cli@latest update --channel production --environment production --platfo
 
 Zum Prüfen in der Play-Version zweimal neu starten: „Über diese App“ zeigt dann `Update xxxxxxxx` statt „eingebautes Bundle“. Ein fehlerhaftes Update lässt sich mit `npx eas-cli@latest update:rollback` zurücknehmen.
 
-**Neuer Store-Build:** Für eine neue Versionsnummer (z. B. 1.0.1) die Version in `app.json`, `package.json`, `desktop/package.json` und `core/version.mjs` gleich setzen (ein Test prüft das). Den `versionCode` zählt EAS selbst hoch, auch durch Test-APKs aus Release-Tags; Lücken stören Google nicht.
+**Neuer Store-Build:** Für eine neue Versionsnummer (z. B. 1.0.1) die Version in `app.json`, `package.json`, `desktop/package.json` und `core/version.mjs` gleich setzen (ein Test prüft das). Dazu im selben Commit die Build-Nummer erhöhen: `android.versionCode` und `ios.buildNumber` in `app.json` auf denselben neuen Wert ([ANDROID-RELEASE.md](ANDROID-RELEASE.md#versionen-und-build-nummern)). Lücken stören Google nicht.
 
 ## 13. Stolpersteine und häufige Fragen
 

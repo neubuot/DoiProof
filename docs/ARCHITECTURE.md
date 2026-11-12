@@ -93,7 +93,7 @@ Abgeleitete Werte im Bericht (Beträge, barometrische Höhe nach Normatmosphäre
 
 ## Build, Updates und Releases
 
-- **EAS Build:** Profil `preview` (APK, interne Verteilung, Kanal `preview`) und `production` (AAB bzw. iOS App Store/TestFlight, Kanal `production`). Versionscodes verwaltet EAS (`appVersionSource: remote`).
+- **EAS Build:** Profil `preview` (APK, interne Verteilung, Kanal `preview`) und `production` (AAB bzw. iOS App Store/TestFlight, Kanal `production`). Die Build-Nummer steht in `app.json` und ist für Android und iOS dieselbe (`appVersionSource: local`).
 - **EAS Update:** `runtimeVersion.policy = fingerprint`. Native Änderungen ergeben eine neue Laufzeitversion; nur passende Builds laden ein Update.
 - **GitHub Actions:** `ci.yml` (Typen, Tests, Beispielbericht, Android-/iOS-Bundle, Desktop-Logik), `android-apk.yml` (APK bei Tag, Link in Release-Notes), `eas-update.yml` (JS-Updates), `desktop-windows.yml` (portable EXE, Release bei Tag).
 

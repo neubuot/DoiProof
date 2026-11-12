@@ -127,7 +127,7 @@ Der erste Build erzeugt den **Android-Signaturschlüssel**. Er bleibt danach in 
    ```
 
    Meldungen und Rückfragen beim ersten Build:
-   - Gelbe Warnung „android.versionCode field in app config is ignored when version source is set to remote“ sowie „No remote versions are configured …“ und „Incremented versionCode from 1 to 2“: normal, keine Eingabe nötig. EAS verwaltet den `versionCode` selbst.
+   - Der `versionCode` kommt aus `app.json` und wird von EAS nicht verändert (`appVersionSource: local`). Für ein Test-APK ist das gleichgültig; vor einem Store-Build muss die Nummer von Hand erhöht sein ([ANDROID-RELEASE.md](ANDROID-RELEASE.md#versionen-und-build-nummern)).
    - „Using remote Android credentials (Expo server)“, dann **„Generate a new Android Keystore?“**: mit **Y** und Enter bestätigen. Erscheint „Detected that you do not have keytool installed locally“ und „Generating keystore in the cloud…“, ist das ebenfalls normal. EAS erzeugt und speichert den Schlüssel; nichts davon landet im Repository.
    - Kommt die Keystore-Frage nicht, gibt es für das Projekt schon einen Schlüssel („Using Keystore from configuration …“). Auch das ist in Ordnung. **Einen vorhandenen Keystore nie ersetzen oder löschen.**
 

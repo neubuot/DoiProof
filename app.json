@@ -18,7 +18,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "org.doichain.doiproof",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false

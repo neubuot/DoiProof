@@ -19,6 +19,15 @@ test('App, Prüfprogramm und Windows-Prüfer tragen dieselbe Version 1.0.0', asy
   assert.match(await text('RELEASE_NOTES.md'), new RegExp(`DoiProof ${VERSION.replace(/\./g, '\\.')}`));
 });
 
+test('Android und iOS tragen dieselbe Build-Nummer, hoeher als jede veroeffentlichte', async () => {
+  const { expo } = await json('app.json');
+  // Eine Nummer fuer beide Plattformen: ein Tag beschreibt damit genau einen Build je Store.
+  assert.equal(expo.android.versionCode, Number(expo.ios.buildNumber));
+  assert.match(expo.ios.buildNumber, /^[0-9]+$/, 'iOS erwartet die Build-Nummer als Zeichenkette');
+  // Google Play nimmt eine verwendete Nummer nie wieder an; veroeffentlicht ist 2.
+  assert.ok(expo.android.versionCode > 2, `versionCode ${expo.android.versionCode} ist bei Google Play verbraucht`);
+});
+
 test('Expo-Konfiguration: Owner, Projekt, iOS-Bundle-ID, Berechtigungen und EAS Update', async () => {
   const { expo } = await json('app.json');
   assert.equal(expo.owner, 'neubuots-team');
@@ -50,7 +59,11 @@ test('Expo-Konfiguration: Owner, Projekt, iOS-Bundle-ID, Berechtigungen und EAS 
 
 test('EAS: APK für Tester im Kanal preview, Store/TestFlight im Kanal production', async () => {
   const eas = await json('eas.json');
-  assert.equal(eas.cli.appVersionSource, 'remote');
+  // local: Die Build-Nummer steht in app.json und damit in Git, statt auf dem Expo-Server
+  // zu liegen. Nur so tragen Android und iOS dieselbe Nummer und ein Tag beschreibt den
+  // Build vollstaendig. Ohne autoIncrement aendert kein Build die Nummer hinter dem Ruecken.
+  assert.equal(eas.cli.appVersionSource, 'local');
+  for (const profile of ['preview', 'production']) assert.equal(eas.build[profile].autoIncrement, undefined, profile);
   assert.equal(eas.build.preview.distribution, 'internal');
   assert.equal(eas.build.preview.channel, 'preview');
   assert.equal(eas.build.preview.android.buildType, 'apk');
