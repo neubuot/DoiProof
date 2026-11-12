@@ -58,6 +58,16 @@ jobs:
             exit 1
           fi
 
+      - name: Submit-Profil prüfen
+        if: inputs.submit
+        run: |
+          ASC_APP_ID=$(node -p "require('./eas.json').submit.production.ios.ascAppId || ''")
+          if [ -z "$ASC_APP_ID" ]; then
+            echo "::error::In eas.json fehlt submit.production.ios.ascAppId: die numerische Apple-ID der App aus App Store Connect (App-Informationen). Non-interaktiv kann eas submit die App sonst nicht zuordnen. Siehe docs/IOS-RELEASE.md, Schritt 4."
+            exit 1
+          fi
+          echo "App Store Connect App-ID: $ASC_APP_ID"
+
       - name: EAS CLI einrichten
         uses: expo/expo-github-action@v8
         with:

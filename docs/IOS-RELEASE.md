@@ -58,11 +58,13 @@ npx eas-cli@latest submit --platform ios --profile production --latest
 
 EAS fragt erneut nach dem Apple-Login und bietet an, einen **App-Store-Connect-API-Schlüssel** anzulegen. Empfehlung: zustimmen. Der Schlüssel wird in Expo gespeichert und erlaubt künftige Uploads ohne erneuten Login (auch aus GitHub Actions). Die `.p8`-Datei nicht herunterladen oder ins Repository legen.
 
-Optional die App-ID aus Schritt 3 in `eas.json` eintragen, damit `eas submit` nicht mehr fragt (die ID ist kein Geheimnis):
+Die numerische **Apple-ID der App** (App Store Connect → *App-Informationen*) in `eas.json` eintragen; die ID ist kein Geheimnis:
 
 ```json
 "submit": { "production": { "ios": { "ascAppId": "1234567890" } } }
 ```
+
+Interaktiv fragt `eas submit` sonst jedes Mal nach der App. **Non-interaktiv geht es ohne die ID nicht**, weil nichts zu fragen ist: Der Workflow [`ios-release.yml`](../.github/workflows/ios-release.yml) bricht deshalb vor dem Build mit einem Hinweis ab, statt erst nach 30 Minuten beim Upload.
 
 ### 5. TestFlight einrichten
 
