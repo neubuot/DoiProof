@@ -116,7 +116,7 @@ Beim ersten Mal fragt EAS nach deiner Apple-ID mit Zwei-Faktor-Bestätigung und 
 
 **Exportkonformität** ist vorab beantwortet: `ITSAppUsesNonExemptEncryption = False` steht im erzeugten `Info.plist`, weil `app.json` es setzt. Beim Upload fragt Apple deshalb nicht nach.
 
-**Die Build-Nummer** steht in `app.json` (`ios.buildNumber`, derzeit `3`) und ist dieselbe wie Androids `versionCode`; sie wird vor jedem Store-Build von Hand erhöht (`appVersionSource: local`). Apple verlangt sie innerhalb einer Version streng steigend, also auch für einen zweiten TestFlight-Build von 1.0.0. Siehe [ANDROID-RELEASE.md, „Versionen und Build-Nummern“](ANDROID-RELEASE.md#versionen-und-build-nummern).
+**Die Build-Nummer** steht in `app.json` (`ios.buildNumber`, derzeit `5`) und ist dieselbe wie Androids `versionCode`; sie wird vor jedem Store-Build von Hand erhöht (`appVersionSource: local`). Apple verlangt sie innerhalb einer Version streng steigend, also auch für einen zweiten TestFlight-Build von 1.0.0. Siehe [ANDROID-RELEASE.md, „Versionen und Build-Nummern“](ANDROID-RELEASE.md#versionen-und-build-nummern).
 
 **Vor dem Store-Eintrag die TestFlight-Fassung auf dem eigenen iPhone prüfen.** Apple lehnt nach Richtlinie 2.1 ab, was abstürzt oder offensichtlich unfertig ist. Besonders ansehen:
 

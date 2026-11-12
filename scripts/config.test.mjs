@@ -24,8 +24,10 @@ test('Android und iOS tragen dieselbe Build-Nummer, hoeher als jede veroeffentli
   // Eine Nummer fuer beide Plattformen: ein Tag beschreibt damit genau einen Build je Store.
   assert.equal(expo.android.versionCode, Number(expo.ios.buildNumber));
   assert.match(expo.ios.buildNumber, /^[0-9]+$/, 'iOS erwartet die Build-Nummer als Zeichenkette');
-  // Google Play nimmt eine verwendete Nummer nie wieder an; veroeffentlicht ist 2.
-  assert.ok(expo.android.versionCode > 2, `versionCode ${expo.android.versionCode} ist bei Google Play verbraucht`);
+  // Untergrenze 4: Google Play hat die 2 verbraucht (Upload aus Android Studio), und EAS hat
+  // mit dem alten Serverzaehler schon Test-APKs mit 3 und 4 gebaut. Eine neue Nummer darf mit
+  // keinem dieser Artefakte zu verwechseln sein.
+  assert.ok(expo.android.versionCode > 4, `Build-Nummer ${expo.android.versionCode} ist schon vergeben`);
 });
 
 test('Expo-Konfiguration: Owner, Projekt, iOS-Bundle-ID, Berechtigungen und EAS Update', async () => {

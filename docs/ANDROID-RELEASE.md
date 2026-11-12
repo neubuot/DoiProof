@@ -7,7 +7,7 @@ Die Android-App wird mit **EAS Build** (Expo Application Services) als signierte
 | Expo-Konto / Projekt | `neubuots-team` / `doiproof`, Projekt-ID `190b3b9c-3911-4831-947e-06bb20ce9d89` (`app.json`) |
 | Paketname | `org.doichain.doiproof` |
 | Version | `1.0.0` in `app.json`, `package.json`, `desktop/package.json` und `core/version.mjs` (ein Test prüft die Gleichheit) |
-| Build-Nummer | `3`, gemeinsam für beide Plattformen: `android.versionCode` und `ios.buildNumber` in `app.json` (`appVersionSource: local`, ein Test prüft die Gleichheit). Sie wird von Hand erhöht, nicht von EAS. Google Play nimmt eine bereits verwendete Nummer nie wieder an – veröffentlicht ist `2`. Einzelheiten: [Versionen und Build-Nummern](#versionen-und-build-nummern) |
+| Build-Nummer | `5`, gemeinsam für beide Plattformen: `android.versionCode` und `ios.buildNumber` in `app.json` (`appVersionSource: local`, ein Test prüft die Gleichheit). Sie wird von Hand erhöht, nicht von EAS. Google Play nimmt eine bereits verwendete Nummer nie wieder an – veröffentlicht ist `2`. Einzelheiten: [Versionen und Build-Nummern](#versionen-und-build-nummern) |
 | Profil `preview` | interne Verteilung, **APK**, Update-Kanal `preview` |
 | Profil `production` | Store-Verteilung, **AAB** für Google Play, Update-Kanal `production`; Upload mit `eas submit` als Entwurf in den internen Test (`eas.json`). Ablauf bis zur Veröffentlichung: [PLAY-STORE.md](PLAY-STORE.md) |
 | Berechtigungen | Kamera, Standort (nur im Vordergrund), Internet; Speicher nur bis Android 9 (für die Kamera, `plugins/with-android-play.js`). Gesperrt: Mikrofon, Hintergrundstandort, Bewegungserkennung, Medienzugriff (Fotoauswahl über den Android-Photo-Picker), Werbe-ID |
@@ -55,7 +55,7 @@ Zwei Zahlen, die leicht verwechselt werden:
 | | Wo | Wer sieht sie | Regel |
 |---|---|---|---|
 | **Version** `1.0.0` | `app.json`, `package.json`, `desktop/package.json`, `core/version.mjs` | Nutzer im Store, „Über diese App“, Manifest, PDF-Bericht | auf allen Plattformen gleich; ein Test erzwingt das |
-| **Build-Nummer** `3` | `app.json`: `android.versionCode` und `ios.buildNumber` | niemand außer Google und Apple | muss je Store streng steigen; hier für beide Plattformen dieselbe, ein Test erzwingt das |
+| **Build-Nummer** `5` | `app.json`: `android.versionCode` und `ios.buildNumber` | niemand außer Google und Apple | muss je Store streng steigen; hier für beide Plattformen dieselbe, ein Test erzwingt das |
 
 `appVersionSource` steht in `eas.json` bewusst auf **`local`**: Die Build-Nummer liegt in `app.json` und damit in Git, nicht als Zähler auf dem Expo-Server. Das kostet einen Handgriff je Build und bringt dreierlei:
 
@@ -63,12 +63,14 @@ Zwei Zahlen, die leicht verwechselt werden:
 - Android und iOS tragen dieselbe Nummer. Zwei Serverzähler laufen zwangsläufig auseinander, sobald eine Plattform öfter gebaut wird.
 - Kein Build ändert die Nummer hinter dem Rücken; `autoIncrement` ist in keinem Profil gesetzt.
 
+**Warum die Zählung bei `5` beginnt.** Vergeben sind: `2` bei Google Play (Upload aus Android Studio, veröffentlicht) sowie `3` und `4` als Test-APKs, die der frühere Serverzähler von EAS erzeugt hat (`preview`, 23. und 26. Oktober). Keine davon darf wiederkehren – die 2 würde Google ablehnen, die 3 und 4 wären von bestehenden Artefakten nicht zu unterscheiden. Ein Test hält die Untergrenze fest.
+
 **Vor jedem Store-Build erhöhen,** beide Werte in einem Commit:
 
 ```sh
-# in app.json: "versionCode": 4 und "buildNumber": "4"
+# in app.json: "versionCode": 6 und "buildNumber": "6"
 npm test
-git commit -am "chore: Build-Nummer 4"
+git commit -am "chore: Build-Nummer 6"
 ```
 
 Das gilt auch für einen zweiten TestFlight-Build derselben Version – Apple verlangt innerhalb einer Version eine steigende Nummer. Auf der Android-Seite entstehen dadurch Lücken: Nummern können unbenutzt bleiben, während iOS sie verbraucht. Google stört das nicht, verbraucht sind dort nur hochgeladene Nummern.
@@ -84,7 +86,7 @@ Version 1.0.0 (`versionCode 2`) wurde aus Android Studio gebaut und von Hand in 
 
 Der erste Weg ist der kürzere; er setzt voraus, dass `upload-keystore.jks` samt Passwörtern noch vorhanden ist. Geht er verloren, bleibt nur der zweite – ein Grund mehr für eine Sicherung außerhalb dieses Rechners.
 
-**2. Build-Nummer.** Erledigt: `app.json` steht auf `3`, und ein Test lässt keinen Wert unter `3` zu. Weil `appVersionSource` auf `local` steht, gibt es keinen Zähler auf dem Expo-Server, der von dem handgebauten Bundle nichts wüsste und eine schon verbrauchte Nummer erzeugen könnte ([Versionen und Build-Nummern](#versionen-und-build-nummern)).
+**2. Build-Nummer.** Erledigt: `app.json` steht auf `5`, und ein Test lässt keinen Wert unter `5` zu. Weil `appVersionSource` auf `local` steht, gibt es keinen Zähler auf dem Expo-Server mehr, der von dem handgebauten Bundle nichts wüsste und eine verbrauchte Nummer erzeugen könnte ([Versionen und Build-Nummern](#versionen-und-build-nummern)).
 
 Ist der Schlüssel erledigt, läuft Android wie iOS: *Actions → Android-Release → Run workflow* baut das AAB und lädt es auf Wunsch als Entwurf in den internen Test. Ein EAS-Build trägt außerdem den Update-Kanal in die App ein – erst damit erreicht **EAS Update** auch die Play-Version. Die von Hand gebaute 1.0.0 hat keinen Kanal und bekommt keine Updates.
 
