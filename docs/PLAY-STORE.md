@@ -189,6 +189,23 @@ Eigene Screenshots nur mit neutralem Motiv und ohne echte Koordinaten. Keine Wer
 
    Admin-, Finanz- und Bestellrechte sind **nicht** nötig. **„Nutzer einladen“**.
 
+**b2) Upload-Schlüssel bei EAS hinterlegen**
+
+Nur nötig, wenn das erste Bundle von Hand aus Android Studio hochgeladen wurde: Dann kennt Google einen Upload-Schlüssel aus einer lokalen `.jks`-Datei, während EAS für die Test-APKs einen eigenen Keystore erzeugt hat. Ein mit dem EAS-Keystore signiertes Bundle weist Google ab. Beide Fingerabdrücke zuerst vergleichen:
+
+- in der Play Console unter **„App-Integrität“** → **„App-Signatur“** beim **Zertifikat des Upload-Schlüssels** (nicht beim App-Signaturschlüssel, der gehört Google),
+- bei EAS unter „Configuration: … (Default)“ → „Keystore“ → „SHA256 Fingerprint“.
+
+Sind sie gleich, ist nichts zu tun. Sonst in `npx eas-cli@latest credentials -p android` (Profil **production**):
+
+1. **„Keystore: Manage everything needed to build your project“** → **„Set up a new keystore“**.
+2. „Assign a name to your build credentials“ → ein sprechender Name, z. B. `Play Upload Key doiproof`.
+3. „Do you want to set this as your default build credentials?“ → **y**.
+4. „Generate a new Android Keystore?“ → **n**. Ein **Y** erzeugt einen weiteren unbrauchbaren Schlüssel.
+5. Pfad zur `.jks`-Datei ohne Anführungszeichen, dann Keystore-Passwort, Key-Alias und Key-Passwort. Bei einer PKCS12-Datei sind beide Passwörter dasselbe.
+
+Die Übersicht zeigt danach zwei Konfigurationen; die neue trägt **(Default)** und den erwarteten Fingerabdruck. Die alte bleibt ungenutzt stehen — löschen bringt nichts und ist nur riskant. Weil die Voreinstellung für alle Profile gilt, werden auch `preview`-APKs ab jetzt mit diesem Schlüssel signiert: Ein älteres Test-APK auf dem Gerät muss vor der nächsten Installation deinstalliert werden, Android lehnt einen Wechsel der Signatur sonst ab.
+
 **c) Schlüssel bei EAS hinterlegen** (PowerShell in `$HOME\DoiProof`)
 
 ```powershell
@@ -199,12 +216,12 @@ npx eas-cli@latest credentials -p android
 Die erste Zeile gibt den vollständigen Pfad aus; kopiere ihn. Dann in `eas credentials`:
 
 1. „Which build profile do you want to configure?“ → **production**.
-2. eas-cli zeigt die Android-Zugangsdaten. Notiere unter „Configuration: … (Default)“ → „Keystore“ den **„SHA256 Fingerprint“**: Das ist der Upload-Schlüssel, den du in Teil 8 wiederfindest. Bei neuem Paketnamen zeigt eas-cli hier „No credentials set up yet!“. Dann diesen Schritt überspringen und den SHA256 Fingerprint nach dem Build in Teil 7 mit `npx eas-cli@latest credentials -p android` (Profil production, danach „Exit“) notieren.
+2. eas-cli zeigt die Android-Zugangsdaten. Unter „Configuration: … (Default)“ → „Keystore“ steht der **„SHA256 Fingerprint“**. Er muss der des Upload-Schlüssels sein, den Google erwartet (Teil 6b2); in Teil 8 wird er noch einmal verglichen.
 3. **„Google Service Account“** → **„Manage your Google Service Account Key for Play Store Submissions“** → **„Set up a Google Service Account Key for Play Store Submissions“**.
 4. Bei „Path to Google Service Account file:“ den kopierten Pfad **ohne Anführungszeichen** einfügen und Enter. Gibt es im Konto schon einen Schlüssel, fragt eas-cli zuerst; dann „[Upload a new service account key]“ wählen.
 5. Danach zeigt die Übersicht einen Abschnitt zum Google Service Account Key for Submissions mit der E-Mail des Dienstkontos. Mit **„Exit“** beenden.
 
-Den **Keystore** in diesem Menü nie löschen oder ersetzen („Delete your keystore“, „Set up a new keystore“).
+**„Delete your keystore“** in diesem Menü nie wählen. Ein Keystore lässt sich ersetzen (Teil 6b2), aber ein gelöschter ist weg: Ohne ihn nimmt Google kein Bundle mehr an, und der Upload-Schlüssel lässt sich nur über den Support zurücksetzen.
 
 **d) JSON-Datei danach**
 
@@ -219,7 +236,7 @@ npx eas-cli@latest build --platform android --profile production
 ```
 
 - Der `versionCode` kommt aus `app.json` (`appVersionSource: local`) und muss vor dem Build von Hand erhöht worden sein, gemeinsam mit `ios.buildNumber`. Ein Test prüft die Gleichheit beider Werte und lehnt Nummern ab, die bei Google schon verbraucht sind ([ANDROID-RELEASE.md](ANDROID-RELEASE.md#versionen-und-build-nummern)).
-- „Using remote Android credentials (Expo server)“: EAS nutzt denselben Schlüssel wie für die Test-APKs. Er wird in Google Play zum **Upload-Schlüssel**. Nur bei neuem Paketnamen fragt EAS „Generate a new Android Keystore?“ → **Y**; den SHA256 Fingerprint dann nach dem Build notieren (Teil 6c, Schritt 2).
+- „Using remote Android credentials (Expo server)“: EAS signiert mit der Konfiguration, die **(Default)** trägt. Das muss der Upload-Schlüssel sein, den Google erwartet (Teil 6b2). Fragt EAS hier „Generate a new Android Keystore?“, sind gar keine Zugangsdaten hinterlegt — dann abbrechen und Teil 6b2 nachholen, statt die Frage zu bestätigen.
 - Der Build dauert meist 10–20 Minuten, mit Warteschlange länger. Strg+C beendet nur das Warten.
 
 Ergebnis ist eine `.aab`-Datei. Sie lässt sich nicht direkt installieren; sie ist nur für Google Play gedacht. Öffne die Build-Seite (Link im Terminal oder <https://expo.dev/accounts/neubuots-team/projects/doiproof/builds>) und **notiere die Laufzeitversion** („Runtime version“). Sie muss später bei jedem EAS Update (Teil 12) und in der App unter „Über diese App“ übereinstimmen.
@@ -239,7 +256,7 @@ npx eas-cli@latest submit --platform android --profile production --latest
 **Kontrolle in der Play Console:**
 
 1. **Interner Test:** Unter „Testen und veröffentlichen“ → „Testen“ → „Interner Test“ steht der Release als **Entwurf** mit der Version `1.0.0` und dem neuen `versionCode`.
-2. **App-Signatur:** „Testen und veröffentlichen“ → **„App-Integrität“** → **„App-Signatur“** (heißt die Seite inzwischen anders, in der Suche „App-Signatur“ eingeben). Erwartet: Google Play signiert die Releases. Das **App-Signaturschlüssel-Zertifikat** gehört Google und lässt sich nicht herunterladen; das ist so gewollt. Der SHA-256-Wert beim **Upload-Schlüssel-Zertifikat** muss dem „SHA256 Fingerprint“ aus Teil 6c entsprechen. Bietet die Play Console noch eine Schlüsselwahl an, den von Google erzeugten Schlüssel wählen.
+2. **App-Signatur:** „Testen und veröffentlichen“ → **„App-Integrität“** → **„App-Signatur“** (heißt die Seite inzwischen anders, in der Suche „App-Signatur“ eingeben). Erwartet: Google Play signiert die Releases. Das **App-Signaturschlüssel-Zertifikat** gehört Google und lässt sich nicht herunterladen; das ist so gewollt. Der SHA-256-Wert beim **Upload-Schlüssel-Zertifikat** muss dem „SHA256 Fingerprint“ der Konfiguration mit **(Default)** entsprechen (Teil 6b2). Bietet die Play Console noch eine Schlüsselwahl an, den von Google erzeugten Schlüssel wählen.
 3. **App-Bundle-Explorer** (über die Suche): Ziel-SDK 36, Mindest-SDK 24. Erwartete Berechtigungen: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `CAMERA`, `INTERNET`, `ACCESS_NETWORK_STATE`, `VIBRATE`, `WRITE_EXTERNAL_STORAGE` (nur bis Android 9). Eine signaturgeschützte Berechtigung `<paketname>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` aus einer Android-Bibliothek ist unbedenklich. Stehen dort `ACTIVITY_RECOGNITION`, `READ_MEDIA_…`, `AD_ID` oder `FOREGROUND_SERVICE…`: nicht weitermachen, sondern melden.
 4. **Warnungen:** Ein Hinweis auf fehlende native Debug-Symbole blockiert nicht. Verlangt die Play Console eine Erklärung zu Vordergrunddiensten, diese **nicht** abgeben, sondern melden: Der Dienst aus `expo-location` wird nie gestartet und lässt sich per Config-Plugin entfernen.
 

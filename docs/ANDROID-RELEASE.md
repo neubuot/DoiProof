@@ -46,7 +46,7 @@ npx eas-cli@latest credentials --platform android
 # Profil "preview" wählen → "Set up a new keystore" → von EAS erzeugen lassen
 ```
 
-Alle späteren Builds, auch die aus GitHub Actions, nutzen denselben Schlüssel; nur so lassen sich neue APKs über installierte Apps installieren. Einen vorhandenen Keystore nie ersetzen oder löschen.
+Alle späteren Builds, auch die aus GitHub Actions, nutzen denselben Schlüssel; nur so lassen sich neue APKs über installierte Apps installieren. Inzwischen ist das nicht mehr der von EAS erzeugte Schlüssel, sondern der Upload-Schlüssel aus Android Studio (siehe [Umstieg von Android Studio auf EAS](#umstieg-von-android-studio-auf-eas)). Einen Keystore nie löschen: Ersetzen geht, Wiederherstellen nicht.
 
 ## Versionen und Build-Nummern
 
@@ -79,12 +79,11 @@ Das gilt auch für einen zweiten TestFlight-Build derselben Version – Apple ve
 
 Version 1.0.0 (`versionCode 2`) wurde aus Android Studio gebaut und von Hand in die Play Console geladen. Kommt der nächste Store-Build von EAS, sind vorher zwei Dinge zu klären. Beide fallen sonst erst beim Upload auf, wenn der Build schon bezahlt ist.
 
-**1. Upload-Schlüssel.** Google Play signiert die ausgelieferte App mit einem eigenen Schlüssel, nimmt ein AAB aber nur an, wenn es mit dem hinterlegten **Upload-Schlüssel** signiert ist – derzeit der lokale Keystore aus Android Studio. EAS signiert mit dem Keystore, den es für die Test-APKs erzeugt hat; Google lehnt ein so signiertes Bundle ab („signed with the wrong key“). Zwei Wege:
+**1. Upload-Schlüssel.** Erledigt. Google Play signiert die ausgelieferte App mit einem eigenen Schlüssel, nimmt ein AAB aber nur an, wenn es mit dem hinterlegten **Upload-Schlüssel** signiert ist – dem lokalen Keystore aus Android Studio. EAS hatte für die Test-APKs einen eigenen Keystore erzeugt (`28:D0:41:99:…`); ein damit signiertes Bundle hätte Google abgelehnt („signed with the wrong key“). Der lokale `upload-keystore.jks` liegt deshalb seit dem 17.11.2026 bei EAS als Konfiguration `Play Upload Key doiproof` und trägt dort **(Default)**; sein SHA-256 `FF:18:DF:A3:…:FD:76` stimmt mit dem Upload-Schlüssel-Zertifikat in der Play Console überein. Schritt für Schritt: [PLAY-STORE.md, Teil 6b2](PLAY-STORE.md#6-google-dienstkonto-für-eas-submit).
 
-- **Den vorhandenen Keystore zu EAS hochladen,** sofort wirksam. `npx eas-cli@latest credentials -p android`, Profil **production**, Keystore → den Schlüssel *nicht* von EAS erzeugen lassen, sondern die vorhandene `.jks` mit Alias und Passwörtern angeben. Die Passwörter gehören in die Abfrage von eas-cli, nie in eine Datei im Repository. Lässt eas-cli für `preview` und `production` getrennte Konfigurationen zu, dem Profil `preview` seinen bisherigen Keystore lassen; andernfalls sind künftige Test-APKs anders signiert und Tester müssen die App einmal neu installieren (**vorher Nachweise als ZIP exportieren**).
-- **Den Upload-Schlüssel bei Google zurücksetzen,** dauert einige Tage. Play Console → *App-Integrität* → *App-Signatur* → Upload-Schlüssel zurücksetzen, mit dem SHA-256 des EAS-Keystores aus `eas credentials -p android`.
+Die Voreinstellung gilt für alle Profile, also auch für `preview`: Test-APKs sind ab jetzt anders signiert als die bisher verteilten, und ein installiertes älteres APK muss vor der nächsten Installation weichen (**vorher Nachweise als ZIP exportieren**). Die alte EAS-Konfiguration bleibt ungenutzt stehen.
 
-Der erste Weg ist der kürzere; er setzt voraus, dass `upload-keystore.jks` samt Passwörtern noch vorhanden ist. Geht er verloren, bleibt nur der zweite – ein Grund mehr für eine Sicherung außerhalb dieses Rechners.
+Wäre der Keystore samt Passwörtern verloren gegangen, hätte nur der lange Weg geholfen: Play Console → *App-Integrität* → *App-Signatur* → Upload-Schlüssel zurücksetzen, einige Tage Wartezeit. Ein Grund mehr für eine Sicherung außerhalb dieses Rechners.
 
 **2. Build-Nummer.** Erledigt: `app.json` steht auf `5`, und ein Test lässt keinen Wert unter `5` zu. Weil `appVersionSource` auf `local` steht, gibt es keinen Zähler auf dem Expo-Server mehr, der von dem handgebauten Bundle nichts wüsste und eine verbrauchte Nummer erzeugen könnte ([Versionen und Build-Nummern](#versionen-und-build-nummern)).
 
