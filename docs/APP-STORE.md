@@ -320,6 +320,8 @@ Es gelten dieselben Regeln wie beim Play-Eintrag, ausführlich in [play-store/ST
 
 ### Reihenfolge
 
+Der Ablauf am Gerät — Vorbereitung, Motivwahl und was in jedem Bild stehen muss — steht im [Drehbuch für die Store-Screenshots](SCREENSHOTS-DREHBUCH.md).
+
 Die ersten zwei bis drei Bilder erscheinen in der Suche, ohne dass gewischt wird. Sie zeigen deshalb den Ablauf.
 
 | Nr. | Bildschirm | So einstellen |
