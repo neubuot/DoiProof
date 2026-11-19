@@ -84,7 +84,15 @@ Die Tester-Anleitung steht in [TESTER.md](TESTER.md). Den Weg von TestFlight wei
 | Nur JavaScript/Assets (z. B. Texte, Prüflogik, Berichtslayout) | **EAS Update** auf Kanal `production`: GitHub → *Actions* → „EAS Update“ → *Run workflow* → Kanal `production`. Tester erhalten es beim nächsten App-Start. |
 | Native Änderung (neues Expo-Modul, Berechtigung, `app.json`-Plugins, SDK-Update) | Die Laufzeitversion (Fingerprint) ändert sich; ein Update wird von alten Builds **nicht** geladen. Neuen Build erstellen und hochladen: `npx eas-cli@latest build -p ios --profile production --auto-submit`. |
 
-Die Build-Nummer (`ios.buildNumber` in `app.json`, derzeit `5`) wird von Hand erhöht und ist dieselbe wie Androids `versionCode`; `appVersionSource` steht auf `local`. Apple verlangt innerhalb einer Version eine steigende Nummer, also auch für einen zweiten TestFlight-Build derselben Version – Einzelheiten in [ANDROID-RELEASE.md, „Versionen und Build-Nummern“](ANDROID-RELEASE.md#versionen-und-build-nummern). Die Versionsnummer (`1.0.0`) steht in `app.json` und `package.json`; ein Test stellt sicher, dass sie mit Kommandozeilen- und Windows-Prüfer übereinstimmt. TestFlight-Builds laufen nach **90 Tagen** ab.
+**Bricht `eas submit` mit „request to https://api.expo.dev/graphql failed" ab, die Einreichung nicht wiederholen.** Diese Meldung kam bei den Builds 5 und 6 jeweils *nach* `✔ Scheduled iOS submission`: Eingereiht ist die Einreichung dann bereits, und hochgeladen wird auf den Servern von EAS. Abgebrochen ist nur das Warten des eigenen Rechners auf das Ergebnis. Ein zweiter Aufruf erzeugt eine zweite Einreichung derselben Build-Nummer, die Apple zurückweist. Stattdessen den Stand abfragen:
+
+```sh
+npx eas-cli@latest submit:list --platform ios --limit 2 --non-interactive
+```
+
+Erwartet wird `in queue`, nach etwa einer halben Stunde `finished`. Steht dort nur eine Einreichung je Build-Nummer, ist alles in Ordnung.
+
+Die Build-Nummer (`ios.buildNumber` in `app.json`, derzeit `6`) wird von Hand erhöht und ist dieselbe wie Androids `versionCode`; `appVersionSource` steht auf `local`. Apple verlangt innerhalb einer Version eine steigende Nummer, also auch für einen zweiten TestFlight-Build derselben Version – Einzelheiten in [ANDROID-RELEASE.md, „Versionen und Build-Nummern“](ANDROID-RELEASE.md#versionen-und-build-nummern). Die Versionsnummer (`1.0.0`) steht in `app.json` und `package.json`; ein Test stellt sicher, dass sie mit Kommandozeilen- und Windows-Prüfer übereinstimmt. TestFlight-Builds laufen nach **90 Tagen** ab.
 
 Hinweis zum Kanal: TestFlight-Builds hören auf den Kanal `production`. Solange die App nicht im App Store veröffentlicht ist, erreicht ein Update auf diesem Kanal ausschließlich die TestFlight-Tester. Nach einer Store-Veröffentlichung sollte für Tester ein eigenes Build-Profil mit eigenem Kanal angelegt werden.
 
