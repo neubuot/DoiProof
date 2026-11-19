@@ -112,6 +112,8 @@ Der MCP-Server unter `https://doi-api.sendlabs.de/mcp` ist ein zustandsloser Str
 ## Nächste Schritte
 
 - Gerätetest auf Android und iOS vor breiterer Verteilung ([Review 1.0](docs/REVIEW-1.0.md)).
+- **Abhängigkeiten nachziehen, als erster Commit nach 1.0.0.** `npx expo-doctor` meldet neun Pakete hinter dem Stand von SDK 57: acht Expo-Pakete einige Patch-Versionen zurück, dazu TypeScript (erwartet `~6.0.3`, im Projekt `~5.9.2`). Nichts davon ist ein Fehler – `tsc` läuft sauber, alle Tests bestehen, beide Store-Builds sind daraus entstanden. Eine Aktualisierung ändert aber den Fingerprint und verlangt neue Builds auf beiden Plattformen, deshalb nicht mitten in der Veröffentlichung. `npx expo install --check`, TypeScript getrennt wegen des Hauptversionssprungs.
+- **`expo-system-ui` ergänzen.** `app.json` setzt `userInterfaceStyle: "automatic"`, unter Android wirkt das nur mit diesem Paket; derzeit folgt die Android-Fassung dem Systemdesign nicht. Kein Prüfpunkt bei Google, rein kosmetisch.
 - App-/Geräteattestierung (Play Integrity, App Attest; [#6](https://github.com/neubuot/DoiProof/issues/6)) und signierte Server-Challenge ([#7](https://github.com/neubuot/DoiProof/issues/7)).
 - Code-Signing für den Windows-Prüfer.
 - Optional: ZIP-Pakete per „Öffnen mit“ direkt an die App übergeben.
