@@ -227,7 +227,10 @@ test('Berichtsmodell: Ergebnis, Kacheln, QR und Anhang mit jeder Manifestangabe'
   const matched = await checkOnline(localSummary(analysis), { fetchImpl: chain.fetchImpl, now: () => NOW });
   const model = buildReportModel({ analysis, online: matched, fileName: 'p.zip', generatedAt: NOW, timeZone: BERLIN });
   assert.equal(model.outcome, 'passed');
-  assert.equal(model.banner.title, 'Echt versiegelt');
+  assert.equal(model.banner.title, 'Versiegelt');
+  // Das Banner darf nicht mehr behaupten als der Store-Eintrag: keine Echtheit des Motivs,
+  // keine Fälschungssicherheit, nur Unverändertheit seit dem bestätigenden Block.
+  assert.doesNotMatch(model.banner.title + model.banner.accent + model.banner.text, /fälschungssicher|[Ee]cht /);
   assert.equal(model.glance.length, 6);
   assert.equal(model.glance.find(row => row.label === 'Gerät')?.value, 'Android 14 · DoiProof 1.0.0 · 5 Sensoren');
   assert.equal(model.tiles.length, 6);

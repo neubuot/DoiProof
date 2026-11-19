@@ -203,7 +203,7 @@ Die ersten Bilder sind im Store ohne Wischen zu sehen. Sie zeigen deshalb den Ab
 | 7 | *optional:* **Sensoren** | Profil „Individuell“, nur „Bewegung, Kompass, Luftdruck, Licht“ an. Nach einer Aufnahme den Abschnitt „Sensoren (Geräteangaben)“ zeigen. |
 | 8 | *optional:* **Über diese App** | Erst, wenn dort die Links zu Datenschutz und Impressum eingebaut sind. |
 
-**Offener Punkt zu Nr. 4 und 5:** Das Ergebnisbanner lautet bei bestandener Prüfung „Echt versiegelt und unverändert.“, und sein Begleittext enthält das Wort „fälschungssicher“. Das geht weiter als die Beschreibung oben. Vor den Aufnahmen klären, ob der Bannertext angepasst wird. Sonst Nr. 4 so scrollen, dass das Banner nicht im Bild ist, und Nr. 5 weglassen.
+**Erledigt zu Nr. 4 und 5:** Das Ergebnisbanner lautete bei bestandener Prüfung „Echt versiegelt und unverändert.“, sein Begleittext nannte das Foto „fälschungssicher“ — beides ging weiter als die Beschreibung oben. Seit Build 6 heißt es „Versiegelt und unverändert.“, und der Begleittext spricht vom öffentlich verankerten Fingerabdruck. Das Banner darf jetzt im Bild stehen.
 
 ### Aufnehmen und auf 9:16 zuschneiden
 

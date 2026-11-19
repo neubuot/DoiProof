@@ -117,7 +117,7 @@ Ein Build aus dem Quellcode attestiert weder die Kameraaufnahme noch die Geräte
 2. **Profil „Privat“**, automatische Übermittlung aus: Foto aufnehmen. Im Verlauf erscheint „Lokal gesichert“. App beenden und neu öffnen; Foto, Manifest und ZIP-Export müssen erhalten sein.
 3. **Profil „Standort & Sensoren“**: neue Aufnahme. Erwartung: Standort, Sensorübersicht (Beschleunigung, Gyroskop, Magnetometer, Kompass, Barometer, Licht) mit „erfasst“ oder begründetem Status. Standortfreigabe einmal verweigern: Die Aufnahme wird trotzdem gespeichert, das Manifest vermerkt „Berechtigung verweigert“.
 4. **Einreichung**: „Jetzt senden“ und „Offene prüfen“; `pending` und später `confirmed` beobachten.
-5. **Prüfbericht** im Verlauf mit Online-Abgleich erstellen und teilen. Seite 1 muss „Echt versiegelt und unverändert.“ zeigen, sobald der Block bestätigt ist; der Anhang listet jeden Messwert.
+5. **Prüfbericht** im Verlauf mit Online-Abgleich erstellen und teilen. Seite 1 muss „Versiegelt und unverändert.“ zeigen, sobald der Block bestätigt ist; der Anhang listet jeden Messwert.
 6. **Tab „Prüfen“**: das exportierte ZIP importieren, offline und online prüfen; ein verändertes ZIP (Foto ausgetauscht) muss „Prüfung fehlgeschlagen“ ergeben. Dasselbe ZIP mit `npm run verify -- paket.zip --online --pdf bericht.pdf` und dem Windows-Prüfer gegenprüfen.
 7. **Ohne Netz**: Vorabmodus blockiert die Kamera mit verständlicher Meldung; ein lokaler Entwurf wird nicht automatisch gesendet.
 8. **Update**: Nach einem EAS Update im Kanal `preview` zeigt „Über diese App“ nach zwei Starts die neue Update-ID.

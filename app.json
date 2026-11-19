@@ -18,7 +18,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "org.doichain.doiproof",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "org.doichain.doiproof",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#123739"

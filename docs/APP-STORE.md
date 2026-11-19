@@ -333,7 +333,7 @@ Die ersten zwei bis drei Bilder erscheinen in der Suche, ohne dass gewischt wird
 | 5 | **PDF-Prüfbericht** | Mit „Foto im Bericht“ an und „Standort im Bericht“ aus erstellen und in einer PDF-Ansicht öffnen. |
 | 6 | *optional:* **Über diese App** | Zeigt Version, Update-Kanal und die Links zu Datenschutz und Impressum. |
 
-**Offener Punkt wie bei Google Play:** Das Ergebnisbanner einer bestandenen Prüfung lautet „Echt versiegelt und unverändert.“, und sein Begleittext enthält das Wort „fälschungssicher“. Das geht weiter als die Beschreibung. Entweder den Bannertext anpassen oder Nr. 4 so scrollen, dass das Banner nicht im Bild ist, und Nr. 5 weglassen.
+**Erledigt:** Das Ergebnisbanner einer bestandenen Prüfung hieß „Echt versiegelt und unverändert.“, sein Begleittext nannte das Foto „fälschungssicher“. Beides versprach mehr als die Beschreibung — die Prüfung belegt Unverändertheit seit dem bestätigenden Block, nicht die Echtheit des Motivs. Seit Build 6 lautet das Banner „Versiegelt und unverändert.“, der Begleittext spricht vom öffentlich verankerten Fingerabdruck. Nr. 4 und Nr. 5 dürfen das Banner also zeigen; ein Test in `core/core.test.mjs` hält die Formulierung fest.
 
 ## 8. Prüfhinweise für App Review
 

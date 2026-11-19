@@ -159,8 +159,11 @@ export function buildReportModel(input) {
   let banner;
   if (outcome === 'passed') {
     banner = {
-      eyebrow: 'ERGEBNIS DER PRÜFUNG', title: 'Echt versiegelt', accent: 'und unverändert.',
-      text: `Foto und Aufnahmedaten sind seit dem ${sealed ? formatLongDate(sealed, tz) : 'Bestätigungsblock'} fälschungssicher auf der Doichain versiegelt. Wäre auch nur ein Pixel oder eine einzige Angabe nachträglich verändert worden, hätte diese Prüfung angeschlagen.`,
+      // Weder „echt“ noch „fälschungssicher“: Die Prüfung belegt Unverändertheit seit dem Block,
+      // nicht die Echtheit des Motivs und nicht die Urheberschaft. Der Store-Eintrag verspricht
+      // ebenfalls nur das; ein Banner, das darüber hinausgeht, widerspricht der Beschreibung.
+      eyebrow: 'ERGEBNIS DER PRÜFUNG', title: 'Versiegelt', accent: 'und unverändert.',
+      text: `Foto und Aufnahmedaten sind seit dem ${sealed ? formatLongDate(sealed, tz) : 'Bestätigungsblock'} unverändert; ihr Fingerabdruck steht öffentlich auf der Doichain. Wäre auch nur ein Pixel oder eine einzige Angabe nachträglich verändert worden, hätte diese Prüfung angeschlagen.`,
     };
   } else if (outcome === 'incomplete') {
     const why = !online ? 'Die Doichain wurde bei dieser Prüfung nicht abgefragt'

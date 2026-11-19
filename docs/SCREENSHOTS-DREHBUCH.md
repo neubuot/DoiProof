@@ -56,11 +56,9 @@ Bleibt der Status über Stunden „Ausstehend", ist das kein Screenshot-Problem,
 
 Vorbereitung: Beim bestätigten Nachweis **„Beweispaket ZIP"** exportieren. Dann Bereich **„Prüfen"** → „ZIP-Beweispaket importieren" → dieses ZIP wählen → **„Kettenstatus online abgleichen"** eingeschaltet lassen → **„Paket prüfen"**.
 
-Nach dem Ergebnis **nach unten scrollen**, bis das Ergebnisbanner oben aus dem Bild gewandert ist.
+Im Bild: das Ergebnisbanner **„Versiegelt und unverändert."**, darunter **„Auf einen Blick"** und möglichst der Beginn der **Beweiskette**.
 
-Im Bild: **„Auf einen Blick"** und **„Beweiskette"**.
-
-Warum ohne Banner: Der Begleittext des bestandenen Banners enthält „fälschungssicher". Das verspricht mehr als die Store-Beschreibung, und ein Widerspruch zwischen Bild und Text fällt bei der Prüfung auf. Solange die Formulierung in der App steht, bleibt das Banner außerhalb des Bildes — ebenso der PDF-Bericht, der dasselbe Banner oben trägt.
+Das Banner darf seit Build 6 im Bild stehen. Davor hieß es „Echt versiegelt und unverändert." und sprach von „fälschungssicher"; das versprach mehr als die Store-Beschreibung und musste aus dem Bild gehalten werden.
 
 ### Aufnahme 5 – Über diese App
 
@@ -72,7 +70,6 @@ Im Bild: Version, Update-Kanal, Laufzeitversion, die Verweise auf Datenschutzerk
 
 - Geräterahmen, Werbeaufschriften, Versprechen, die über die Beschreibung hinausgehen
 - Koordinaten, Adressen, Kartenausschnitte
-- das Wort „fälschungssicher" und das Ergebnisbanner einer bestandenen Prüfung
 - Hinweise auf Google Play, Android oder andere Plattformen
 - fremde Namen in Benachrichtigungen
 
