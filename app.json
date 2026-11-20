@@ -18,7 +18,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "org.doichain.doiproof",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "org.doichain.doiproof",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#123739"
@@ -78,7 +78,9 @@
           "motionPermission": "DoiProof liest während der Aufnahme Bewegungs-, Kompass- und Luftdrucksensoren und bindet die Messwerte lokal an das Beweispaket. Sie werden nicht hochgeladen."
         }
       ],
-      "./plugins/with-android-play.js"
+      "./plugins/with-android-play.js",
+      "expo-asset",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
