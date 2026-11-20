@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutCard } from './AboutCard';
 import { styles } from '../ui/styles';
 
@@ -11,21 +11,24 @@ import { styles } from '../ui/styles';
  * Datenschutzerklärung innerhalb der App; erreichbar ist er nur, wenn er nicht erst nach
  * langem Blättern erscheint.
  *
- * Eigenes SafeAreaView: Ein Modal hängt nicht unter dem SafeAreaView aus App.tsx, sondern
- * rendert in einer eigenen Hierarchie über die volle Höhe. Ohne diese Zeile beginnt der Inhalt
- * am oberen Bildschirmrand, und auf Geräten mit Aussparung liegt die Kopfzeile unter Uhrzeit
- * und Statussymbolen.
+ * Eigener SafeAreaProvider im Modal: Ein Modal rendert in einer eigenen Hierarchie über die
+ * volle Höhe und hängt nicht unter dem Provider aus App.tsx. Dessen Messwerte erreichen den
+ * Inhalt deshalb nicht, und ein bloßes SafeAreaView bleibt hier wirkungslos — der Inhalt
+ * beginnt am oberen Bildschirmrand, auf Geräten mit Aussparung also unter Uhrzeit und
+ * Statussymbolen. Der Provider misst das Modal selbst und liefert die Abstände nach.
  */
 export function AboutSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sectionTitle}>Über diese App</Text>
-          <Pressable accessibilityRole="button" hitSlop={12} onPress={onClose}><Text style={styles.secondaryText}>Schließen</Text></Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.content}><AboutCard /></ScrollView>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.screen}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sectionTitle}>Über diese App</Text>
+            <Pressable accessibilityRole="button" hitSlop={12} onPress={onClose}><Text style={styles.secondaryText}>Schließen</Text></Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.content}><AboutCard /></ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
